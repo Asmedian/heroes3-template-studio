@@ -116,7 +116,7 @@ async def main():
                       const c=document.querySelector('#canvas').getBoundingClientRect();
                       return [...document.querySelectorAll('.node')].findIndex(n=>{
                         const r=n.getBoundingClientRect();return r.width>=8&&r.height>=8&&
-                        r.left>=c.left+3&&r.top>=c.top+68&&r.right<=c.right-3&&r.bottom<=c.bottom-62;
+                        r.left>=c.left+3&&r.top>=c.top+Math.min(68,c.height*.25)&&r.right<=c.right-3&&r.bottom<=c.bottom-Math.min(62,c.height*.17);
                       });
                     }''')
                     node=page.locator('.node').nth(visible_index) if visible_index>=0 else page.locator('.node').first

@@ -60,11 +60,11 @@ def pack_components(template_map, coords):
         x_right=max(x_right, x_right+310+gw)
     return coords
 
-catalog=json.loads((ROOT/'samples/catalog.json').read_text(encoding='utf-8'))
+catalog=json.loads((ROOT/'templates/catalog.json').read_text(encoding='utf-8'))
 parser=SodParser()
 result={'source':'sokie/heroes3-template-util/src/h3tc/editor/canvas/layout.py','scale':0.82,'templates':{}}
 for index,item in enumerate(catalog['templates'],1):
-    pack=parser.parse(ROOT/'samples'/item['file'])
+    pack=parser.parse(ROOT/'templates'/item['file'])
     maps=[]
     for map_index,m in enumerate(pack.maps):
         if not m.zones:
@@ -85,5 +85,5 @@ for index,item in enumerate(catalog['templates'],1):
 reference=result['templates']['51'][0]
 if reference['name']=='mirror Skirmish (sc2tv tourney edition)' and reference['ids']==['1','2','3','4','5','6','7']:
     reference['positions']={'1':{'x':120,'y':1540},'2':{'x':430,'y':1190},'3':{'x':470,'y':500},'4':{'x':1170,'y':350},'5':{'x':1130,'y':1060},'6':{'x':1650,'y':100},'7':{'x':1630,'y':1530}}
-(ROOT/'samples/upstream-layouts.json').write_text(json.dumps(result,ensure_ascii=False,separators=(',',':'))+'\n',encoding='utf-8')
+(ROOT/'templates/upstream-layouts.json').write_text(json.dumps(result,ensure_ascii=False,separators=(',',':'))+'\n',encoding='utf-8')
 print(f'Generated {sum(len(v) for v in result["templates"].values())} upstream layouts',flush=True)

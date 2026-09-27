@@ -1,6 +1,6 @@
 {
   "name": "h3tc-web",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": true,
   "type": "module",
   "description": "Offline Heroes III RMG template editor and converter for SoD and HotA",

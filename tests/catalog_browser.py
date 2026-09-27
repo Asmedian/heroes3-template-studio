@@ -82,7 +82,7 @@ async def run():
    assert not errors,errors
    # All 59 assets must actually be available from the offline cache on a GitHub Pages subpath.
    await page.wait_for_function('()=>navigator.serviceWorker.controller!==null',timeout=15000)
-   cache=await page.evaluate('''async()=>{const catalog=await (await fetch('./samples/catalog.json')).json();const cache=await caches.open((await caches.keys()).find(x=>x.startsWith('h3tc-studio-')));let misses=[];for(const item of catalog.templates){if(!await cache.match('./samples/'+item.file))misses.push(item.file);}return {cacheCount:catalog.count,misses};}''')
+   cache=await page.evaluate('''async()=>{const catalog=await (await fetch('./templates/catalog.json')).json();const cache=await caches.open((await caches.keys()).find(x=>x.startsWith('h3tc-studio-')));let misses=[];for(const item of catalog.templates){if(!await cache.match('./templates/'+item.file))misses.push(item.file);}return {cacheCount:catalog.count,misses};}''')
    assert cache['cacheCount']==59 and not cache['misses'],f'Missing offline assets: {cache}'
    await ctx.set_offline(True)
    await page.reload(wait_until='domcontentloaded')

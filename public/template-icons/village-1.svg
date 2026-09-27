@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 700 700">
+<defs>
+<linearGradient id="h3-village-1-wall" x1="0" y1=".2" x2="1" y2=".25" objectBoundingBox="true">
+  <stop offset="0" stop-color="#e6e0d7" /><stop offset=".14" stop-color="#fffefa" /><stop offset=".85" stop-color="#fff" /><stop offset="1" stop-color="#e2d7cb" />
+</linearGradient>
+<linearGradient id="h3-village-1-facade" x1="0" x2="1" y1=".1" y2=".8" objectBoundingBox="true">
+ <stop offset="0" stop-color="#fff" /><stop offset=".74" stop-color="#fff" /><stop offset="1" stop-color="#faf7f3" />
+</linearGradient>
+<linearGradient id="h3-village-1-roofShade" x1="0" y1="0" x2="1" y2="1" objectBoundingBox="true">
+ <stop offset="0" stop-color="#ba3e3e" /><stop offset="1" stop-color="#ba3e3e" />
+</linearGradient>
+<linearGradient id="h3-village-1-roofLight" x1="0" y1="0" x2="1" y2=".55" objectBoundingBox="true">
+ <stop offset="0" stop-color="#ed7d7d" /><stop offset="1" stop-color="#ed7d7d" />
+</linearGradient>
+<linearGradient id="h3-village-1-flagGrey" x1="0" x2="1" y1="0" y2=".15" objectBoundingBox="true">
+ <stop offset="0" stop-color="#c44141" /><stop offset="1" stop-color="#c44141" />
+</linearGradient>
+<linearGradient id="h3-village-1-stone" x1="0" x2="1" y1="0" y2=".22" objectBoundingBox="true">
+ <stop offset="0" stop-color="#dfd7ca" /><stop offset=".65" stop-color="#fff" /><stop offset="1" stop-color="#d9cfc0" />
+</linearGradient>
+<linearGradient id="h3-village-1-window" x1="0" x2="1" y1="0" y2=".45" objectBoundingBox="true">
+ <stop offset="0" stop-color="#242424" /><stop offset="1" stop-color="#363637" />
+</linearGradient>
+<linearGradient id="h3-village-1-door" x1="0" x2="1" y1="0" y2=".15" objectBoundingBox="true">
+ <stop offset="0" stop-color="#bf4040" /><stop offset=".48" stop-color="#ed7f7f" /><stop offset=".49" stop-color="#bf4040" /><stop offset="1" stop-color="#bf4040" />
+</linearGradient>
+<linearGradient id="h3-village-1-doorBig" x1="0" x2="1" y1="0" y2="0.1" objectBoundingBox="true">
+ <stop offset="0" stop-color="#bf4040" /><stop offset=".42" stop-color="#ed7f7f" /><stop offset=".6" stop-color="#ed7f7f" /><stop offset="1" stop-color="#bf4040" />
+</linearGradient>
+</defs>
+
+<g id="h3-village-1-flagpoles" fill="#030303">
+  <path d="M158.5 228 H178 V292 H158.5Z" />
+  <path d="M483.5 227 H502.5 V292 H483.5Z" />
+</g>
+<g id="h3-village-1-flags" stroke="#030303" stroke-width="14" stroke-linejoin="round" fill="#e64d4d">
+ <path d="M168 176 H258 V233 H168Z" />
+ <path d="M477 176 H561 V232 H477Z" />
+</g>
+<g id="h3-village-1-flag-colors">
+  <path fill="#e64d4d" d="M178 184 H247 V226 H178Z" /><path fill="url(#h3-village-1-flagGrey)" d="M190 184 H213 V226 H190Z" />
+  <path fill="#e64d4d" d="M485 184 H553 V225 H485Z" /><path fill="url(#h3-village-1-flagGrey)" d="M496 184 H519 V225 H496Z" />
+</g>
+
+<g id="h3-village-1-main-walls">
+ <path fill="#030303" d="M225 331 H469 V376 Q468 392 482 397 V543 H470 V555 H226 V543 H219 V398 Q228 392 226 376 Z" />
+ <path fill="url(#h3-village-1-wall)" d="M246 347 H450 V382 Q449 392 458 399 V538 H237 V399 Q247 392 246 382 Z" />
+ <path fill="url(#h3-village-1-facade)" d="M270 352 H444 V538 H270Z" />
+</g>
+
+<g id="h3-village-1-left-tower">
+ <path fill="#030303" d="M118 374 H238 V544 Q238 560 221 560 H134 Q119 560 119 545Z" />
+ <path fill="url(#h3-village-1-stone)" d="M143 394 H219 V539 H143Z" />
+ <path fill="#fff" d="M168 403 H209 V538 H168Z" />
+</g>
+<g id="h3-village-1-right-tower">
+ <path fill="#030303" d="M462 376 H581 V544 Q581 560 564 560 H479 Q463 560 463 544Z" />
+ <path fill="url(#h3-village-1-stone)" d="M481 394 H559 V539 H481Z" />
+ <path fill="#fff" d="M507 404 H550 V538 H507Z" />
+</g>
+
+<g id="h3-village-1-central-roof">
+ <path fill="#030303" d="M337 157 Q349 140 361 158 L479 322 Q490 340 469 347 H229 Q213 342 227 324Z" />
+ <path fill="url(#h3-village-1-roofShade)" d="M349 182 249 327 326 327 335 272Z" />
+ <path fill="#b33c3c" d="M335 270 326 327 373 327Z" />
+ <path fill="url(#h3-village-1-roofLight)" d="M349 182 444 327 H373 L335 270Z" />
+</g>
+<g id="h3-village-1-left-roof">
+ <path fill="#030303" d="M171 269 Q181 254 192 271 L242 371 Q250 392 232 394 H119 Q100 392 105 377Z" />
+ <path fill="url(#h3-village-1-roofShade)" d="M181 286 128 374 H171 L180 324Z" />
+ <path fill="#b33c3c" d="M180 324 170 374 H191Z" />
+ <path fill="url(#h3-village-1-roofLight)" d="M181 286 229 374 H191 L180 324Z" />
+</g>
+<g id="h3-village-1-right-roof">
+ <path fill="#030303" d="M496 269 Q507 255 518 271 L590 375 Q600 391 581 395 H463 Q446 393 454 379Z" />
+ <path fill="url(#h3-village-1-roofShade)" d="M508 285 469 374 H508 L512 317Z" />
+ <path fill="#b33c3c" d="M512 317 508 374 H527Z" />
+ <path fill="url(#h3-village-1-roofLight)" d="M508 285 564 374 H527 L512 317Z" />
+</g>
+
+<g id="h3-village-1-windows">
+ <path fill="#050505" d="M289 389 Q289 383 294 379 L307 369 Q310 367 314 370 L327 382 Q332 386 332 392 V435 H289Z" />
+ <path fill="url(#h3-village-1-window)" d="M300 392 Q300 389 304 385 L310 381 316 385 Q322 390 322 393 V425 H300Z" />
+ <path fill="#050505" d="M368 390 Q368 384 374 379 L386 369 Q390 367 394 370 L406 379 Q411 383 411 390 V435 H368Z" />
+ <path fill="url(#h3-village-1-window)" d="M379 391 Q379 388 383 385 L390 381 397 387 Q401 391 401 394 V425 H379Z" />
+</g>
+<g id="h3-village-1-gate">
+ <path fill="#020202" d="M300 537 V493 A48 48 0 0 1 396 493 V539 H300Z" />
+ <path fill="url(#h3-village-1-door)" d="M321 538 V493 A27 27 0 0 1 375 493 V538Z" />
+ <path fill="#ef8d8d" opacity=".30" d="M321 538 V494 A27 27 0 0 1 348 466 V538Z" />
+</g>
+<path id="h3-village-1-base" fill="#030303" d="M134 537 H565 V553 H134Z" />
+</svg>

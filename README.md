@@ -2,7 +2,7 @@
 
 **Offline, installable visual random-map template editor and format converter for Heroes of Might and Magic III: Shadow of Death and Horn of the Abyss.**
 
-This is an independent, browser-based implementation built from [sokie/heroes3-template-util](https://github.com/sokie/heroes3-template-util) (upstream Python/PySide6 v0.3.0, commit `e0143ce06d5cb8d616d5facd4e05569437878a07`). It runs as a static site on GitHub Pages without a server, account, npm build or external API. App version: **1.3.0**.
+This is an independent, browser-based implementation built from [sokie/heroes3-template-util](https://github.com/sokie/heroes3-template-util) (upstream Python/PySide6 v0.3.0, commit `e0143ce06d5cb8d616d5facd4e05569437878a07`). It runs as a static site on GitHub Pages without a server, account, npm build or external API. App version: **1.4.0**.
 
 **Suggested GitHub repository description:**
 > Offline PWA for editing, visualizing, and converting Heroes III random-map templates (SoD, HotA 1.7/1.8), with English/Russian UI.
@@ -14,10 +14,11 @@ This is an independent, browser-based implementation built from [sokie/heroes3-t
 - Import, inspect, edit, save and convert **SoD `.txt`**, **HotA 1.7.x `.h3t`** and **HotA 1.8.x `.h3t`** templates. Original files are processed locally; untouched save preserves original bytes. On compatible browsers, Save opens the native Save as picker; unsupported browsers show a confirmation before downloading.
 - Multi-map packs with a searchable map list, zone/connection creation, duplication and deletion, a full field inspector, undo/redo, validation and loss diagnostics for conversions.
 - Pan, wheel/toolbar zoom, touch/pinch zoom, dragging individual zones, Alt+drag or two clicks to create a link, collision-avoiding initial layout, spread/compact actions, and fit-to-screen. Save/load multi-map layouts compatible with upstream sidecars; HotA also supports `image_settings` positions.
-- **Player-color zones**, neutral-zone richness coloring, treasure and guards, town/castle markers, **all seven resource/mine icons and exact counts/densities**. All available diagram glyphs come from the original upstream desktop editor SVG sources; additional town, computer, placement and airship symbols follow the desktop editor canvas implementation. HotA 1.8-exclusive settings remain format-specific in the editor.
+- **Exact eight requested player-zone colors**, neutral-zone richness coloring and a single golden gradient for high-richness treasure zones. The diagram uses the eight supplied optimized pixel-art PNGs (treasure chest and seven resources) embedded for offline SVG/PNG export, plus supplied Fort and Village SVGs recolored by owner on roofs, flags and gates; neutral buildings remain uncolored. Original values for mine/town counts and densities are preserved. HotA 1.8-exclusive settings remain format-specific in the editor.
 - Display numbers compactly (e.g. `8500 → 8.5k`, `8501 → 8.501k`) without modifying stored values; exact originals remain available in field editors, titles and downloaded templates.
 - English UI by default, Russian on the **first visit** when the browser's primary language is Russian; explicit language choice persists in `localStorage`. Independent dark/light theme persistence and dark-native dropdowns.
 - Installable PWA: relative manifest `id`, scope and start URL (GitHub Pages subpaths supported), distinct 192/512 PNG and maskable icons, Android/Apple icons, versioned service worker, **offline precaching of all 59 built-in templates**, and in-app install guidance.
+- A permanent **Map properties** inspector tab remains available next to **Zone** or **Connection** when selected; mobile outside-tap dismisses the menu, toolbar wraps at narrow desktop widths, and the mobile title is **H3 TS**. Non-template file drops show localized, readable errors without disclosing binary header data.
 - No template selected on first load. Choose among **all 59 templates** from `Templates.zip` in the sidebar or open your own files. The previous three sample templates are retained only as test fixtures, not in the built-in selector.
 
 ## Publish on GitHub Pages
@@ -32,12 +33,13 @@ This is an independent, browser-based implementation built from [sokie/heroes3-t
 
 The 59 bundled template files and three regression fixtures contain original CRLF and sometimes mixed line endings. Git may silently convert them to LF on `git add` unless `.gitattributes` is present. This breaks the catalog SHA-256 check and untouched-template round trips; do **not** change the expected SHA-256 values or disable that test.
 
-For a **new repository**, extract the complete release archive, including `.gitattributes`, *before* running `git add .`. For a repository that already committed the previous 1.2.0 release, replace `samples/` and `tests/fixtures/` with the original copies in this release archive; copy `.gitattributes`, and restage all three paths before pushing:
+For a **new repository**, extract the complete release archive, including `.gitattributes`, *before* running `git add .`. For a repository that already committed the previous 1.2.0 release, delete the obsolete `samples/` directory, replace `templates/` and `tests/fixtures/` with the original copies in this release archive; copy `.gitattributes`, and restage all three paths before pushing:
 
 ```bash
 git add .gitattributes
-git rm -r --cached -- samples tests/fixtures
-git add -- samples tests/fixtures
+git rm -r --cached --ignore-unmatch samples templates tests/fixtures
+# Remove obsolete samples/ from your local directory before re-adding all paths.
+git add -A
 npm test
 git commit -m "Fix byte-exact templates in Git checkout"
 git push
@@ -45,7 +47,7 @@ git push
 
 `git rm --cached` only removes the old normalized versions from Git's *index*; it does not delete your local files. **The files in your working directory must actually be the original bytes from the archive**; adding `.gitattributes` alone cannot repair files that were previously converted to LF. See [CI_FIX_RU.md](CI_FIX_RU.md) for Russian-language recovery instructions and an optional clean-clone check.
 
-The workflow publishes `index.html`, `styles.css`, `src/`, `public/`, `samples/`, `manifest.webmanifest` and `sw.js`. Test fixtures and reference documentation are not deployed by Pages, although they **will be public in the GitHub repository** if you create a public repository.
+The workflow publishes `index.html`, `styles.css`, `src/`, `public/`, `templates/`, `manifest.webmanifest` and `sw.js`. Test fixtures and reference documentation are not deployed by Pages, although they **will be public in the GitHub repository** if you create a public repository.
 
 ## Local preview and tests
 
@@ -63,6 +65,7 @@ python3 -m playwright install chromium
 python3 tests/browser_smoke.py
 python3 tests/browser_responsive.py
 python3 tests/browser_interactions.py
+python3 tests/browser_v14.py
 python3 tests/catalog_browser.py
 python3 tests/i18n_audit.py
 ```
@@ -77,7 +80,7 @@ See [TEST_REPORT.md](TEST_REPORT.md) for the specific fixtures, results, resolut
 
 ## Built-in templates and file format distinctions
 
-The supplied `Templates.zip` contains **59 SoD template files**, totaling **238 maps, 2,996 zones and 4,285 connection rows**. Four maps contain zero zones in the original files; the editor does not synthesize missing data. All 59 files are SHA-256 checked against `samples/catalog.json` during testing and retained byte-for-byte for untouched downloads. Import your own HotA 1.7/1.8 `.h3t` files using **Open** or file drag/drop.
+The supplied `Templates.zip` contains **59 SoD template files**, totaling **238 maps, 2,996 zones and 4,285 connection rows**. Four maps contain zero zones in the original files; the editor does not synthesize missing data. All 59 files are SHA-256 checked against `templates/catalog.json` during testing and retained byte-for-byte for untouched downloads. Import your own HotA 1.7/1.8 `.h3t` files using **Open** or file drag/drop.
 
 | Format | Field structure | Example distinctive content |
 |---|---|---|
@@ -101,13 +104,13 @@ On iOS, use Safari **Share → Add to Home Screen**. On desktop Chrome/Edge, use
 |---|---|
 | `src/core.js`, `src/schema-data.js`, `src/schema.json` | Parsers, format schemas, serialization, conversion and validation. |
 | `src/layout.js`, `src/sidecar.js` | Collision-free graph layout and upstream-compatible positions. |
-| `src/visuals.js`, `public/h3-icons/` | Exact display-number abbreviations, owner colors, mines/towns and upstream desktop-editor vector glyphs. |
+| `src/visuals.js`, `public/template-icons/` | Exact display-number abbreviations, player palette, supplied optimized pixel-art icons and recolored owner-specific SVG buildings. |
 | `src/i18n.js`, `src/app.js`, `index.html`, `styles.css` | English/Russian UI, application state, interactions and themes. |
-| `samples/catalog.json`, `samples/*.txt` | 59 included SoD templates. |
+| `templates/catalog.json`, `templates/*.txt` | 59 included SoD templates. |
 | `manifest.webmanifest`, `sw.js`, `public/icons/` | Installability and versioned offline cache. |
 | `tests/` | Unit, Python/JS differential, catalog, visual/browser and responsive regressions. |
 | `.github/workflows/deploy.yml` | Automatic tests and Pages deployment on `main`. |
 
 ## Attribution and distribution
 
-Source implementation and upstream-supplied editor SVG icon shapes are MIT-licensed (see [LICENSE](LICENSE)). The canonical glyphs in `public/h3-icons/` are included from the upstream MIT-licensed editor. Any separately distributed game screenshots or optional game-art assets are third-party materials and not covered by MIT. The built-in templates are also user-supplied community materials. Before publishing a public repository or site, verify you have the necessary rights to redistribute the game artwork and template collections. This application is not affiliated with Ubisoft or the HotA Crew.
+The upstream software implementation is MIT-licensed (see [LICENSE](LICENSE)). The eight raster icons and Fort/Village SVGs in `public/template-icons/` were supplied separately by the user; their redistribution rights are **not established by the upstream MIT license**. The built-in templates are likewise user-supplied community materials. Before publishing a public repository or site, verify you have the necessary rights to redistribute the game artwork and template collections. This application is not affiliated with Ubisoft or the HotA Crew.

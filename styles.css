@@ -141,9 +141,6 @@ html[data-theme="light"] select option{background-color:#fff;color:#1b293d}
  .map-list{max-height:260px;overflow-y:auto}
 }
 
-/* Keep supplied HotA screenshot glyphs recognizable against darker player cards. */
-.node .hota-glyph{filter:drop-shadow(0 0 1px rgba(250,252,255,.34));image-rendering:auto}
-
 /* v1.3: constrain long map headings at all viewport widths. */
 .editor-toolbar{min-width:0;max-width:100%;overflow:visible}
 .editor-toolbar>.map-heading{flex:1 1 0;min-width:0;max-width:100%;overflow:hidden}
@@ -160,9 +157,35 @@ html[data-theme="light"] select option{background-color:#fff;color:#1b293d}
  .map-stats{max-width:38%}
  .map-title-row{align-items:center}
 }
-/* Upstream vector icons remain crisp in both themes and exported SVG/PNG. */
-.node .upstream-glyph{filter:drop-shadow(0 0 .8px rgba(255,255,255,.14));image-rendering:auto}
-
 .connection.dangling .conn-line{stroke:var(--error);stroke-dasharray:9 6;stroke-width:2}
 .connection.dangling .conn-label{fill:var(--error)}
 .connection .conn-terminal{fill:var(--error);stroke:var(--panel);stroke-width:2;pointer-events:none}
+
+/* v1.4: Exact player palette in light/dark themes and a single golden gradient. */
+html[data-theme="light"],html[data-theme="dark"]{--player-red:#e64d4d;--player-blue:#7083e7;--player-tan:#c8ac84;--player-green:#79c662;--player-orange:#e47f16;--player-purple:#a878b3;--player-teal:#55c0c3;--player-pink:#db98a7}
+.node[data-owner="0"][data-richness="high"] .node-border{fill:url(#zone-gold)}
+.node[data-owner="0"][data-richness="mid"] .node-border{fill:url(#zone-silver)}
+.node[data-owner]:not([data-owner="0"]) text,.node[data-owner="0"][data-richness="high"] text,.node[data-owner="0"][data-richness="mid"] text{fill:#1d2935}
+.brand-short{display:none}
+.inspector-context-tabs{display:flex;gap:6px;flex-wrap:wrap;min-width:0;margin:12px 0 6px}
+.inspector-context-tabs button{max-width:100%;min-height:34px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);color:var(--muted);font-size:12px;font-weight:650;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.inspector-context-tabs button[aria-selected="true"]{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.inspector-header #inspector-title{font-size:15px;margin-top:8px;overflow-wrap:anywhere}
+.inspector-header #inspector-subtitle{overflow-wrap:anywhere}
+@media(max-width:650px){.brand-full{display:none}.brand-short{display:block;font-size:14px;white-space:nowrap}}
+/* At tablet widths actions occupy a separate line rather than sliding under the inspector. */
+@media(max-width:1200px){
+ .editor-toolbar{display:grid;grid-template-columns:minmax(0,1fr);align-content:center;gap:10px;padding:11px 16px;min-height:110px}
+ .editor-toolbar>.map-heading{width:100%;overflow:hidden}
+ .editor-actions{width:100%;min-width:0;max-width:100%;flex-wrap:wrap;justify-content:flex-start}
+ .more-menu{top:105px}
+}
+@media(max-width:650px){
+ .editor-toolbar{padding:8px 9px;gap:7px;min-height:97px}
+ .editor-actions{flex-wrap:nowrap;justify-content:space-between}
+ .more-menu{top:96px}
+}
+@media(min-width:651px) and (max-width:970px){
+ /* Keep every toolbar button clickable even when the properties drawer is open. */
+ .inspector{top:110px}
+}

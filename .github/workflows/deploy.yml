@@ -39,6 +39,8 @@ jobs:
         run: python tests/browser_responsive.py
       - name: Extended browser interactions, offline PWA and mobile touch
         run: python tests/browser_interactions.py
+      - name: v1.4 inspector, icons, file validation and narrow-screen regressions
+        run: python tests/browser_v14.py
       - name: All 59 built-ins, 238 browser-rendered maps and localizations
         run: python tests/catalog_browser.py
       - name: English-language UI audit
@@ -71,7 +73,7 @@ jobs:
           mkdir -p dist
           cp index.html styles.css manifest.webmanifest sw.js dist/
           cp -r src public dist/
-          cp -r samples dist/
+          cp -r templates dist/
           touch dist/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -8,11 +8,11 @@ import {parseBytes,serializePack,convertPack,validatePack,SCHEMA,freshZone} from
 import {autoLayout,CARD_H,CARD_W} from '../src/layout.js';
 import {compactExact,mineEntries,townEntries,zoneAppearance,treasureScore} from '../src/visuals.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const catalog=JSON.parse(fs.readFileSync(path.join(root,'samples/catalog.json'),'utf8'));
+const catalog=JSON.parse(fs.readFileSync(path.join(root,'templates/catalog.json'),'utf8'));
 const records=[];
 const statistic={files:0,maps:0,zones:0,connections:0,mineIcons:0,expectedWarnings:0,emptyMaps:0};
 for(const item of catalog.templates){
- const data=fs.readFileSync(path.join(root,'samples',item.file));
+ const data=fs.readFileSync(path.join(root,'templates',item.file));
  const pack=parseBytes(data,{filename:item.name+'.txt'});
  const problems=validatePack(pack);
  statistic.files++; statistic.maps+=pack.maps.length;statistic.expectedWarnings+=problems.length;
@@ -85,11 +85,11 @@ test('resource icons, colors and numeric shortening never mutate exact template 
 });
 test('the built-in catalog contains only new files and precaches all 59 offline',()=>{
  const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
- assert.ok(sw.includes("'./samples/catalog.json'"));
- for(const entry of catalog.templates)assert.ok(sw.includes(`'./samples/${entry.file}'`));
+ assert.ok(sw.includes("'./templates/catalog.json'"));
+ for(const entry of catalog.templates)assert.ok(sw.includes(`'./templates/${entry.file}'`));
  for(const removed of ['Duel.h3t','Jebus Outcast.h3t','tesseract.txt']){
-  assert.ok(!fs.existsSync(path.join(root,'samples',removed)));
-  assert.ok(!sw.includes(`'./samples/${removed}'`));
+  assert.ok(!fs.existsSync(path.join(root,'templates',removed)));
+  assert.ok(!sw.includes(`'./templates/${removed}'`));
  }
 });
 test('SoD -> HotA 1.7/1.8 conversions retain map/zone/link cardinality for all 59 files',()=>{

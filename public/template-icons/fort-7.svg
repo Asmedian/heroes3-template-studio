@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 700 700">
+<defs>
+<linearGradient id="h3-fort-7-wall" x1="0" y1=".2" x2="1" y2=".25" objectBoundingBox="true">
+  <stop offset="0" stop-color="#e6e0d7" /><stop offset=".14" stop-color="#fffefa" /><stop offset=".85" stop-color="#fff" /><stop offset="1" stop-color="#e2d7cb" />
+</linearGradient>
+<linearGradient id="h3-fort-7-facade" x1="0" x2="1" y1=".1" y2=".8" objectBoundingBox="true">
+ <stop offset="0" stop-color="#fff" /><stop offset=".74" stop-color="#fff" /><stop offset="1" stop-color="#faf7f3" />
+</linearGradient>
+<linearGradient id="h3-fort-7-roofShade" x1="0" y1="0" x2="1" y2="1" objectBoundingBox="true">
+ <stop offset="0" stop-color="#459c9e" /><stop offset="1" stop-color="#459c9e" />
+</linearGradient>
+<linearGradient id="h3-fort-7-roofLight" x1="0" y1="0" x2="1" y2=".55" objectBoundingBox="true">
+ <stop offset="0" stop-color="#83d1d3" /><stop offset="1" stop-color="#83d1d3" />
+</linearGradient>
+<linearGradient id="h3-fort-7-flagGrey" x1="0" x2="1" y1="0" y2=".15" objectBoundingBox="true">
+ <stop offset="0" stop-color="#48a3a6" /><stop offset="1" stop-color="#48a3a6" />
+</linearGradient>
+<linearGradient id="h3-fort-7-stone" x1="0" x2="1" y1="0" y2=".22" objectBoundingBox="true">
+ <stop offset="0" stop-color="#dfd7ca" /><stop offset=".65" stop-color="#fff" /><stop offset="1" stop-color="#d9cfc0" />
+</linearGradient>
+<linearGradient id="h3-fort-7-window" x1="0" x2="1" y1="0" y2=".45" objectBoundingBox="true">
+ <stop offset="0" stop-color="#242424" /><stop offset="1" stop-color="#363637" />
+</linearGradient>
+<linearGradient id="h3-fort-7-door" x1="0" x2="1" y1="0" y2=".15" objectBoundingBox="true">
+ <stop offset="0" stop-color="#479fa2" /><stop offset=".48" stop-color="#85d2d4" /><stop offset=".49" stop-color="#479fa2" /><stop offset="1" stop-color="#479fa2" />
+</linearGradient>
+<linearGradient id="h3-fort-7-doorBig" x1="0" x2="1" y1="0" y2="0.1" objectBoundingBox="true">
+ <stop offset="0" stop-color="#479fa2" /><stop offset=".42" stop-color="#85d2d4" /><stop offset=".6" stop-color="#85d2d4" /><stop offset="1" stop-color="#479fa2" />
+</linearGradient>
+
+<linearGradient id="h3-fort-7-largeRoofGray" x1="0" x2="1" y1="0" y2=".8" objectBoundingBox="true"><stop offset="0" stop-color="#48a3a6" /><stop offset="1" stop-color="#48a3a6" /></linearGradient>
+<linearGradient id="h3-fort-7-largeStone" x1="0" x2="1" y1="0" y2=".35" objectBoundingBox="true"><stop offset="0" stop-color="#d3c5b3" /><stop offset=".56" stop-color="#faf9f7" /><stop offset="1" stop-color="#cfc1b3" /></linearGradient>
+<linearGradient id="h3-fort-7-gateFrame" x1="0" x2="1" y1="0" y2=".12" objectBoundingBox="true"><stop offset="0" stop-color="#a6a096" /><stop offset=".5" stop-color="#b2aaa1" /><stop offset="1" stop-color="#9f978e" /></linearGradient>
+</defs>
+<g id="h3-fort-7-flagpoles" fill="#030303">
+ <path d="M106 166 H126 V240 H106Z" /><path d="M541 167 H560 V239 H541Z" />
+</g>
+<g id="h3-fort-7-flags" fill="#030303">
+ <path d="M117 105 H202 Q212 105 212 117 V171 Q212 182 201 182 H125 V212 H105 V119 Q105 106 117 105Z" />
+ <path d="M552 106 H635 Q644 106 644 116 V171 Q644 182 633 182 H560 V212 H541 V117 Q541 106 552 106Z" />
+ <path fill="#55c0c3" d="M124 120 H196 V168 H124Z" /><path fill="#429698" d="M124 120 H146 V168 H124Z" />
+ <path fill="#55c0c3" d="M560 120 H629 V169 H560Z" /><path fill="#429698" d="M560 120 H584 V169 H560Z" />
+</g>
+
+<g id="h3-fort-7-main-walls">
+ <path fill="#030303" d="M188 260 H497 V357 Q495 372 507 383 V620 H189 V387 Q201 378 189 363Z" />
+ <path fill="url(#h3-fort-7-largeStone)" d="M211 281 H476 V368 Q477 380 482 386 V612 H197 V385 Q208 379 210 366Z" />
+ <path fill="url(#h3-fort-7-facade)" d="M242 296 H452 V613 H242Z" />
+</g>
+<g id="h3-fort-7-left-tower">
+ <path fill="#030303" d="M33 352 H196 V615 Q195 633 176 634 H48 Q33 631 33 615Z" />
+ <path fill="url(#h3-fort-7-largeStone)" d="M57 378 H177 V614 H57Z" />
+ <path fill="#fff" d="M90 388 H175 V612 H90Z" />
+</g>
+<g id="h3-fort-7-right-tower">
+ <path fill="#030303" d="M481 352 H645 V616 Q644 633 628 634 H498 Q482 633 482 615Z" />
+ <path fill="url(#h3-fort-7-largeStone)" d="M504 380 H620 V613 H504Z" />
+ <path fill="#fff" d="M543 389 H617 V612 H543Z" />
+</g>
+
+<g id="h3-fort-7-central-roof">
+ <path fill="#030303" d="M336 47 Q350 31 364 49 L503 252 Q513 267 498 279 H190 Q170 274 182 256Z" />
+ <path fill="url(#h3-fort-7-largeRoofGray)" d="M351 74 217 259 H370 L312 187Z" />
+ <path fill="#77cdcf" d="M351 74 466 259 H370 L312 187Z" />
+ <path fill="#111" d="M191 258 H499 V279 H191Z" />
+</g>
+<g id="h3-fort-7-left-roof">
+ <path fill="#030303" d="M110 212 Q121 198 133 213 L192 348 Q201 365 185 378 H35 Q11 376 19 359Z" />
+ <path fill="url(#h3-fort-7-largeRoofGray)" d="M122 239 44 355 H116 L102 326Z" />
+ <path fill="#77cdcf" d="M122 239 167 355 H116 L102 326Z" />
+ <path fill="#111" d="M33 354 H190 V377 H33Z" />
+</g>
+<g id="h3-fort-7-right-roof">
+ <path fill="#030303" d="M543 213 Q554 199 565 213 L654 355 Q664 370 649 378 H486 Q473 370 482 352Z" />
+ <path fill="url(#h3-fort-7-largeRoofGray)" d="M554 240 497 355 H561 L546 325Z" />
+ <path fill="#77cdcf" d="M554 240 612 355 H561 L546 325Z" />
+ <path fill="#111" d="M496 354 H634 V378 H496Z" />
+</g>
+
+<g id="h3-fort-7-windows">
+ <path fill="#d1c3b1" d="M255 407 V347 Q255 339 262 333 L280 318 Q288 311 298 316 L314 329 V407Z" />
+ <path fill="#040404" d="M267 407 V347 Q267 340 274 334 L286 321 Q290 317 298 317 L310 329 Q315 335 315 343 V407Z" />
+ <path fill="#d1c3b1" d="M372 407 V346 Q372 337 380 330 L397 316 Q407 309 417 318 L434 333 V407Z" />
+ <path fill="#040404" d="M386 407 V348 Q386 339 395 331 L408 320 Q415 315 421 320 L434 335 V407Z" />
+</g>
+
+<g id="h3-fort-7-gate">
+ <path fill="url(#h3-fort-7-gateFrame)" d="M264 614 V524 A84 82 0 0 1 432 524 V614 H264Z" />
+ <path fill="#030303" d="M279 614 V527 A69 67 0 0 1 417 527 V614Z" />
+ <path fill="url(#h3-fort-7-doorBig)" d="M299 614 V528 A49 49 0 0 1 398 528 V614Z" />
+ <path fill="#92d7d9" d="M300 614 V526 A49 49 0 0 1 349 478 V614Z" opacity=".35" />
+ <path fill="#030303" d="M339 478 H356 V615 H339Z" />
+</g>
+<path id="h3-fort-7-base" fill="#030303" d="M47 613 H629 V634 H47Z" />
+</svg>

@@ -8,7 +8,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const upper=s=>s==='sod'?'SoD':s==='hota17'?'HotA 1.7':'HotA 1.8';
 const flag=s=>String(s??'').trim().toLowerCase()==='x';
 const icon=(name,size=16)=>`<svg width="${size}" height="${size}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
-const store={pack:null,mapIndex:0,selected:{kind:'map',index:0},tab:'general',scale:1,tx:0,ty:0,
+const store={pack:null,mapIndex:0,selected:{kind:'map',index:0},tab:'general',inspectorView:'selection',scale:1,tx:0,ty:0,
   viewport:{w:700,h:600},drag:null,connectMode:false,connectFrom:null,undo:[],redo:[],installPrompt:null,toastTimer:0,
   fileKey:'',loaded:false,loadToken:0,builtinId:null,presetLayouts:null};
 const current=()=>store.pack?.maps[store.mapIndex];
@@ -58,13 +58,13 @@ function restoreLayout(index){const map=store.pack.maps[index];if(!map)return;
 async function openFile(file){
  if(!file)return;
  const token=++store.loadToken;
- try{const bytes=new Uint8Array(await file.arrayBuffer());const pack=parseBytes(bytes,{filename:file.name});if(token!==store.loadToken)return;setPack(pack,bytes);
+ try{const bytes=new Uint8Array(await file.arrayBuffer());if(!/\.(h3t|txt)$/i.test(file.name))throw new Error(getLanguage()==='ru'?'Неверный тип файла. Выберите текстовый шаблон .txt (SoD) или .h3t (HotA).':'Unsupported file type. Choose a .txt (SoD) or .h3t (HotA) template.');if(bytes.some(b=>b===0)||bytes.slice(0,4096).some(b=>b<9||(b>13&&b<32)))throw new Error(getLanguage()==='ru'?'Файл содержит двоичные данные и не является текстовым шаблоном SoD/HotA.':'The file contains binary data and is not a text SoD/HotA template.');const pack=parseBytes(bytes,{filename:file.name});if(token!==store.loadToken)return;setPack(pack,bytes);
   const total=pack.maps.reduce((s,m)=>s+m.zones.length,0);
   toast(`Открыт ${file.name} · ${pack.maps.length} карт · ${total} зон`);
  }catch(e){modal('Ошибка открытия',`<p>${esc(e?.message||e)}</p><p>Поддерживаются текстовые шаблоны SoD, HotA 1.7.x и HotA 1.8.x.</p>`);}
 }
 function setPack(pack,bytes=null,builtinId=null,presetLayouts=null){
- store.pack=pack;store.builtinId=builtinId;store.presetLayouts=presetLayouts;if($('built-in-select'))$('built-in-select').value=builtinId||'';store.mapIndex=0;store.selected={kind:'map',index:0};store.tab='general';store.undo=[];store.redo=[];
+ store.pack=pack;store.builtinId=builtinId;store.presetLayouts=presetLayouts;if($('built-in-select'))$('built-in-select').value=builtinId||'';store.mapIndex=0;store.selected={kind:'map',index:0};store.tab='general';store.inspectorView='selection';store.undo=[];store.redo=[];
  store.connectMode=false;store.connectFrom=null;store.fileKey=fileSignature(bytes??new TextEncoder().encode(pack.filename),pack.filename);
  restoreLayout(0);store.loaded=true;
  $('export-format').value=pack.format;
@@ -74,7 +74,7 @@ function setPack(pack,bytes=null,builtinId=null,presetLayouts=null){
 async function initializeCatalog(){
  const select=$('built-in-select');
  try{
-  const response=await fetch('./samples/catalog.json');if(!response.ok)throw new Error(`HTTP ${response.status}`);
+  const response=await fetch('./templates/catalog.json');if(!response.ok)throw new Error(`HTTP ${response.status}`);
   const catalog=await response.json();if(!Array.isArray(catalog.templates)||catalog.count!==catalog.templates.length)throw new Error('Invalid built-in catalog.');
   select.replaceChildren(new Option(getLanguage()==='ru'?'Выберите встроенный шаблон…':translateText('Выберите встроенный шаблон…'),''));
   for(const entry of catalog.templates){
@@ -92,12 +92,12 @@ async function loadBuiltin(id){
  }
  const token=++store.loadToken;select.disabled=true;
  try{
-  const response=await fetch('./samples/'+encodeURIComponent(option.dataset.file));
+  const response=await fetch('./templates/'+encodeURIComponent(option.dataset.file));
   if(!response.ok)throw new Error(`HTTP ${response.status}`);
   const bytes=new Uint8Array(await response.arrayBuffer());if(token!==store.loadToken)return;
   const pack=parseBytes(bytes,{filename:option.textContent+'.txt'});
   let presetLayouts=null;
-  try{const layouts=await fetch('./samples/upstream-layouts.json').then(r=>{if(!r.ok)throw new Error('Layout catalog unavailable');return r.json()});
+  try{const layouts=await fetch('./templates/upstream-layouts.json').then(r=>{if(!r.ok)throw new Error('Layout catalog unavailable');return r.json()});
    presetLayouts=layouts.templates[id]||null;
    if(presetLayouts?.length===pack.maps.length)for(let i=0;i<pack.maps.length;i++){
     const map=pack.maps[i],preset=presetLayouts[i];
@@ -111,7 +111,7 @@ async function loadBuiltin(id){
 $('built-in-select').onchange=e=>loadBuiltin(e.target.value);
 
 function selectMap(index){if(!store.pack?.maps[index])return;
- persistLayout();store.mapIndex=index;restoreLayout(index);store.selected={kind:'map',index};store.tab='general';store.connectMode=false;store.connectFrom=null;
+ persistLayout();store.mapIndex=index;restoreLayout(index);store.selected={kind:'map',index};store.tab='general';store.inspectorView='selection';store.connectMode=false;store.connectFrom=null;
  $('sidebar').classList.remove('open');renderAll();requestAnimationFrame(()=>fitView(true));
 }
 function renderAll(){renderSidebar();renderToolbar();renderCanvas();renderInspector();renderStatus();}
@@ -226,21 +226,16 @@ function getConnectorPath(a,b,offset=0){
  return{d,x:mx,y:my};
 }
 // The icon symbols are shipped with the page, so diagram and PNG export stay offline.
-const GLYPH_COLORS={chest:'#cc9957',swords:'#c0c5d1',castle:'#b18d67',town:'#9d806b',
-  Wood:'#b88944',Mercury:'#85b5d1',Ore:'#9eabba',Sulfur:'#dfc747',Crystal:'#c88eb9',Gems:'#6ec7bc',Gold:'#dbb540',Airship:'#83a4c8'};
-const svgIcon=(name,x,y,size,color=GLYPH_COLORS[name]||'#726655')=>{
-  const glyph=String(name).toLowerCase();
-  return `<use class="h3-icon upstream-glyph h3-icon-${esc(name)}" href="#h3-${esc(glyph)}" x="${x}" y="${y}" width="${size}" height="${size}" style="color:${color}"/>`;
-};
-const PLAYER_ICON_COLORS={'1':'#b73939','2':'#4077d2','3':'#b49a73','4':'#58a66c','5':'#dca03f','6':'#a56bc5','7':'#4aabb0','8':'#d68db5'};
+const GLYPH_COLORS={chest:'#cc9957',swords:'#ccd2dd'};
+const svgIcon=(name,x,y,size,color='')=>`<use class="h3-icon h3-icon-${esc(name)}" href="#h3-${esc(String(name).toLowerCase())}" x="${x}" y="${y}" width="${size}" height="${size}"/>`;
 function smallSlot(kind,name,entry,x,y,owner='0'){
   const label=compactExact(entry.min)+entry.suffix,raw=entry.min+(entry.density?' / '+entry.density:'');
-  const symbol=name==='town'?'town':name==='castle'?'castle':name;
-  const color=kind==='town'?(entry.faction==='neutral'?'#7b858d':PLAYER_ICON_COLORS[owner]||'#b18d67'):GLYPH_COLORS[name]||'#78654b';
+  const colored=kind==='town'&&entry.faction==='player'&&+owner>=1&&+owner<=8;
+  const symbol=kind==='town'?(name==='castle'?'fort':'village')+'-'+(colored?owner:'neutral'):name;
   const metadata=kind==='mine'?`data-resource="${esc(entry.resource)}"`:`data-faction="${esc(entry.faction)}" data-building="${esc(name)}"`;
   return `<g class="h3-slot h3-slot-${kind} ${Number(entry.min)===0?'optional':''}" ${metadata} data-count-raw="${esc(entry.min)}" data-density-raw="${esc(entry.density)}">
     <title>${esc((kind==='mine'?entry.resource:entry.faction+' '+name)+': '+raw)}</title>
-    ${svgIcon(symbol,x,y,23,color,kind!=='town'||(entry.faction==='neutral'&&entry.kind==='castle'))}<text class="h3-slot-count" x="${x+11.5}" y="${y+34}" text-anchor="middle">${esc(label)}</text></g>`;
+    ${svgIcon(symbol,x,y,26)}<text class="h3-slot-count" x="${x+13}" y="${y+37}" text-anchor="middle">${esc(label)}</text></g>`;
 }
 function canvasMarkup(map){
  const nodesById=new Map(map.zones.map(z=>[z.id.trim(),z]));
@@ -291,7 +286,7 @@ function renderCanvas(){const map=current();$('canvas-content').innerHTML=map?ca
  $('empty-hint').classList.toggle('hidden',!!map?.zones.length);$('empty-add-btn').hidden=!store.pack;
  transformCanvas();
 }
-function select(kind,index){store.selected={kind,index};store.tab='general';store.connectMode=false;
+function select(kind,index){store.selected={kind,index};store.tab='general';store.inspectorView='selection';store.inspectorView='selection';store.connectMode=false;
  $('inspector').classList.add('open');renderAll();}
 function handleCanvasDown(e){if(e.button!==0&&e.button!==1)return;
  const btn=e.target.closest('[data-zone-index]'),conn=e.target.closest('[data-conn-index]'),p=mousePos(e);
@@ -311,7 +306,7 @@ function handleCanvasDown(e){if(e.button!==0&&e.button!==1)return;
     commit('Добавлена связь',()=>{current().connections.push(freshConnection(store.pack.format,from,z.id));store.selected={kind:'connection',index:current().connections.length-1};});
   }return;}
   store.drag={type:e.altKey?'connect':'zone',index:i,from:z.id,initial:current().layout[z.id]?{...current().layout[z.id]}:{x:0,y:0},moved:false,at:p,snapshot:capture()};
-  if(!e.altKey)store.selected={kind:'zone',index:i};
+  if(!e.altKey){store.selected={kind:'zone',index:i};store.inspectorView='selection';}
   if(e.pointerType!=='touch')$('inspector').classList.add('open');renderInspector();renderCanvas();
  }else{
   if(store.connectMode){store.connectMode=false;store.connectFrom=null;toast('Добавление связи отменено.');renderToolbar();}
@@ -378,7 +373,8 @@ const pair=(arr)=>`<div class="form-grid">${arr.join('')}</div>`;
 const kv=(prefix,obj,entries)=>entries.map(([field,label])=>f(`${prefix}.${field}`,label,obj?.[field]));
 const posLabels=[['min_human','Минимум игроков'],['max_human','Максимум игроков'],['min_total','Минимум позиций'],['max_total','Максимум позиций']];
 const factions=schema=>schema.towns.map(s=>s==='Elemental'?'Conflux':s);
-function selectedModel(){const pack=store.pack,map=current(),s=store.selected;
+function inspectorSelection(){return store.inspectorView==='map'?{kind:'map',index:store.mapIndex}:store.selected;}
+function selectedModel(){const pack=store.pack,map=current(),s=inspectorSelection();
  return s.kind==='zone'?map?.zones[s.index]:s.kind==='connection'?map?.connections[s.index]:s.kind==='pack'?pack:map;
 }
 function tabsFor(kind){return kind==='zone'?['Основное','Города','Содержимое','Ландшафт','Монстры',...(store.pack.format!=='sod'?['HotA']:[])]:kind==='connection'?['Основное',...(store.pack.format!=='sod'?['HotA']:[])]:kind==='pack'?['Пакет']:['Карта',...(store.pack.format!=='sod'?['HotA']:[])];}
@@ -417,10 +413,11 @@ function packProps(p){if(p.format==='sod')return group('Пакет SoD',`<div cl
  ].map(([name,label])=>f(`metadata.${name}`,label,p.metadata[name],{multiline:name==='description'})).join(''))+
  group('Счётчики полей',pair([['town','Города'],['terrain','Ландшафты'],['zone_type','Типы зон'],['pack_new','Поля пакета'],['map_new','Поля карты'],['zone_new','Поля зоны'],['connection_new','Поля связей']].map(([name,label])=>f(`field_counts.${name}`,label,p.field_counts[name]))));
 }
-function renderInspector(){const p=store.pack,m=current(),s=store.selected;
- if(!p){$('inspector-body').innerHTML='<div class="inspector-empty">Откройте шаблон для начала работы.</div>';return;}
+function renderInspector(){const p=store.pack,m=current(),s=inspectorSelection();
+ if(!p){$('inspector-context-tabs').innerHTML='<button type="button" data-inspector-view="map" role="tab" disabled>Параметры карты</button>';$('inspector-body').innerHTML='<div class="inspector-empty">Откройте шаблон для начала работы.</div>';return;}
  let obj=selectedModel();if(!obj){store.selected={kind:'map',index:store.mapIndex};return renderInspector();}
- const kind=s.kind;const label=kind==='zone'?`Зона #${obj.id}`:kind==='connection'?`Связь ${obj.zone1} ↔ ${obj.zone2}`:kind==='pack'?'Параметры пакета':'Параметры карты';
+ const kind=s.kind;const picked=store.selected.kind;const viewTabs=[['map','Параметры карты']];if(picked==='zone'||picked==='connection')viewTabs.push(['selection',picked==='zone'?'Зона #'+current().zones[store.selected.index]?.id:'Связь '+(current().connections[store.selected.index]?.zone1??'')+' ↔ '+(current().connections[store.selected.index]?.zone2??'')]);if(picked==='pack')viewTabs.push(['selection','Параметры пакета']);$('inspector-context-tabs').innerHTML=viewTabs.map(([view,text])=>`<button type="button" data-inspector-view="${view}" role="tab" aria-selected="${(store.inspectorView==='map'?'map':'selection')===view}" title="${esc(text)}">${esc(text)}</button>`).join('');
+ const label=kind==='zone'?`Зона #${obj.id}`:kind==='connection'?`Связь ${obj.zone1} ↔ ${obj.zone2}`:kind==='pack'?'Параметры пакета':'Параметры карты';
  $('inspector-title').textContent=label;
  $('inspector-subtitle').textContent=kind==='zone'?'Свойства выбранной зоны':kind==='connection'?'Свойства соединения':kind==='pack'?p.filename:m.name;
  const tabs=tabsFor(kind);if(!tabs.includes(store.tab))store.tab=tabs[0];
@@ -430,6 +427,7 @@ function renderInspector(){const p=store.pack,m=current(),s=store.selected;
  kind==='connection'?`<button class="btn btn-subtle danger" data-inspector-action="delete">${icon('trash',15)} Удалить связь</button>`:
  kind==='map'?`<button class="btn btn-subtle" data-inspector-action="duplicate">${icon('copy',15)} Дублировать</button><button class="btn btn-subtle danger" data-inspector-action="delete">${icon('trash',15)} Удалить карту</button>`:'';
 }
+$('inspector-context-tabs').addEventListener('click',e=>{const button=e.target.closest('[data-inspector-view]');if(!button||button.disabled)return;store.inspectorView=button.dataset.inspectorView;store.tab=store.inspectorView==='map'?'Карта':'Основное';renderInspector();});
 $('inspector-tabs').addEventListener('click',e=>{const el=e.target.closest('[data-tab]');if(el){store.tab=el.dataset.tab;renderInspector();}});
 $('inspector-body').addEventListener('change',e=>{
  const field=e.target.closest('[data-path]');if(!field)return;
@@ -437,7 +435,7 @@ $('inspector-body').addEventListener('change',e=>{
  const value=field.type==='checkbox'?(field.checked?'x':''):field.value;
  let obj=selected;for(let i=0;i<path.length-1;i++){if(obj[path[i]]==null)obj[path[i]]={};obj=obj[path[i]];}
  const key=path.at(-1),before=obj[key];if(before===value)return;
- if(store.selected.kind==='zone'&&path.length===1&&key==='id'){
+ if(inspectorSelection().kind==='zone'&&path.length===1&&key==='id'){
   const zone=selected,newId=value.trim();if(!newId){toast('ID зоны не должен быть пустым.');field.value=before;return;}
   if(current().zones.some(z=>z!==zone&&z.id.trim()===newId)){toast('Такой ID зоны уже существует.');field.value=before;return;}
   const oldId=zone.id;
@@ -454,7 +452,7 @@ $('inspector-body').addEventListener('change',e=>{
     current().layout[newId]=current().layout[oldId];delete current().layout[oldId];zone.id=newId;});
  }else commit(`Изменено: ${path.join(' / ')}`,()=>{obj[key]=value;});
 });
-$('inspector-footer').addEventListener('click',e=>{const btn=e.target.closest('[data-inspector-action]');if(!btn)return;const action=btn.dataset.inspectorAction,s=store.selected;
+$('inspector-footer').addEventListener('click',e=>{const btn=e.target.closest('[data-inspector-action]');if(!btn)return;const action=btn.dataset.inspectorAction,s=inspectorSelection();
  if(action==='duplicate'){
    if(s.kind==='zone')commit('Зона дублирована',()=>{const map=current(),source=map.zones[s.index],copy=structuredClone(source),id=String(Math.max(0,...map.zones.map(z=>Number(z.id)||0))+1);copy.id=id;map.zones.push(copy);
      map.layout[id]={x:(map.layout[source.id]?.x??100)+215,y:(map.layout[source.id]?.y??100)+145};store.selected={kind:'zone',index:map.zones.length-1};});
@@ -638,7 +636,7 @@ $('add-map-btn').onclick=addMap;
 $('add-zone-btn').onclick=addZone;$('empty-add-btn').onclick=addZone;
 $('add-conn-btn').onclick=addConnection;
 $('undo-btn').onclick=undo;$('redo-btn').onclick=redo;
-$('pack-props-btn').onclick=()=>{store.selected={kind:'pack',index:0};store.tab='Пакет';renderInspector();$('inspector').classList.add('open');$('sidebar').classList.remove('open');};
+$('pack-props-btn').onclick=()=>{store.selected={kind:'pack',index:0};store.inspectorView='selection';store.tab='Пакет';renderInspector();$('inspector').classList.add('open');$('sidebar').classList.remove('open');};
 $('validate-btn').onclick=validateDialog;$('new-pack-btn').onclick=newPackDialog;
 $('language-select').onchange=event=>{setLanguage(event.target.value);const placeholder=$('built-in-select').options[0];if(placeholder)placeholder.text=getLanguage()==='ru'?'Выберите встроенный шаблон…':translateText('Выберите встроенный шаблон…');};
 initializeLanguage();
@@ -649,6 +647,7 @@ function setTheme(t){document.documentElement.dataset.theme=t;$('theme-btn').inn
 }
 $('install-btn').onclick=installApp;$('help-btn').onclick=helpDialog;
 $('sidebar-toggle').onclick=()=>$('sidebar').classList.toggle('open');
+document.addEventListener('pointerdown',event=>{if($('sidebar').classList.contains('open')&&!event.target.closest('#sidebar,#sidebar-toggle'))$('sidebar').classList.remove('open');});
 $('inspector-close').onclick=()=>$('inspector').classList.remove('open');
 let dragDepth=0;
 window.addEventListener('dragenter',e=>{if(e.dataTransfer?.types?.includes('Files')){e.preventDefault();dragDepth++;$('drop-hint').classList.remove('hidden');}});

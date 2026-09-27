@@ -1,0 +1,77 @@
+name: Test and deploy H3 Template Studio
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: h3tc-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  unit:
+    name: Unit and static tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+      - run: python3 -m json.tool manifest.webmanifest > /dev/null
+  browser:
+    name: Real Chromium smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Playwright and Chromium
+        run: |
+          python -m pip install playwright==1.57.0 pillow
+          python -m playwright install --with-deps chromium
+      - name: Browser smoke tests
+        run: python tests/browser_smoke.py
+      - name: Responsive UI (13 desktop/tablet/phone viewports)
+        run: python tests/browser_responsive.py
+      - name: Extended browser interactions, offline PWA and mobile touch
+        run: python tests/browser_interactions.py
+      - name: Upload screenshot on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-debug
+          path: |
+            tests/browser_screenshot.png
+            tests/artifacts/
+          if-no-files-found: ignore
+  deploy:
+    needs: [unit, browser]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Stage static app
+        run: |
+          mkdir -p dist
+          cp index.html styles.css manifest.webmanifest sw.js dist/
+          cp -r src public dist/
+          mkdir -p dist/samples
+          cp samples/tesseract.txt dist/samples/
+          touch dist/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

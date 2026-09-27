@@ -1,0 +1,17 @@
+{
+  "name": "h3tc-web",
+  "version": "1.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Offline Heroes 3 template converter and visual editor",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "python3 tests/browser_smoke.py && python3 tests/browser_responsive.py && python3 tests/browser_interactions.py",
+    "serve": "python3 -m http.server 8000 --directory .",
+    "check": "npm test && npm run test:browser"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}

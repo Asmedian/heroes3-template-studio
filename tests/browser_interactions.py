@@ -40,11 +40,13 @@ async def run():
             # Full Chromium is required for reliable Chrome DevTools touch gestures.
             full_chrome=os.environ.get('PLAYWRIGHT_FULL_CHROMIUM_EXECUTABLE')
             browser=await p.chromium.launch(channel='chromium' if not full_chrome else None,executable_path=full_chrome or None,args=['--no-sandbox','--disable-dev-shm-usage'])
-            ctx=await browser.new_context(viewport={'width':1440,'height':900},accept_downloads=True)
+            ctx=await browser.new_context(locale='ru-RU',viewport={'width':1440,'height':900},accept_downloads=True)
             page=await ctx.new_page()
             errors=[]
             page.on('pageerror',lambda exc:errors.append(str(exc)))
             await page.goto(URL,wait_until='networkidle')
+            assert await page.locator('.node').count()==0
+            await page.locator('#file-input').set_input_files(str(ROOT/'tests/fixtures/tesseract.txt'))
             await page.locator('.node').first.wait_for()
             async def pwa():
                 session=await ctx.new_cdp_session(page)
@@ -76,6 +78,7 @@ async def run():
                 await page.locator('#theme-btn').click()
                 assert await page.locator('html').get_attribute('data-theme')=='light'
                 await page.reload(wait_until='domcontentloaded')
+                await page.locator('#file-input').set_input_files(str(ROOT/'tests/fixtures/tesseract.txt'))
                 await page.locator('.node').first.wait_for()
                 assert await page.locator('html').get_attribute('data-theme')=='light'
                 await page.locator('#theme-btn').click()
@@ -177,16 +180,20 @@ async def run():
                 await page.wait_for_function('()=>navigator.serviceWorker.controller!==null',timeout=10000)
                 await ctx.set_offline(True)
                 await page.reload(wait_until='domcontentloaded')
-                await page.locator('.node').first.wait_for(timeout=12000)
-                assert await page.locator('.node').count()==16
+                await page.wait_for_function('()=>document.querySelectorAll("#built-in-select option").length===60')
+                assert await page.locator('.node').count()==0
+                await page.locator('#built-in-select').select_option('19')
+                await page.wait_for_function('()=>document.querySelectorAll(".node").length===25',timeout=12000)
+                assert await page.locator('.node').count()==25
                 await ctx.set_offline(False)
                 return 'nested GitHub Pages path loads from cache offline'
             await trial('PWA offline reload at a nested GitHub Pages URL',offline)
             await ctx.close()
-            mobile=await browser.new_context(viewport={'width':390,'height':844},device_scale_factor=2,is_mobile=True,has_touch=True)
+            mobile=await browser.new_context(locale='ru-RU',viewport={'width':390,'height':844},device_scale_factor=2,is_mobile=True,has_touch=True)
             mpage=await mobile.new_page()
             mpage.on('pageerror',lambda exc:errors.append(str(exc)))
             await mpage.goto(URL,wait_until='networkidle')
+            await mpage.locator('#file-input').set_input_files(str(ROOT/'tests/fixtures/tesseract.txt'))
             await mpage.locator('.node').first.wait_for()
             cdp=await mobile.new_cdp_session(mpage)
             async def pinch():

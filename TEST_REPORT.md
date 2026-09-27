@@ -1,68 +1,53 @@
-# Heroes III Template Studio 1.0.1 — отчёт о тестировании
+# Heroes III Template Studio 1.2.0 — verification report
 
-**Дата:** 27 сентября 2026 года. **Платформа проверки:** Linux x86-64; Node.js 22.16.0, Python 3.13, Playwright 1.57.0, полная и headless-сборки Chrome for Testing 143.0.7499.4. Проверены локальный HTTP-сервер и вложенный путь, аналогичный GitHub Pages. Системный FFmpeg из предоставленного архива использован для записи и декодирования демонстрационных видео.
+**Date:** 27 September 2026. **Environment:** Linux x86-64, Node.js 22.16, Python 3.13, Playwright 1.57.0 and locally provided Chrome for Testing/Headless Shell 143.0.7499.4. Static site tested over local HTTP and under a nested path equivalent to GitHub Pages. All claims in this report refer to the tested working copy; publication and installation on a real Xiaomi device have not been tested.
 
-## Итоги
+## Test results
 
-| Комплект | Результат | Что проверялось |
+| Test suite | Result | Coverage |
 |---|---:|---|
-| Модульные и статические тесты веб-сайта | **38/38** | Форматы, кодировки, чтение и запись, конвертация, валидация, схемы, геометрия, PWA |
-| Тесты форматов исходного Python-проекта (без PySide6 GUI) | **135/135**, 26 предупреждений | Нативные парсеры и конвертеры SoD/HotA, побайтовое сохранение, понижение формата |
-| Дифференциальные тесты JavaScript ↔ Python | **4 модели и 8 направлений конвертации** | Побуквенно сопоставлены структуры моделей при конвертации четырёх входных файлов |
-| Браузерные smoke-тесты | **Пройдены в полной и headless Chrome** | Три входных файла, открытие, редактирование, drag/drop, история, сохранение, PNG, offline |
-| Адаптивность и UI | **271/271 проверка, 13 разрешений** | Две темы, доступность кнопок, размеры полотна, панели, поиск и касания |
-| Расширенные браузерные тесты | **13/13** | PWA, проявление install prompt, SVG, PNG, загрузка Jebus, mobile touch/pinch, offline |
-| Видео | **2/2 декодируются** | Демонстрации UI для ПК 1440×900 и смартфона 390×844 |
+| Node.js unit/static/catalog | **45/45 pass** | All 59 original-file SHA-256/byte roundtrips; schema and converter tests; collision-free initial layout; numeric formatting; player colors, mines and PWA manifest. |
+| Browser smoke | **Pass** | Three retained original fixtures: SoD Tesseract (1 map), HotA 1.7 Duel (30) and Jebus Outcast (126); editing, save, conversion, PNG, dark/light, zoom, offline. |
+| Chromium responsive UI | **284 pass, 0 fail** | Thirteen viewport sizes; both themes; sidebar, inspector and toolbar access; no unwanted horizontal overflow. |
+| Extended browser interactions | **13/13 pass** | Install-prompt simulation, manifest, maskable icons, service-worker scope and offline reload, mouse gestures, undo/redo, SVG→PNG, two-finger zoom and mobile touch editing. |
+| Browser tests for all built-ins | **59/59 templates, 238/238 maps, 0 JS errors** | 2,996 rendered zones; 4,285 connection rows; **6,608 mining glyph instances**; English/Russian browser locales; offline cache coverage for all samples. |
+| English-language visible-text audit | **0 Cyrillic strings** in inspected English UI states | Initial load, pack/map/zone/connection inspection, Help, Install instructions and validation. |
+| Python/JS upstream differential | **4 parsed models + 8 conversions match** | Tesseract SoD, Duel/Jebus HotA 1.7 and generated HotA 1.8; semantic model equality against the provided Python source. |
 
-### Проверенные разрешения
+**Responsive viewport matrix** (CSS pixels): desktop 2560×1440, 1920×1080, 1440×900; laptops 1366×768, 1024×768; tablet portrait 768×1024 and landscape 1024×768; mobile portrait 430×932, 390×844, 375×812, 360×800 and 320×568; mobile landscape 812×375. All 13 were checked in dark and light theme, plus mobile inspector/sidebar states. Chromium viewport emulation is not a physical-phone test.
 
-| Категория | CSS-разрешения (ширина × высота) |
-|---|---|
-| ПК и ноутбуки | 2560×1440; 1920×1080; 1440×900; 1366×768; 1024×768 |
-| Планшеты, сенсорный ввод | 768×1024; 1024×768 |
-| Смартфоны, портрет | 430×932; 390×844; 375×812; 360×800; 320×568 |
-| Смартфоны, альбом | 812×375 |
+## Source-data fidelity
 
-Во всех 13 конфигурациях проверялись обе темы. Сохранены снимки экрана, а также снимки мобильного списка карт и панели свойств. Дополнительно проверялись отсутствие горизонтального переполнения, расположение кнопок открытия/сохранения/конвертации/установки/масштабирования, работоспособность редактора и отсутствие необработанных ошибок JavaScript.
+The updated built-in catalog is exactly the user-provided **59 SoD files**, not the older three-item demonstration selector. Importing all of them yields 238 maps, 2,996 zones and 4,285 connection rows; four maps have no zones in the original data. All original bytes match the stored SHA-256 checksums, and unmodified export is byte-identical. The 118 SoD→HotA 1.7/1.8 conversion cases are re-parsed for map, zone and connection counts. Legacy-source validation findings do not cause automatic data modifications.
 
-### Реальные шаблоны и функциональные проверки
+The original three fixtures are retained under `tests/fixtures/` exclusively to cover SoD and HotA with known data. Tesseract: 1/16/32; Duel: 30/270/420 (some preexisting truncated connection rows); Jebus Outcast: 126/962/2,216. The browser test also saves and parses an entire converted HotA 1.8 Jebus file. No supplied real-world HotA 1.8 fixture was available; HotA 1.8 parser/writer and Bulwark downgrade behavior were tested with generated data.
 
-- **XXL Tesseract / SoD:** 1 карта, 16 зон, 32 связи. Изменение зон и свойств, drag-and-drop, история, экспорт и импорт sidecar, экспорт PNG, конвертация в HotA 1.7/1.8.
-- **Duel / HotA 1.7:** 30 карт, 270 зон, 420 строк связей. Диагностика 420 проблемных/неполных строк входного файла без скрытого исправления исходника.
-- **Jebus Outcast / HotA 1.7:** 126 карт, 962 зоны, 2216 связей. Импорт и переход последовательно по всем 126 картам, полный файл после конвертации в HotA 1.8 (3 649 410 байт).
-- **Созданный тестовый HotA 1.8:** проверка чтения, конвертации в SoD и HotA 1.7 и предупреждений о потере несовместимых данных (включая Bulwark).
-- **PNG:** проверен не только факт загрузки, но и декодирование изображения, ненулевой размер 1221×1073 и сотни различимых цветов.
-- **PWA:** корректность манифеста и иконок, регистрация service worker во вложенном каталоге, offline reload, обработка события `beforeinstallprompt` по кнопке «Установить», синхронизация версии 1.0.1 во всех ресурсах.
-- **Сенсорное управление:** реальное эмулированное двухпальцевое масштабирование через Chrome DevTools Protocol (27% → 41%), перетаскивание полотна пальцем, выбор зоны касанием, редактирование параметра и закрытие панели.
-- **Производительность в тестовой среде:** загрузка Jebus — около 214 мс, переключение по всем 126 картам — около 230 мс. Результаты не гарантируют такую же скорость на других устройствах.
+## Requested fixes
 
-## Найденные и исправленные дефекты
+1. **Language:** English selected for a new non-Russian browser; first `ru-*` browser visit selects and persists Russian. Manual choice persists thereafter. Both locale flows reload correctly.
+2. **Spacing:** Larger collision-avoiding initial layout and margin; initial zoom prioritizes readability. On exceptionally dense maps some zones may start outside the viewport: pan/zoom or press Fit to see all.
+3. **Missing resources:** Town and mine counts are rendered as individual entries, with exact underlying values, both in cards and inspectors. The all-catalog browser regression confirmed 6,608 resource glyphs across all 238 maps.
+4. **Artwork/colors:** Eight player colors (based on explicit start ownership), neutral wealth-based colors, treasure, guards, town/castle icons and all seven resource symbols. Common icons are cropped from the supplied HotA documentation screenshots. Optional/version-specific icons without an independent source screenshot use upstream-like vector fallbacks; source assets retain separate third-party attribution.
+5. **Compact numbers:** `8.5k`, `45k` etc. are display-only; raw data, field edits, CSV/TSV serialization and conversion do not round or shorten originals.
+6. **Android install:** Versioned relative PWA manifest, 192/512 standard and maskable PNG icons, Apple touch icon, standalone display, valid start URL and scope. Browser install prompt and appinstalled notification paths tested in Chromium; Xiaomi home-screen icon placement remains controlled by Android/HyperOS.
+7. **Built-ins and theme:** 59 catalog entries; no default selection; same count after offline reload. Native select and option colors follow the current theme.
+8. **Inspector:** Tabs wrap instead of clipping “Monsters”; checked at desktop/mobile sizes.
+9. **Repository:** English README and GitHub About text in `GITHUB_ABOUT.txt`.
 
-1. **Телефоны 320–430 px:** часть кнопок редактора, включая меню инструментов, выходила за правый край. Переработана мобильная панель инструментов на две строки.
-2. **Планшеты и альбомные телефоны:** закрытая панель свойств увеличивала прокручиваемую ширину документа. Панель ограничена областью рабочего окна.
-3. **Сенсорное редактирование:** после выбора зоны нельзя было гарантированно открыть и закрыть свойства на мобильном экране. Исправлено управление панелью и добавлена отдельная кнопка закрытия.
-4. **Мобильное масштабирование:** добавлен обработчик жеста двумя пальцами с сохранением точки масштабирования. Проверены панорамирование одним пальцем и касание зоны.
+## Boundaries
 
-Все указанные исправления вошли в **1.0.1**. После исправлений адаптивные и расширенные браузерные проверки завершились без ошибок.
+Only Chromium/Chrome for Testing was available. Firefox and Safari/WebKit were not verified. Desktop browser mobile emulation cannot prove that Xiaomi 13/HyperOS automatically creates a launcher shortcut; accepted browser install prompt is **not** treated as proof the OS placed an icon. GitHub Pages publication also requires deploying this repository to the user's GitHub account, which was not done here. The HotA documentation ZIP contains screenshots rather than a complete vector sprite library; missing/version-specific graphics intentionally use original-program-style vector fallback instead of fabricating unsupported game glyphs. Rights to distribute the original HotA imagery and 59 supplied templates should be confirmed before public release.
 
-## Что не было проверено непосредственно
-
-- **Firefox, Safari/WebKit и физические устройства Android/iOS:** предоставлены и использованы две сборки Chromium. Мобильные сценарии проверены в режиме эмуляции браузера, а не на реальном телефоне.
-- **Нативная установка PWA на конкретной ОС:** проверены installability manifest, реальная регистрация/offline service worker и срабатывание кнопки на эмулированное событие браузера; подтверждение установки пользователем на Windows/Android/iOS не автоматизировалось.
-- **Публикация в учётной записи GitHub:** workflow подготовлен и проверен локально, фактический deploy на GitHub Pages требует загрузки в ваш репозиторий и запуска Actions.
-- **Полный набор GUI-тестов Python upstream:** в данной среде не установлен PySide6, поэтому он не стартует; 135 выбранных тестов исходных парсеров и конвертеров выполнены успешно. Это не ограничивает проверку браузерного UI.
-
-## Воспроизведение тестов
+## Reproducing
 
 ```bash
-python3 -m pip install playwright==1.57.0 pillow
-python3 -m playwright install chromium
 npm test
 python3 tests/browser_smoke.py
 python3 tests/browser_responsive.py
 python3 tests/browser_interactions.py
+python3 tests/catalog_browser.py
+python3 tests/i18n_audit.py
+python3 tests/upstream_parity.py --upstream-path /path/to/heroes3-template-util
 ```
 
-`npm run check` запускает модульные тесты и все три браузерных набора. Для вручную загруженных сборок можно задать `PLAYWRIGHT_CHROMIUM_EXECUTABLE` (headless Chrome для smoke и адаптивности) и `PLAYWRIGHT_FULL_CHROMIUM_EXECUTABLE` (полная Chrome для расширенного набора). В GitHub Actions оба варианта устанавливаются через Playwright и выполняются автоматически перед публикацией.
-
-Тестовые артефакты (полноразмерные снимки всех разрешений, JSON-метрики, логи и 2 видео WebM) поставляются в отдельном архиве `h3tc-ui-test-evidence-v1.0.1.zip` и не требуются для публикации сайта.
+Playwright and Chrome installation instructions are in `README.md`. All uploaded web artwork is embedded in the page for offline diagram and PNG exports; the separate `public/hota-icons/` raster images provide editable source assets.

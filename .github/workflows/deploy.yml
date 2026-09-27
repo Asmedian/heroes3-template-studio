@@ -39,6 +39,10 @@ jobs:
         run: python tests/browser_responsive.py
       - name: Extended browser interactions, offline PWA and mobile touch
         run: python tests/browser_interactions.py
+      - name: All 59 built-ins, 238 browser-rendered maps and localizations
+        run: python tests/catalog_browser.py
+      - name: English-language UI audit
+        run: python tests/i18n_audit.py
       - name: Upload screenshot on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -67,8 +71,7 @@ jobs:
           mkdir -p dist
           cp index.html styles.css manifest.webmanifest sw.js dist/
           cp -r src public dist/
-          mkdir -p dist/samples
-          cp samples/tesseract.txt dist/samples/
+          cp -r samples dist/
           touch dist/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:

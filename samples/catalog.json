@@ -1,0 +1,478 @@
+{
+  "source": "user-supplied Templates.zip",
+  "count": 59,
+  "templates": [
+    {
+      "id": "01",
+      "name": "Skirmish",
+      "file": "01-skirmish.txt",
+      "format": "sod",
+      "bytes": 7700,
+      "sha256": "22e6649a86f75c570e97bfff8ce7d28c8fbe754e37f193487665b34dfda8ec18"
+    },
+    {
+      "id": "02",
+      "name": "Skirmish m-u 200%",
+      "file": "02-skirmish-m-u-200.txt",
+      "format": "sod",
+      "bytes": 2690,
+      "sha256": "e136012c17fab530aff3882982942a7747b0f6ba0ae31e44968401f847e19b2b"
+    },
+    {
+      "id": "03",
+      "name": "Speed1 m-u",
+      "file": "03-speed1-m-u.txt",
+      "format": "sod",
+      "bytes": 2687,
+      "sha256": "2a6c8c92cd49bedd573f5f1ea541fcc876f8c6300fdbcf7780ea120ad7db82e6"
+    },
+    {
+      "id": "04",
+      "name": "Speed2 m-u",
+      "file": "04-speed2-m-u.txt",
+      "format": "sod",
+      "bytes": 2407,
+      "sha256": "68587c6ceb94030dfa051c756478ec0e097eab0889caeceaa5c71c63e4130b04"
+    },
+    {
+      "id": "05",
+      "name": "Spider 1.3",
+      "file": "05-spider-1-3.txt",
+      "format": "sod",
+      "bytes": 6828,
+      "sha256": "8073a4d10b7238386cc5bc2e3d700a53d99d89950c4fd64ed49d8196cd994d89"
+    },
+    {
+      "id": "06",
+      "name": "SuperSlam",
+      "file": "06-superslam.txt",
+      "format": "sod",
+      "bytes": 4875,
+      "sha256": "833bbde696451e79be27e52aca8c1cc11b9a4f74f2dc1c4d49063a903adf9e54"
+    },
+    {
+      "id": "07",
+      "name": "Triad",
+      "file": "07-triad.txt",
+      "format": "sod",
+      "bytes": 11480,
+      "sha256": "ad07775e8ab649657da9a8f9e0831c4c28c1b078123f1269c0d54319bf4b4a12"
+    },
+    {
+      "id": "08",
+      "name": "True Random",
+      "file": "08-true-random.txt",
+      "format": "sod",
+      "bytes": 10529,
+      "sha256": "d27683cd5832f545b0f47ac69fedd21ca1a025d8352f638b0a99dc3ff365f0a7"
+    },
+    {
+      "id": "09",
+      "name": "Vortex",
+      "file": "09-vortex.txt",
+      "format": "sod",
+      "bytes": 4818,
+      "sha256": "41dce86f1c3d6567be7da8040cf2e58b9dc67f0ed5af17e40d35364a1f7675cf"
+    },
+    {
+      "id": "10",
+      "name": "{[HotA]} Nostalgia",
+      "file": "10-hota-nostalgia.txt",
+      "format": "sod",
+      "bytes": 6197,
+      "sha256": "b2f7a86f0dcd42f468eb8c52e80b581e74fea6bc75bf5346fae5bfc3110c8889"
+    },
+    {
+      "id": "11",
+      "name": "{Original}",
+      "file": "11-original.txt",
+      "format": "sod",
+      "bytes": 129956,
+      "sha256": "feb881da514438433b330b18b43224b66feed8aa7c4041db32688d93dc8dc08c"
+    },
+    {
+      "id": "12",
+      "name": "2SM2c",
+      "file": "12-2sm2c.txt",
+      "format": "sod",
+      "bytes": 2595,
+      "sha256": "3ef6fb66be49adbe2ce184e6f68abc1ea7d1c04afefc0d12701056198f14bf37"
+    },
+    {
+      "id": "13",
+      "name": "2SM4d",
+      "file": "13-2sm4d.txt",
+      "format": "sod",
+      "bytes": 3570,
+      "sha256": "1cc84ecbc027198bbdf5b3393b98b3658eba2e307216f95cd1f874ceaf75a786"
+    },
+    {
+      "id": "14",
+      "name": "2SM4d(2)",
+      "file": "14-2sm4d-2.txt",
+      "format": "sod",
+      "bytes": 3567,
+      "sha256": "3aed57d022c921494a0db30dbe61e031cec6fd1dcf27396f4bd49c5f9707e5d8"
+    },
+    {
+      "id": "15",
+      "name": "2SM4d(3)",
+      "file": "15-2sm4d-3.txt",
+      "format": "sod",
+      "bytes": 3579,
+      "sha256": "508da4b028c6814eaed0daee1a2b0e88a7aeaf473ecb42073bc1674c43ff8ef4"
+    },
+    {
+      "id": "16",
+      "name": "4sm0d",
+      "file": "16-4sm0d.txt",
+      "format": "sod",
+      "bytes": 3230,
+      "sha256": "b78917a68ec031d65c7181943478551138fc266ca12b271cd8b3be68e1174ad2"
+    },
+    {
+      "id": "17",
+      "name": "6LM-8MM mix",
+      "file": "17-6lm-8mm-mix.txt",
+      "format": "sod",
+      "bytes": 6766,
+      "sha256": "1288a30c672a4cb4be82b763062bfca53c383f16372f0e8cb08eecf47b1d97ea"
+    },
+    {
+      "id": "18",
+      "name": "6LM10",
+      "file": "18-6lm10.txt",
+      "format": "sod",
+      "bytes": 7591,
+      "sha256": "2831b97fa8d5e629400e2e0806a31377f919f2798a8557660b0088904274fbe4"
+    },
+    {
+      "id": "19",
+      "name": "6LM10a",
+      "file": "19-6lm10a.txt",
+      "format": "sod",
+      "bytes": 7629,
+      "sha256": "ea9bbb85ba621c913c85499d61b51a6d8e4565016f1aef491ea44a1bcd711e63"
+    },
+    {
+      "id": "20",
+      "name": "8MM0b",
+      "file": "20-8mm0b.txt",
+      "format": "sod",
+      "bytes": 3308,
+      "sha256": "e3e6c35a62eef68ae6be9fe7006058a1a6877720745db3b88abd738456cf1d9d"
+    },
+    {
+      "id": "21",
+      "name": "8MM6",
+      "file": "21-8mm6.txt",
+      "format": "sod",
+      "bytes": 5510,
+      "sha256": "6ee7b8e2610836059192259974c9414a8018484d75f10f3c766659dd735ffff1"
+    },
+    {
+      "id": "22",
+      "name": "8MM6a",
+      "file": "22-8mm6a.txt",
+      "format": "sod",
+      "bytes": 7028,
+      "sha256": "79672a53aad47148e88d4876b94ac52e6fe57b00a30e0ab2fffc40678a869c5c"
+    },
+    {
+      "id": "23",
+      "name": "8XM12",
+      "file": "23-8xm12.txt",
+      "format": "sod",
+      "bytes": 10241,
+      "sha256": "578c67aba656e51fa25d61596a5e68621bfa72f7cd36a9f5344fce492391059e"
+    },
+    {
+      "id": "24",
+      "name": "8XM12a",
+      "file": "24-8xm12a.txt",
+      "format": "sod",
+      "bytes": 8991,
+      "sha256": "6b20d85bb967abbc7940b599462d98f268ac09bee4a55731293af23c729d0c26"
+    },
+    {
+      "id": "25",
+      "name": "Anarchy v1.01",
+      "file": "25-anarchy-v1-01.txt",
+      "format": "sod",
+      "bytes": 42664,
+      "sha256": "7381818b89b3e026fce5d61fd649680d49559ce2ccd189a410686e206f1346da"
+    },
+    {
+      "id": "26",
+      "name": "Around A Marsh",
+      "file": "26-around-a-marsh.txt",
+      "format": "sod",
+      "bytes": 4504,
+      "sha256": "dd50d58b31f4f5183a6186769423822fc79dc012efa3c7f5bb548a719b2f8db3"
+    },
+    {
+      "id": "27",
+      "name": "Balance",
+      "file": "27-balance.txt",
+      "format": "sod",
+      "bytes": 8123,
+      "sha256": "ffeb79f71c066a427498017a229694c7dd0b82e606b88634113ef817d7f2d05b"
+    },
+    {
+      "id": "28",
+      "name": "Balance m-u 200%",
+      "file": "28-balance-m-u-200.txt",
+      "format": "sod",
+      "bytes": 3179,
+      "sha256": "a92e0927d12b28a6fe23dae9cde5223eea63179f1016d662950807880b4c39df"
+    },
+    {
+      "id": "29",
+      "name": "Blockbuster",
+      "file": "29-blockbuster.txt",
+      "format": "sod",
+      "bytes": 10219,
+      "sha256": "b2d077f00d31feb697276ca7790de52af44bc1a982734caf049ca64380e94004"
+    },
+    {
+      "id": "30",
+      "name": "Clash of Dragons",
+      "file": "30-clash-of-dragons.txt",
+      "format": "sod",
+      "bytes": 4169,
+      "sha256": "7c271a37262c0156f586fd46a8a7a0d3a1a1b5bfa601c98f172d61576789f086"
+    },
+    {
+      "id": "31",
+      "name": "Coldshadow Fantasy",
+      "file": "31-coldshadow-fantasy.txt",
+      "format": "sod",
+      "bytes": 4935,
+      "sha256": "d2a6967e49f8c8766ad43a27d3136f4201ccf090e6499edf1125c96088440fac"
+    },
+    {
+      "id": "32",
+      "name": "Cube",
+      "file": "32-cube.txt",
+      "format": "sod",
+      "bytes": 4349,
+      "sha256": "4c3cadec116646feb4d4ac11415b07990c6bd562a455b71c4097355a76536feb"
+    },
+    {
+      "id": "33",
+      "name": "Diamond",
+      "file": "33-diamond.txt",
+      "format": "sod",
+      "bytes": 6077,
+      "sha256": "9df61618584dc0867928be84229402a1d5869fda8b8eece4f2db6108a66035f2"
+    },
+    {
+      "id": "34",
+      "name": "Dwarf Tunnels",
+      "file": "34-dwarf-tunnels.txt",
+      "format": "sod",
+      "bytes": 4873,
+      "sha256": "9aee3629832aaceca301c2d06a083848d6edb62dba9ff72b97e9202adb56ce05"
+    },
+    {
+      "id": "35",
+      "name": "Extreme",
+      "file": "35-extreme.txt",
+      "format": "sod",
+      "bytes": 10398,
+      "sha256": "017fe9ddcf02676f85ea7601acdcd8116b6d83e2319ac33d0658a2ae287c16b9"
+    },
+    {
+      "id": "36",
+      "name": "Extreme II",
+      "file": "36-extreme-ii.txt",
+      "format": "sod",
+      "bytes": 9778,
+      "sha256": "5c961f93173f0b140dc54a5273d3c24585fd008a8ed5639da5756df0e759bf47"
+    },
+    {
+      "id": "37",
+      "name": "Fear",
+      "file": "37-fear.txt",
+      "format": "sod",
+      "bytes": 4478,
+      "sha256": "ed6de9d01353862d30ebd0f72b471a1aee9a8d136d7babca0c1acdc190884bb7"
+    },
+    {
+      "id": "38",
+      "name": "Frozen Dragons",
+      "file": "38-frozen-dragons.txt",
+      "format": "sod",
+      "bytes": 24117,
+      "sha256": "cec70bfbd23dbda2475697a4387feb34d595d263692b4e342861291e76941440"
+    },
+    {
+      "id": "39",
+      "name": "Gimlis Revenge",
+      "file": "39-gimlis-revenge.txt",
+      "format": "sod",
+      "bytes": 3926,
+      "sha256": "6a45a272ed15beaa068b60843c242076f85c12780cf838138caa961ba82c9cfa"
+    },
+    {
+      "id": "40",
+      "name": "Guerilla",
+      "file": "40-guerilla.txt",
+      "format": "sod",
+      "bytes": 7691,
+      "sha256": "01609ee2ca1225128f84e3d57cfeae177f0c4e8c735d25cf07de58c5e4e4821f"
+    },
+    {
+      "id": "41",
+      "name": "h3dm1",
+      "file": "41-h3dm1.txt",
+      "format": "sod",
+      "bytes": 3318,
+      "sha256": "1d764051d574c2d9fdcae81d5ac754a66b966a29f0d7ee1ac7ab43e1a12962d0"
+    },
+    {
+      "id": "42",
+      "name": "Headquarters",
+      "file": "42-headquarters.txt",
+      "format": "sod",
+      "bytes": 2669,
+      "sha256": "ef344fe8d057bd2a3ab3f7165a157453f706568f90bddc33c07549aa39704f7c"
+    },
+    {
+      "id": "43",
+      "name": "HyperCube",
+      "file": "43-hypercube.txt",
+      "format": "sod",
+      "bytes": 5124,
+      "sha256": "4f47a81edfffd553cf814150c1e2d58c4bde618bd0cf64b322bc0ca03331b155"
+    },
+    {
+      "id": "44",
+      "name": "Jebus Cross",
+      "file": "44-jebus-cross.txt",
+      "format": "sod",
+      "bytes": 2014,
+      "sha256": "3bcc63e15edcbee4fcab97e91d209e4727d2d64fa7b2fde65d4052c2fbdece31"
+    },
+    {
+      "id": "45",
+      "name": "Long Run",
+      "file": "45-long-run.txt",
+      "format": "sod",
+      "bytes": 4206,
+      "sha256": "8b72cf4791173e849c3575504c667d51c2ea6033e74906ece0587aada9f0615a"
+    },
+    {
+      "id": "46",
+      "name": "Marathon",
+      "file": "46-marathon.txt",
+      "format": "sod",
+      "bytes": 20383,
+      "sha256": "5b5ca03b0a89dead47ad92d7d54e770371144a4e4bcafd55fc6bb4d0458fd56a"
+    },
+    {
+      "id": "47",
+      "name": "Match Terrain",
+      "file": "47-match-terrain.txt",
+      "format": "sod",
+      "bytes": 125461,
+      "sha256": "e8054c450add628d104158bddd1ed52157a2a1d26397f146337773a140e8c126"
+    },
+    {
+      "id": "48",
+      "name": "MidnightMix",
+      "file": "48-midnightmix.txt",
+      "format": "sod",
+      "bytes": 276813,
+      "sha256": "1ac4cce84f66c520b1e544d202d2c408048e35a244e78030e1f4e23e1a7a4908"
+    },
+    {
+      "id": "49",
+      "name": "Mini-Nostalgia",
+      "file": "49-mini-nostalgia.txt",
+      "format": "sod",
+      "bytes": 3904,
+      "sha256": "fc0b6559a7a2d50812379222cca5a572df79e3e4d439a662683973dd78d85a55"
+    },
+    {
+      "id": "50",
+      "name": "mt_Diamond",
+      "file": "50-mt-diamond.txt",
+      "format": "sod",
+      "bytes": 3955,
+      "sha256": "54dca94d5565171940350e509a0846931fb41e2745b36241701258e330c051ad"
+    },
+    {
+      "id": "51",
+      "name": "mt_Skirmish",
+      "file": "51-mt-skirmish.txt",
+      "format": "sod",
+      "bytes": 2796,
+      "sha256": "749c81fee8e6a21217252546f612a4c00bc89004ab175798c82dd3dff5187630"
+    },
+    {
+      "id": "52",
+      "name": "Nostalgia",
+      "file": "52-nostalgia.txt",
+      "format": "sod",
+      "bytes": 6176,
+      "sha256": "9950d9002258a03beec0f8f8b587bad852bb74e7d1fe28372594349a24e410be"
+    },
+    {
+      "id": "53",
+      "name": "Nostalgia XXL",
+      "file": "53-nostalgia-xxl.txt",
+      "format": "sod",
+      "bytes": 5882,
+      "sha256": "d33ed18c0ac847873254bb985f6f49351d4fd6c5f46e5fe859704a3e7226b27b"
+    },
+    {
+      "id": "54",
+      "name": "Oceans Eleven",
+      "file": "54-oceans-eleven.txt",
+      "format": "sod",
+      "bytes": 3398,
+      "sha256": "5eb2238a93a4d52c086403e90f1dabf746bf2e387998031a9f19213947f139d8"
+    },
+    {
+      "id": "55",
+      "name": "Panic",
+      "file": "55-panic.txt",
+      "format": "sod",
+      "bytes": 5799,
+      "sha256": "9e3df1e3c217576760a2e799eee61c7f9b6513e2d61130af7122421f33d399bd"
+    },
+    {
+      "id": "56",
+      "name": "Poor Jebus",
+      "file": "56-poor-jebus.txt",
+      "format": "sod",
+      "bytes": 3030,
+      "sha256": "143e6dc4cee3d3d8cdd279718ea1b253e034d9545f00fc462f36c978232b9d04"
+    },
+    {
+      "id": "57",
+      "name": "Reckless",
+      "file": "57-reckless.txt",
+      "format": "sod",
+      "bytes": 4399,
+      "sha256": "a0e5298d5544849caef8e8e212f822cd1f27484ea663cee9a1330da08d54441f"
+    },
+    {
+      "id": "58",
+      "name": "Roadrunner",
+      "file": "58-roadrunner.txt",
+      "format": "sod",
+      "bytes": 5294,
+      "sha256": "717ccadff66458e293ecdd9af4ba7c01b9118380784e0966590a84019bcb3e26"
+    },
+    {
+      "id": "59",
+      "name": "Schaafworld",
+      "file": "59-schaafworld.txt",
+      "format": "sod",
+      "bytes": 3897,
+      "sha256": "baaa203b0b80c86dc8b0f81894633d69f2b310dc0a73f5472a6ed8d0c772c699"
+    }
+  ]
+}

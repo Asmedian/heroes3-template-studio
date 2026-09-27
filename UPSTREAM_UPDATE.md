@@ -4,7 +4,7 @@
 
 ## 1. Зафиксировать текущую базу и скачать upstream
 
-Версия, по которой создана веб-версия 1.0.1: `sokie/heroes3-template-util` commit **`e0143ce06d5cb8d616d5facd4e05569437878a07`**, upstream package version **`0.3.0`**. Веб-проект использует MIT-лицензию upstream (см. `LICENSE`).
+Версия, по которой создана веб-версия 1.2.0: `sokie/heroes3-template-util` commit **`e0143ce06d5cb8d616d5facd4e05569437878a07`**, upstream package version **`0.3.0`**. Веб-проект использует MIT-лицензию upstream (см. `LICENSE`).
 
 ```bash
 # From the web project root:
@@ -59,6 +59,9 @@ git diff -- src/schema.json src/schema-data.js
 | Sidecar `.h3tc-layout.json` | `src/sidecar.js`, экспорт/импорт `src/app.js` |
 | Команды редактора, перетаскивание, экспорт | `src/app.js`, `index.html`, `styles.css` |
 | Темы и размер окна, PWA | `styles.css`, `manifest.webmanifest`, `sw.js`, `public/icons/` |
+| Новые иконки шахт/городов и графика шаблонов | `src/visuals.js`, `index.html` (inline SVG), `public/hota-icons/`; следите за правами на стороннюю графику |
+| Английский/русский язык | `src/i18n.js` плюс видимые строки `src/app.js`, `index.html` |
+| Каталог встроенных шаблонов | `samples/catalog.json`, `samples/*.txt`, `sw.js`; сохранить корректность SHA-256 и лицензионных прав |
 
 **Правила совместимости:** не удаляйте лишние / неизвестные поля без диагностических предупреждений; не переписывайте неизменённые исходные файлы при обычной загрузке/сохранении; не теряйте исходную Windows-1251 кодировку, если она представима; downgrade HotA 1.8→1.7 должен сообщать о Bulwark, HotA→SoD — об утраченных HotA-only полях. Для изменения `hint` используйте только поддержанный синтаксис upstream; неизвестные подсказки оставляйте без модификаций и показывайте предупреждение.
 
@@ -84,6 +87,8 @@ python3 -m playwright install chromium
 python3 tests/browser_smoke.py
 python3 tests/browser_responsive.py
 python3 tests/browser_interactions.py
+python3 tests/catalog_browser.py
+python3 tests/i18n_audit.py
 ```
 
 Из исходных тестовых данных обязательно оставьте случаи:
@@ -96,10 +101,12 @@ python3 tests/browser_interactions.py
 
 ## 6. Увеличить версию и проверить PWA
 
+При обновлении `Templates.zip` выполните сравнение исходных SHA-256 файлов с `samples/catalog.json`, обновите `tests/catalog_expectations.json`, прогоните тест всех карт, проверьте что после публикации PWA предзагрузила **каждый** файл. Не заменяйте пользовательские шаблоны автоматически обновлениями upstream.
+
 Используйте **отдельную семантическую версию веб-приложения**, не копируйте номер upstream автоматически. Правила: patch — исправления; minor — новые совместимые поля / возможности; major — несовместимое изменение в веб-API или удаление формата.
 
 ```bash
-python3 scripts/bump_version.py 1.1.0
+python3 scripts/bump_version.py 1.2.1
 ```
 
 Этот скрипт синхронно изменяет `package.json`, `manifest.webmanifest`, версию cache в `sw.js` и строку версии в `index.html`. После добавления новых файлов в `src/` проверьте **`ASSETS` в `sw.js`**, чтобы весь офлайн-интерфейс предзагружался. Убедитесь, что относительные URL (`./`) совместимы с `/repository/` GitHub Pages. По возможности испытайте обновление *ранее установленной* PWA: после новой публикации перезагрузите приложение онлайн и затем откройте без сети.

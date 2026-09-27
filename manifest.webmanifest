@@ -2,10 +2,10 @@
   "id": "./",
   "name": "Heroes III Template Studio",
   "short_name": "H3 Templates",
-  "description": "Offline visual editor and converter for Heroes of Might and Magic III RMG templates: Shadow of Death, HotA 1.7 and HotA 1.8.",
-  "lang": "ru",
+  "description": "Offline RMG template editor and converter for Heroes of Might and Magic III: Shadow of Death and Horn of the Abyss.",
+  "lang": "en",
   "dir": "ltr",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -26,13 +26,25 @@
       "src": "./public/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "./public/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "./public/icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./public/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "./public/icons/icon.svg",

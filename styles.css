@@ -53,3 +53,93 @@ body{background:var(--body);color:var(--text)}.app-shell{height:100dvh;display:f
   .editor-actions .vertical-rule{height:22px}
   .more-menu{top:93px;right:8px;min-width:min(270px,calc(100vw - 20px))}
 }
+
+/* v1.1: HotA-style player identity and resource-rich square canvas cards. */
+html[data-theme="light"]{
+  --player-red:#c8736e;--player-blue:#6e91d7;--player-tan:#d2be91;--player-green:#78b978;
+  --player-orange:#dcaf64;--player-purple:#aa87cd;--player-teal:#6ec3c3;--player-pink:#d2a0b9;
+  --neutral-low:#e4e5e8;--neutral-mid:#c2c8d3;--neutral-high:#dec58c;
+  --zone-text:#202a39;--conn-label-bg:#fff;--conn-label:#ae3034;
+}
+html[data-theme="dark"]{
+  --player-red:#843e46;--player-blue:#3b578e;--player-tan:#7e643d;--player-green:#3d754f;
+  --player-orange:#93601f;--player-purple:#644683;--player-teal:#347b82;--player-pink:#945e77;
+  --neutral-low:#343a47;--neutral-mid:#505c70;--neutral-high:#79683e;
+  --zone-text:#f3f5f9;--conn-label-bg:#253044;--conn-label:#ffb6b7;
+}
+.node[data-owner="0"][data-richness="low"] .node-border{fill:var(--neutral-low)}
+.node[data-owner="0"][data-richness="mid"] .node-border{fill:var(--neutral-mid)}
+.node[data-owner="0"][data-richness="high"] .node-border{fill:var(--neutral-high)}
+.node[data-owner="1"] .node-border{fill:var(--player-red)}
+.node[data-owner="2"] .node-border{fill:var(--player-blue)}
+.node[data-owner="3"] .node-border{fill:var(--player-tan)}
+.node[data-owner="4"] .node-border{fill:var(--player-green)}
+.node[data-owner="5"] .node-border{fill:var(--player-orange)}
+.node[data-owner="6"] .node-border{fill:var(--player-purple)}
+.node[data-owner="7"] .node-border{fill:var(--player-teal)}
+.node[data-owner="8"] .node-border{fill:var(--player-pink)}
+.node .node-border{stroke:var(--card-edge);stroke-width:1.65;filter:drop-shadow(0 4px 5px var(--shadow))}
+.node:focus .node-border,.node.selected .node-border{stroke:var(--accent);stroke-width:3}
+.node .node-junction-rim{stroke:#7f8590;stroke-width:12;fill:none;pointer-events:none}
+.node text{fill:var(--zone-text);font-family:Inter,Arial,sans-serif;pointer-events:none}
+.node-treasure{font-size:23px;font-weight:800;font-variant-numeric:tabular-nums}
+.node-size{font-size:12px;font-weight:700;opacity:.85}
+.node-section-caption{font-size:10px;font-weight:700}
+.node-type-hint{font-size:9px;font-weight:700;opacity:.78;text-transform:uppercase}
+.node-id-label{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+.node .h3-slot-count{font-size:10px;font-weight:800;paint-order:stroke;stroke:var(--neutral-low);stroke-opacity:.18;stroke-width:1px}
+.h3-slot{cursor:grab}
+.connection path.conn-line{stroke-width:1.65;stroke:var(--soft)}
+.connection.conn-wide path.conn-line{stroke-width:6;stroke:#7b8495}
+.connection.conn-fictive path.conn-line{stroke-dasharray:2 9}
+.connection.conn-roadless path.conn-line{stroke-dasharray:11 7;stroke-width:3}
+.connection.conn-teleport path.conn-line{stroke:var(--accent);stroke-dasharray:6 4}
+.connection .conn-road-overlay{stroke:#eee;stroke-dasharray:5 6;stroke-width:1;fill:none;pointer-events:none}
+.connection .conn-label-bg{fill:var(--conn-label-bg);stroke:var(--line);stroke-width:1}
+.connection .conn-label{fill:var(--conn-label);font-size:12px;font-weight:750;font-variant-numeric:tabular-nums}
+.connection.selected path.conn-line{stroke:var(--accent);stroke-width:3}
+.connection.dangling path.conn-line{stroke:var(--error);stroke-dasharray:6 5}
+.lang-select{border:1px solid var(--line);border-radius:8px;background:var(--button);color:var(--text);height:35px;width:57px;padding:0 4px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0}
+.lang-select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:650px){
+  .app-header{grid-template-columns:minmax(72px,1fr) repeat(5,32px);column-gap:5px}
+  .app-header #install-btn{grid-column:2}
+  .app-header #language-select{grid-column:3;grid-row:1;width:32px;padding:0 1px;font-size:9px}
+  .app-header #theme-btn{grid-column:4}
+  .app-header #help-btn{grid-column:5}
+  .app-header #sidebar-toggle{grid-column:6}
+}
+
+/* v1.2: usable built-in selector and dropdown popup in both color schemes. */
+.built-in-library{padding:14px 14px;border-bottom:1px solid var(--line);display:grid;gap:10px}
+.built-in-library .section-label{font-size:11px;margin:0;display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-weight:700;letter-spacing:.05em}
+#built-in-select{width:100%;min-height:39px;max-width:100%;border-radius:7px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);padding:7px 8px;font:inherit;font-size:12px}
+#built-in-select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+html[data-theme="dark"] select{color-scheme:dark;background-color:var(--panel-2);color:var(--text);border-color:var(--line)}
+html[data-theme="dark"] select option{background-color:#1d2737;color:#e6edf8}
+html[data-theme="light"] select{color-scheme:light;background-color:#fff;color:var(--text)}
+html[data-theme="light"] select option{background-color:#fff;color:#1b293d}
+/* Wrap inspector tabs instead of clipping Monsters / HotA off the right edge. */
+.inspector-tabs{overflow-x:visible;flex-wrap:wrap;align-content:start;gap:0 2px;scrollbar-width:auto;max-height:none;padding:5px 9px}
+.inspector-tabs button{padding:9px 9px 8px;white-space:nowrap}
+.inspector-body{overscroll-behavior:contain}
+@media(max-width:650px){.built-in-library{padding:10px 12px}.sidebar-controls{min-height:0}.inspector-tabs{gap:0 2px}}
+
+/* v1.2: keep all resource counts readable inside wider HotA-style cards. */
+.node .h3-slot-count{font-size:11px;font-weight:850;stroke:none;letter-spacing:-.1px}
+.node .h3-slot.optional{opacity:.78}
+.node .node-border{stroke-width:2}
+.node-treasure{font-size:24px}
+.node-section-caption{font-size:12px;font-weight:800}
+.node-size{font-size:12px}
+.node-id-label{font-size:18px}
+/* Very short phones: scroll the complete drawer so the footer cannot cover maps. */
+@media(max-width:650px) and (max-height:700px){
+ .sidebar{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+ .sidebar-intro,.built-in-library,.sidebar-bottom{flex-shrink:0}
+ .sidebar-controls{flex:0 0 auto;min-height:178px}
+ .map-list{max-height:260px;overflow-y:auto}
+}
+
+/* Keep supplied HotA screenshot glyphs recognizable against darker player cards. */
+.node .hota-glyph{filter:drop-shadow(0 0 1px rgba(250,252,255,.34));image-rendering:auto}

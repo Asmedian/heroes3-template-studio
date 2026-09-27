@@ -37,7 +37,7 @@ async def geometry(page):
                 right:Math.round(r.right),bottom:Math.round(r.bottom),visible:c.display!=='none' && c.visibility!=='hidden'};
       };
       const selectors = ['.app-header','.file-actions','#open-btn','#save-btn','#export-format','#convert-btn',
-        '#install-btn','#theme-btn','#sidebar-toggle','.editor-main','.editor-toolbar','#map-title',
+        '#install-btn','#theme-btn','#language-select','#sidebar-toggle','.editor-main','.editor-toolbar','#map-title',
         '#add-zone-btn','#add-conn-btn','#more-btn','#canvas','#zoom-in','#zoom-out','#zoom-fit',
         '.canvas-top-info','.statusbar','#inspector'];
       const els = Object.fromEntries(selectors.map(s => [s,pick(s)]));
@@ -67,20 +67,28 @@ async def main():
         async with async_playwright() as p:
             browser=await p.chromium.launch(executable_path=os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE') or None,args=['--no-sandbox','--disable-dev-shm-usage'])
             for name,width,height,mobile in VIEWPORTS:
-                context=await browser.new_context(viewport={'width':width,'height':height},device_scale_factor=2 if mobile else 1,
+                if os.environ.get('H3TC_VIEWPORT_FILTER') and os.environ['H3TC_VIEWPORT_FILTER'] not in name: continue
+                context=await browser.new_context(locale='ru-RU',viewport={'width':width,'height':height},device_scale_factor=2 if mobile else 1,
                     is_mobile=mobile,has_touch=mobile,accept_downloads=True)
                 page=await context.new_page()
                 errors=[]
                 page.on('pageerror',lambda exc:errors.append(str(exc)))
                 try:
                     await page.goto(URL,wait_until='domcontentloaded')
+                    await page.wait_for_function('()=>document.querySelectorAll("#built-in-select option").length===60')
+                    assert await page.locator('.node').count()==0, 'Nonblank initial canvas'
+                    await page.locator('#file-input').set_input_files(str(ROOT/'tests/fixtures/tesseract.txt'))
                     await page.locator('.node').first.wait_for(timeout=18000)
-                    await page.wait_for_timeout(300)
+                    compact_case=width<=650 or (mobile and height<500)
+                    if compact_case:
+                        await page.locator('#built-in-select').select_option('44')
+                        await page.wait_for_function('()=>document.querySelectorAll(".node").length===5')
+                    await page.wait_for_timeout(200)
                     measure=await geometry(page)
                     metrics.append({'viewport':name,'device':f'{width}x{height}','mobile':mobile,**measure})
                     check(measure['documentWidth']<=width+1,f'{name}: horizontal page overflow {measure["documentWidth"]}>{width}')
                     check(measure['els']['#canvas']['h']>=100,f'{name}: canvas height <100 px ({measure["els"]["#canvas"]["h"]})')
-                    for selector in ['#open-btn','#save-btn','#export-format','#convert-btn','#install-btn','#theme-btn','#zoom-in','#zoom-out','#zoom-fit','#add-zone-btn','#add-conn-btn','#more-btn']:
+                    for selector in ['#open-btn','#save-btn','#export-format','#convert-btn','#install-btn','#theme-btn','#language-select','#zoom-in','#zoom-out','#zoom-fit','#add-zone-btn','#add-conn-btn','#more-btn']:
                         el=measure['els'][selector]
                         check(el['w']>=15 and el['h']>=24 and el['x']>=-1 and el['right']<=width+1 and el['y']>=-1 and el['bottom']<=height+1,
                             f'{name}: {selector} clipped/offscreen: {el}')
@@ -95,17 +103,25 @@ async def main():
                     if width<=650:
                         await page.locator('#sidebar-toggle').click()
                         check('open' in (await page.locator('#sidebar').get_attribute('class')).split(), f'{name}: mobile sidebar not opened')
-                        await page.locator('#map-search').fill('XXL')
+                        await page.locator('#map-search').fill('Jebus')
                         check(await page.locator('.map-item').count()==1,f'{name}: sidebar search failed')
                         await page.wait_for_timeout(250)
                         await page.screenshot(path=str(ARTIFACTS/f'{name}-sidebar.png'))
                         await page.locator('.map-item').first.click()
-                        await page.locator('#zoom-in').click()
-                        await page.locator('#zoom-in').click()
-                    node=page.locator('.node').first
-                    r=await node.bounding_box()
+                        await page.locator('#zoom-fit').click()
+                    # Test a fully visible node rather than assuming zone #1 is onscreen
+                    # after deliberate initial readable-zoom on compact screens.
                     cv=await page.locator('#canvas').bounding_box()
-                    if r and cv and r['width']>=10 and r['height']>=10 and r['x']>=cv['x'] and r['y']>=cv['y'] and r['x']+r['width']<=cv['x']+cv['width'] and r['y']+r['height']<=cv['y']+cv['height']:
+                    visible_index=await page.evaluate('''() => {
+                      const c=document.querySelector('#canvas').getBoundingClientRect();
+                      return [...document.querySelectorAll('.node')].findIndex(n=>{
+                        const r=n.getBoundingClientRect();return r.width>=8&&r.height>=8&&
+                        r.left>=c.left+3&&r.top>=c.top+68&&r.right<=c.right-3&&r.bottom<=c.bottom-62;
+                      });
+                    }''')
+                    node=page.locator('.node').nth(visible_index) if visible_index>=0 else page.locator('.node').first
+                    r=await node.bounding_box()
+                    if visible_index>=0 and r and cv and r['width']>=8 and r['height']>=10 and r['x']>=cv['x'] and r['y']>=cv['y'] and r['x']+r['width']<=cv['x']+cv['width'] and r['y']+r['height']<=cv['y']+cv['height']:
                         cx,cy=r['x']+r['width']/2,r['y']+r['height']/2
                         if mobile: await page.touchscreen.tap(cx,cy)
                         else: await page.mouse.click(cx,cy)

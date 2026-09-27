@@ -50,3 +50,15 @@ test('raster install icons have declared exact PNG dimensions',()=>{
   const apple=fs.readFileSync(path.join(root,'public/icons/apple-touch-icon.png'));
   assert.equal(apple.readUInt32BE(16),180);assert.equal(apple.readUInt32BE(20),180);
 });
+
+
+test('all supplied HotA pixel-art resource symbols are inline and remain usable in exported SVG/PNG',()=>{
+  const html=file('index.html');
+  for(const glyph of ['chest','swords','wood','mercury','ore','sulfur','crystal','gems','gold','castle']){
+    assert.ok(html.includes(`id="hota-${glyph}"`),`Missing screenshot glyph: ${glyph}`);
+    const sprite=fs.readFileSync(path.join(root,`public/hota-icons/${glyph}.png`));
+    assert.equal(sprite.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
+  }
+  assert.match(html,/<image[^>]+href="data:image\/png;base64,/);
+  assert.ok(file('src/app.js').includes('HOTA_GLYPHS'));
+});

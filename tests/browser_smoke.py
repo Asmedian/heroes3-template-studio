@@ -22,11 +22,14 @@ async def run():
         else:raise RuntimeError('Development HTTP server unavailable.')
         async with async_playwright() as p:
             browser=await p.chromium.launch(headless=True,executable_path=os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE') or None,args=['--no-sandbox','--disable-dev-shm-usage'])
-            context=await browser.new_context(accept_downloads=True,viewport={'width':1490,'height':930},device_scale_factor=1)
+            context=await browser.new_context(locale='ru-RU',accept_downloads=True,viewport={'width':1490,'height':930},device_scale_factor=1)
             page=await context.new_page()
             errors=[]
             page.on('pageerror',lambda e:errors.append(str(e)))
             await page.goto(URL,wait_until='networkidle')
+            assert await page.locator('.node').count()==0, 'Startup must not auto-open a template.'
+            await page.wait_for_function('()=>document.querySelectorAll("#built-in-select option").length===60')
+            await page.locator('#file-input').set_input_files(str(ROOT/'tests/fixtures/tesseract.txt'))
             await page.get_by_text('XXL Tesseract').first.wait_for(timeout=15000)
             assert await page.locator('.node').count()==16, 'Tesseract zone count'
             assert await page.locator('.connection').count()==32, 'Tesseract connection count'
@@ -117,11 +120,14 @@ async def run():
             await page.locator('#modal-close').click()
             assert await page.evaluate('async()=>{const r=await fetch("./manifest.webmanifest");const m=await r.json();return m.start_url==="./"&&m.icons.some(x=>x.sizes==="512x512")}')
             await page.wait_for_function('()=>navigator.serviceWorker.controller!==null',timeout=15000)
-            # Verify the precached shell and default example are available without network.
+            # Verify offline startup stays empty, while all built-in assets are precached.
             await context.set_offline(True)
             await page.reload(wait_until='networkidle')
-            await page.get_by_text('XXL Tesseract').first.wait_for(timeout=15000)
-            assert await page.locator('.node').count()==16, 'Offline app failed to load default template.'
+            await page.wait_for_function('()=>document.querySelectorAll("#built-in-select option").length===60')
+            assert await page.locator('.node').count()==0, 'Offline startup must remain blank.'
+            await page.locator('#built-in-select').select_option('19')
+            await page.wait_for_function('()=>document.querySelectorAll(".node").length===25')
+            assert await page.locator('.node').count()==25, 'Offline built-in failed to render.'
             await context.set_offline(False)
             await page.screenshot(path=str(ROOT/'tests/browser_screenshot.png'),full_page=True)
             assert not errors, '\n'.join(errors)

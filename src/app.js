@@ -1,6 +1,8 @@
 import {SCHEMA,FORMATS,parseBytes,parseText,serializePack,convertPack,freshPack,freshZone,freshConnection,validatePack,renumberMap,remapHintRefsDetailed} from './core.js';
-import {autoLayout,resizeLayout,saveImagePositions,CARD_W,CARD_H} from './layout.js';
+import {autoLayout,resizeLayout,saveImagePositions,separate,CARD_W,CARD_H} from './layout.js';
 import {createSidecar,readSidecar} from './sidecar.js';
+import {compactExact,treasureScore,zoneAppearance,townEntries,mineEntries,connectionAppearance} from './visuals.js';
+import {initializeLanguage,setLanguage,getLanguage,translateText} from './i18n.js';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const upper=s=>s==='sod'?'SoD':s==='hota17'?'HotA 1.7':'HotA 1.8';
@@ -8,7 +10,7 @@ const flag=s=>String(s??'').trim().toLowerCase()==='x';
 const icon=(name,size=16)=>`<svg width="${size}" height="${size}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const store={pack:null,mapIndex:0,selected:{kind:'map',index:0},tab:'general',scale:1,tx:0,ty:0,
   viewport:{w:700,h:600},drag:null,connectMode:false,connectFrom:null,undo:[],redo:[],installPrompt:null,toastTimer:0,
-  fileKey:'',loaded:false,initialLoad:true,loadToken:0};
+  fileKey:'',loaded:false,loadToken:0,builtinId:null};
 const current=()=>store.pack?.maps[store.mapIndex];
 function toast(message){$('toast').textContent=message;$('toast').classList.add('visible');clearTimeout(store.toastTimer);store.toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),3500);}
 function status(s){$('status-text').textContent=s;}
@@ -46,7 +48,11 @@ function restoreLayout(index){const map=store.pack.maps[index];if(!map)return;
  }catch{}
  const ids=new Set(map.zones.map(z=>z.id));
  restored=Object.fromEntries(Object.entries(restored).filter(([id,p])=>ids.has(id)&&Number.isFinite(p?.x)&&Number.isFinite(p?.y)));
- map.layout=Object.keys(restored).length===ids.size?restored:{...autoLayout(map),...restored};
+ const candidate=Object.keys(restored).length===ids.size?restored:{...autoLayout(map),...restored};
+ // Repair crowded pre-1.1.0 cached layouts only; preserve collision-free edits.
+ const points=Object.values(candidate);
+ const crowded=points.some((p,i)=>points.slice(i+1).some(q=>Math.abs(p.x-q.x)<CARD_W+95&&Math.abs(p.y-q.y)<CARD_H+95));
+ map.layout=crowded?separate(candidate,130):candidate;
 }
 async function openFile(file){
  if(!file)return;
@@ -56,22 +62,48 @@ async function openFile(file){
   toast(`Открыт ${file.name} · ${pack.maps.length} карт · ${total} зон`);
  }catch(e){modal('Ошибка открытия',`<p>${esc(e?.message||e)}</p><p>Поддерживаются текстовые шаблоны SoD, HotA 1.7.x и HotA 1.8.x.</p>`);}
 }
-function setPack(pack,bytes=null){
- store.pack=pack;store.mapIndex=0;store.selected={kind:'map',index:0};store.tab='general';store.undo=[];store.redo=[];
+function setPack(pack,bytes=null,builtinId=null){
+ store.pack=pack;store.builtinId=builtinId;if($('built-in-select'))$('built-in-select').value=builtinId||'';store.mapIndex=0;store.selected={kind:'map',index:0};store.tab='general';store.undo=[];store.redo=[];
  store.connectMode=false;store.connectFrom=null;store.fileKey=fileSignature(bytes??new TextEncoder().encode(pack.filename),pack.filename);
  restoreLayout(0);store.loaded=true;
  $('export-format').value=pack.format;
- renderAll();requestAnimationFrame(fitView);
+ renderAll();requestAnimationFrame(()=>fitView(true));
  status(`Загружен: ${pack.filename} (${upper(pack.format)})`);
 }
-async function loadSample(name){const token=++store.loadToken;try{
- const url=new URL('../samples/'+encodeURIComponent(name),import.meta.url);
- const response=await fetch(url);if(!response.ok)throw new Error(`HTTP ${response.status}`);
- const bytes=new Uint8Array(await response.arrayBuffer());if(token!==store.loadToken)return;const pack=parseBytes(bytes,{filename:name});setPack(pack,bytes);
- }catch(e){if(token!==store.loadToken)return;if(store.initialLoad){setPack(freshPack('hota18'));commit('Создана первая карта',()=>store.pack.maps.push({name:'New Map',min_size:'36',max_size:'144',options:{},zones:[freshZone('hota18','1')],connections:[],layout:{}}));}else toast('Не удалось загрузить пример: '+e.message);}finally{store.initialLoad=false;}}
+async function initializeCatalog(){
+ const select=$('built-in-select');
+ try{
+  const response=await fetch('./samples/catalog.json');if(!response.ok)throw new Error(`HTTP ${response.status}`);
+  const catalog=await response.json();if(!Array.isArray(catalog.templates)||catalog.count!==catalog.templates.length)throw new Error('Invalid built-in catalog.');
+  select.replaceChildren(new Option(getLanguage()==='ru'?'Выберите встроенный шаблон…':translateText('Выберите встроенный шаблон…'),''));
+  for(const entry of catalog.templates){
+   const option=new Option(entry.name,entry.id);option.dataset.file=entry.file;select.add(option);
+  }
+  select.disabled=false;select.setAttribute('aria-label',getLanguage()==='ru'?'Встроенные шаблоны':'Built-in templates');
+  $('builtin-count').textContent=`${catalog.count} SoD`;
+ }catch(error){console.warn('Built-in catalog unavailable:',error);select.disabled=true;toast('Built-in template list unavailable: '+error.message);}
+}
+async function loadBuiltin(id){
+ const select=$('built-in-select'),option=[...select.options].find(o=>o.value===id);
+ if(!id||!option){select.value=store.builtinId||'';return;}
+ if(store.pack?.dirty&&!confirm(getLanguage()==='ru'?'Несохранённые изменения будут потеряны. Продолжить?':'Unsaved changes will be lost. Continue?')){
+   select.value=store.builtinId||'';return;
+ }
+ const token=++store.loadToken;select.disabled=true;
+ try{
+  const response=await fetch('./samples/'+encodeURIComponent(option.dataset.file));
+  if(!response.ok)throw new Error(`HTTP ${response.status}`);
+  const bytes=new Uint8Array(await response.arrayBuffer());if(token!==store.loadToken)return;
+  const pack=parseBytes(bytes,{filename:option.textContent+'.txt'});
+  setPack(pack,bytes,id);
+ }catch(e){if(token!==store.loadToken)return;select.value=store.builtinId||'';toast('Cannot open built-in template: '+e.message);}
+ finally{select.disabled=false;}
+}
+$('built-in-select').onchange=e=>loadBuiltin(e.target.value);
+
 function selectMap(index){if(!store.pack?.maps[index])return;
  persistLayout();store.mapIndex=index;restoreLayout(index);store.selected={kind:'map',index};store.tab='general';store.connectMode=false;store.connectFrom=null;
- $('sidebar').classList.remove('open');renderAll();requestAnimationFrame(fitView);
+ $('sidebar').classList.remove('open');renderAll();requestAnimationFrame(()=>fitView(true));
 }
 function renderAll(){renderSidebar();renderToolbar();renderCanvas();renderInspector();renderStatus();}
 function renderSidebar(){const pack=store.pack;
@@ -93,11 +125,17 @@ function renderStatus(){const map=current();$('status-zones').textContent=`${map
 }
 function bounds(map=current()){const p=Object.values(map?.layout??{});if(!p.length)return{x:0,y:0,w:620,h:430};
  const minX=Math.min(...p.map(v=>v.x)),minY=Math.min(...p.map(v=>v.y)),maxX=Math.max(...p.map(v=>v.x+CARD_W)),maxY=Math.max(...p.map(v=>v.y+CARD_H));
- return{x:minX,y:minY,w:Math.max(1,maxX-minX),h:Math.max(1,maxY-minY)};
+ const ids=new Set(map.zones.map(z=>z.id.trim()));
+ const orphanCount=map.connections.filter(c=>!ids.has(c.zone1.trim())&&!ids.has(c.zone2.trim())).length;
+ return{x:minX,y:minY,w:Math.max(1,maxX-minX)+(orphanCount?170:0),h:Math.max(1,maxY-minY)};
 }
-function fitView(){const m=current();if(!m||!m.zones.length)return;
+function fitView(initial=false){const m=current();if(!m||!m.zones.length)return;
  const box=$('canvas').getBoundingClientRect();store.viewport={w:box.width||700,h:box.height||500};let b=bounds(m);
- store.scale=Math.max(.1,Math.min(2.3,Math.min((store.viewport.w-90)/b.w,(store.viewport.h-130)/b.h)));
+ const fit=Math.min(2.3,Math.min((store.viewport.w-90)/b.w,(store.viewport.h-130)/b.h));
+ // On initial open, prioritize legibility over squeezing every node onto one screen.
+ // The explicit Fit button always fits the complete graph.
+ const minimumInitial=store.viewport.w<620?.42:.48;
+ store.scale=Math.max(initial?minimumInitial:.1,fit);
  store.tx=(store.viewport.w-b.w*store.scale)/2-b.x*store.scale;
  store.ty=(store.viewport.h-b.h*store.scale)/2-b.y*store.scale;
  transformCanvas();
@@ -112,7 +150,6 @@ let pinch=null;
 const pinchGeometry=()=>{const [a,b]=[...touchPoints.values()];return{distance:Math.hypot(a.x-b.x,a.y-b.y),x:(a.x+b.x)/2,y:(a.y+b.y)/2};};
 const zoneType=z=>flag(z.human_start)||flag(z.computer_start)?'start':flag(z.treasure)||flag(z.junction)?'treasure':'neutral';
 const zoneLabel=z=>flag(z.human_start)?'Игрок':flag(z.computer_start)?'Компьютер':flag(z.treasure)?'Сокровища':flag(z.junction)?'Перекрёсток':'Нейтральная';
-function treasureScore(z){return z.treasure_tiers.reduce((sum,t)=>sum+((+t.low||0)+(+t.high||0))/2*(+t.density||0)/1000,0);}
 function getConnectorPath(a,b,offset=0){
  const ax=a.x+CARD_W/2,ay=a.y+CARD_H/2,bx=b.x+CARD_W/2,by=b.y+CARD_H/2,dx=bx-ax,dy=by-ay;
  if(Math.hypot(dx,dy)<2)return{d:`M${ax-10} ${ay-15} C${ax-80} ${ay-110} ${ax+90} ${ay-110} ${ax+35} ${ay-14}`,x:ax+14,y:ay-83};
@@ -122,33 +159,69 @@ function getConnectorPath(a,b,offset=0){
  const d=Math.abs(offset)>1?`M${x1} ${y1} Q${2*mx-(x1+x2)/2} ${2*my-(y1+y2)/2} ${x2} ${y2}`:`M${x1} ${y1} L${x2} ${y2}`;
  return{d,x:mx,y:my};
 }
+// The icon symbols are shipped with the page, so diagram and PNG export stay offline.
+const GLYPH_COLORS={chest:'#cc9957',swords:'#c0c5d1',castle:'#b18d67',town:'#9d806b',
+  Wood:'#b88944',Mercury:'#85b5d1',Ore:'#9eabba',Sulfur:'#dfc747',Crystal:'#c88eb9',Gems:'#6ec7bc',Gold:'#dbb540',Airship:'#83a4c8'};
+const HOTA_GLYPHS=new Set(['chest','swords','wood','mercury','ore','sulfur','crystal','gems','gold','castle','town']);
+const svgIcon=(name,x,y,size,color=GLYPH_COLORS[name]||'#726655',classic=true)=>{
+  const glyph=String(name).toLowerCase(),original=classic&&HOTA_GLYPHS.has(glyph);
+  return `<use class="h3-icon ${original?'hota-glyph':'vector-glyph'} h3-icon-${esc(name)}" href="#${original?'hota':'h3'}-${esc(glyph)}" x="${x}" y="${y}" width="${size}" height="${size}" style="color:${color}"/>`;
+};
+const PLAYER_ICON_COLORS={'1':'#b73939','2':'#4077d2','3':'#b49a73','4':'#58a66c','5':'#dca03f','6':'#a56bc5','7':'#4aabb0','8':'#d68db5'};
+function smallSlot(kind,name,entry,x,y,owner='0'){
+  const label=compactExact(entry.min)+entry.suffix,raw=entry.min+(entry.density?' / '+entry.density:'');
+  const symbol=name==='town'?'town':name==='castle'?'castle':name;
+  const color=kind==='town'?(entry.faction==='neutral'?'#7b858d':PLAYER_ICON_COLORS[owner]||'#b18d67'):GLYPH_COLORS[name]||'#78654b';
+  const metadata=kind==='mine'?`data-resource="${esc(entry.resource)}"`:`data-faction="${esc(entry.faction)}" data-building="${esc(name)}"`;
+  return `<g class="h3-slot h3-slot-${kind} ${Number(entry.min)===0?'optional':''}" ${metadata} data-count-raw="${esc(entry.min)}" data-density-raw="${esc(entry.density)}">
+    <title>${esc((kind==='mine'?entry.resource:entry.faction+' '+name)+': '+raw)}</title>
+    ${svgIcon(symbol,x,y,23,color,kind!=='town'||(entry.faction==='neutral'&&entry.kind==='castle'))}<text class="h3-slot-count" x="${x+11.5}" y="${y+34}" text-anchor="middle">${esc(label)}</text></g>`;
+}
 function canvasMarkup(map){
  const nodesById=new Map(map.zones.map(z=>[z.id.trim(),z]));
  const connectionCount=new Map(),edges=map.connections.map((c,i)=>{
-  const a=map.layout[c.zone1.trim()],b=map.layout[c.zone2.trim()],ok=!!(a&&b);
-  if(!a&&!b)return '';
-  let path;let className=`connection ${store.selected.kind==='connection'&&store.selected.index===i?'selected':''} ${flag(c.wide)?'conn-wide':''} ${ok?'':'dangling'}`;
-  if(ok){const key=[c.zone1.trim(),c.zone2.trim()].sort().join(':'),offsetIndex=connectionCount.get(key)||0;connectionCount.set(key,offsetIndex+1);path=getConnectorPath(a,b,offsetIndex?20*Math.ceil(offsetIndex/2)*(offsetIndex%2?-1:1):0);}
-  else{const pt=a??b,x=pt.x+CARD_W/2,y=pt.y+CARD_H/2;path={d:`M${x} ${y} l${a?85:-85} 0`,x:x+(a?45:-45),y:y};}
-  let label=strVal(c.value)||'—';if(flag(c.border_guard))label+=' ⛨';
-  return `<g class="${className}" data-conn-index="${i}"><path class="conn-line" d="${path.d}"/><path class="conn-hit" d="${path.d}"/><rect class="conn-label-bg" x="${path.x-24}" y="${path.y-10}" width="48" height="20" rx="7"/><text class="conn-label" x="${path.x}" y="${path.y}">${esc(label.length>11?label.slice(0,10)+'…':label)}</text></g>`;
+  const a=map.layout[c.zone1.trim()],b=map.layout[c.zone2.trim()],ok=!!(a&&b),visual=connectionAppearance(c);
+  let path;let className=`connection ${store.selected.kind==='connection'&&store.selected.index===i?'selected':''} ${visual.wide?'conn-wide':''} ${visual.fictive?'conn-fictive':''} ${visual.roadRequired?'conn-road-required':''} ${visual.roadForbidden?'conn-roadless':''} ${visual.border?'conn-border':''} ${visual.type==='teleport'?'conn-teleport':''} ${ok?'':'dangling'}`;
+  if(ok){const key=[c.zone1.trim(),c.zone2.trim()].sort().join(':'),offsetIndex=connectionCount.get(key)||0;connectionCount.set(key,offsetIndex+1);path=getConnectorPath(a,b,offsetIndex?25*Math.ceil(offsetIndex/2)*(offsetIndex%2?-1:1):0);}
+  else if(a||b){const pt=a??b,x=pt.x+CARD_W/2,y=pt.y+CARD_H/2;path={d:`M${x} ${y} l${a?95:-95} 0`,x:x+(a?49:-49),y:y};}
+  else{const lastX=Math.max(...Object.values(map.layout??{}).map(pt=>pt.x+CARD_W),CARD_W),x=lastX+36,y=Math.min(...Object.values(map.layout??{}).map(pt=>pt.y),110)+36+(i%8)*54;path={d:`M${x} ${y} l88 0`,x:x+44,y:y};}
+  const raw=strVal(c.value).trim(),label=!a&&!b?'⚠':visual.border?'┃':raw&&raw!=='0'?compactExact(raw):'';
+  const textW=Math.max(36,label.length*7+12);
+  return `<g class="${className}" data-conn-index="${i}" data-value-raw="${esc(raw)}" aria-label="${esc('Connection '+c.zone1+' to '+c.zone2+', exact guard value '+(raw||'0'))}"><title>${esc('Connection '+c.zone1+'–'+c.zone2+'; guard '+(raw||'0')+(visual.wide?'; wide':'')+(visual.roadRequired?'; road required':'')+(visual.roadForbidden?'; roads forbidden':''))}</title>
+    <path class="conn-line" d="${path.d}"/>${visual.roadRequired?`<path class="conn-road-overlay" d="${path.d}"/>`:''}<path class="conn-hit" d="${path.d}"/>
+    ${label?`<rect class="conn-label-bg" x="${path.x-textW/2}" y="${path.y-11}" width="${textW}" height="22" rx="7"/><text class="conn-label" x="${path.x}" y="${path.y}">${esc(label)}</text>`:''}</g>`;
  }).join('');
  const zones=map.zones.map((z,i)=>{
-  const p=map.layout[z.id]??{x:110+i*200,y:120};const type=zoneType(z),selected=store.selected.kind==='zone'&&store.selected.index===i;
-  const tier=Math.round(treasureScore(z)).toLocaleString('en-US');const minT=Number(z.player_towns.min_castles||0)+Number(z.neutral_towns.min_castles||0);
-  return `<g class="node node-${type} ${selected?'selected':''}" data-zone-index="${i}" transform="translate(${p.x} ${p.y})" role="button" tabindex="0" aria-label="Зона ${esc(z.id)}: ${esc(zoneLabel(z))}">
-    <rect class="node-border" width="${CARD_W}" height="${CARD_H}" rx="11"/><path class="node-accent" d="M11 1h158a10 10 0 0 1 10 10v3H1v-3A10 10 0 0 1 11 1Z"/>
-    <rect class="node-id-pill" x="12" y="25" width="31" height="28" rx="7"/><text class="node-id-label" x="27.5" y="44" text-anchor="middle">${esc(z.id.length>4?z.id.slice(0,3)+'…':z.id)}</text>
-    <text class="node-title" x="51" y="36">${esc(zoneLabel(z))}</text><text class="node-meta" x="51" y="52">Размер ${esc(z.base_size||'—')} · ${esc(z.monster_strength||'без охраны')}</text>
-    <path class="node-separator" d="M11 65 H169"/>
-    <rect class="node-badge" x="11" y="75" width="89" height="26" rx="6"/><text class="node-badge-label" x="19" y="92">◆ ${tier.length>9?tier.slice(0,9):tier}</text>
-    <rect class="node-badge" x="107" y="75" width="62" height="26" rx="6"/><text class="node-badge-label" x="115" y="92">♜ ${minT}</text>
-    <text class="node-grab" x="163" y="33" text-anchor="middle">⠿</text></g>`;
+  const p=map.layout[z.id]??{x:110+i*240,y:120},appearance=zoneAppearance(z),selected=store.selected.kind==='zone'&&store.selected.index===i;
+  const owner=appearance.owner||'0',towns=townEntries(z),mines=mineEntries(z),strength=String(z.monster_strength??'').trim().toLowerCase();
+  const swords=({weak:1,avg:2,average:2,normal:2,strong:3})[strength]||Math.min(3,Math.max(0,parseInt(strength)||0));
+  // Keep factions distinct (player-colored roofs versus neutral-gray roofs).
+  const playerTowns=towns.filter(t=>t.faction==='player'),neutralTowns=towns.filter(t=>t.faction==='neutral');
+  const townRow=(playerTowns.length?`<text class="node-section-caption" x="11" y="77">P:</text>`+playerTowns.map((entry,j)=>smallSlot('town',entry.kind,entry,32+j*37,69,owner)).join(''):'')+
+    (neutralTowns.length?`<text class="node-section-caption" x="${playerTowns.length?122:11}" y="77">N:</text>`+neutralTowns.map((entry,j)=>smallSlot('town',entry.kind,entry,(playerTowns.length?143:32)+j*37,69)).join(''):'');
+  const mineStart=towns.length?109:76;
+  const mineRow=mines.map((entry,j)=>smallSlot('mine',entry.resource,entry,14+(j%5)*43,mineStart+Math.floor(j/5)*43)).join('');
+  const caption=appearance.computer?'AI':appearance.owner?'P'+appearance.owner:appearance.richness;
+  const placement=String(z.zone_options?.placement??'').trim().toLowerCase();
+  const groundIcon=['ground','underground'].includes(placement)?svgIcon(placement,CARD_W/2-10,CARD_H-28,18,'#bbb6aa'):'';
+  const modified=Boolean(String(z.zone_options?.objects??'').trim());
+  return `<g class="node ${selected?'selected':''}" data-zone-index="${i}" data-owner="${owner}" data-richness="${appearance.richness}" data-junction="${appearance.junction?'true':'false'}" transform="translate(${p.x} ${p.y})" role="button" tabindex="0" aria-label="${esc('Zone '+z.id+', '+(appearance.owner?'player '+appearance.owner:'neutral')+', treasure '+appearance.score)}">
+    <title>${esc('Zone '+z.id+' | treasure '+appearance.score+' | size '+(z.base_size||'—')+' | '+mines.map(m=>m.resource+' '+m.min+(m.density?'/'+m.density:'')).join(', '))}</title>
+    <rect class="node-border" width="${CARD_W}" height="${CARD_H}" rx="8"/>
+    ${appearance.junction?`<rect class="node-junction-rim" width="${CARD_W-14}" height="${CARD_H-14}" x="7" y="7" rx="5"/>`:''}
+    <g class="node-head">${svgIcon('chest',10,9,26)}<text class="node-treasure" x="41" y="29">${esc(compactExact(appearance.score))}${modified?'*':''}</text>
+    ${Array.from({length:swords},(_,j)=>svgIcon('swords',CARD_W-11-(j+1)*21,10,20)).join('')}
+    <text class="node-size" x="12" y="55">S ${esc(z.base_size||'—')}</text>${appearance.computer?svgIcon('computer',112,41,17,'#505a63'):''}</g>
+    ${townRow}
+    ${mineRow}${groundIcon}<text class="node-type-hint" x="12" y="${CARD_H-12}">${esc(caption)}</text>
+    <text class="node-id-label" x="${CARD_W-12}" y="${CARD_H-11}" text-anchor="end">${esc(z.id)}</text>
+    ${appearance.computer?svgIcon('computer',CARD_W-45,CARD_H-25,13,'#565a5e'):''}</g>`;
  }).join('');return edges+zones;
 }
+
 const strVal=v=>String(v??'');
 function renderCanvas(){const map=current();$('canvas-content').innerHTML=map?canvasMarkup(map):'';
- $('empty-hint').classList.toggle('hidden',!!map?.zones.length);
+ $('empty-hint').classList.toggle('hidden',!!map?.zones.length);$('empty-add-btn').hidden=!store.pack;
  transformCanvas();
 }
 function select(kind,index){store.selected={kind,index};store.tab='general';store.connectMode=false;
@@ -219,7 +292,7 @@ $('canvas').addEventListener('pointermove',handleCanvasMove);
 $('canvas').addEventListener('pointerup',handleCanvasUp);
 $('canvas').addEventListener('pointercancel',e=>{touchPoints.delete(e.pointerId);pinch=null;store.drag=null;$('drag-preview').innerHTML='';});
 $('canvas').addEventListener('wheel',e=>{e.preventDefault();let p=mousePos(e);zoomAt(Math.exp(-e.deltaY*.00125),p.x,p.y);},{passive:false});
-$('zoom-in').onclick=()=>zoomAt(1.25);$('zoom-out').onclick=()=>zoomAt(.8);$('zoom-fit').onclick=fitView;
+$('zoom-in').onclick=()=>zoomAt(1.25);$('zoom-out').onclick=()=>zoomAt(.8);$('zoom-fit').onclick=()=>fitView();
 $('canvas').addEventListener('keydown',e=>{const n=e.target.closest?.('[data-zone-index]');if(n&&(e.key==='Enter'||e.key===' ')){e.preventDefault();select('zone',+n.dataset.zoneIndex);}});
 try{new ResizeObserver(()=>{let b=$('canvas').getBoundingClientRect();store.viewport={w:b.width||700,h:b.height||500};}).observe($('canvas'));}catch{}
 
@@ -394,10 +467,19 @@ async function importLayout(file){try{
   }
  });fitView();toast(`Позиции восстановлены: ${positions.size} карт`);
  }catch(e){toast('Layout import failed: '+e.message);}}
-function svgStyles(){const cs=getComputedStyle(document.documentElement),v=n=>cs.getPropertyValue('--'+n).trim();
- return `.node-border{fill:${v('card')};stroke:${v('card-edge')};stroke-width:1.3}.node-start .node-accent{fill:${v('start')}}.node-treasure .node-accent{fill:${v('treasure')}}.node-neutral .node-accent{fill:${v('neutral')}}.node-id-pill,.node-badge{fill:${v('panel-3')}}.node-id-label,.node-title{fill:${v('card-text')};font-weight:700;font-family:Arial}.node-title{font-size:12px}.node-id-label{font-size:13px}.node-meta,.node-badge-label{fill:${v('card-muted')};font-size:10px;font-family:Arial}.node-separator{stroke:${v('card-edge')}}.node-grab{display:none}.conn-line{fill:none;stroke:${v('soft')};stroke-width:2}.conn-hit{display:none}.conn-wide .conn-line{stroke-width:3}.dangling .conn-line{stroke:${v('error')};stroke-dasharray:6 5}.conn-label-bg{fill:${v('panel')};stroke:${v('line')}}.conn-label{fill:${v('muted')};font:11px Arial;text-anchor:middle;dominant-baseline:middle}.grid-dot{fill:${v('grid')}}`;}
+function svgStyles(){
+  const root=getComputedStyle(document.documentElement),v=name=>root.getPropertyValue('--'+name).trim();
+  const colors=['red','blue','tan','green','orange','purple','teal','pink'];
+  const owners=colors.map((name,i)=>`.node[data-owner="${i+1}"] .node-border{fill:${v('player-'+name)}}`).join('');
+  return `${owners}.node[data-owner="0"][data-richness="low"] .node-border{fill:${v('neutral-low')}}.node[data-owner="0"][data-richness="mid"] .node-border{fill:${v('neutral-mid')}}.node[data-owner="0"][data-richness="high"] .node-border{fill:${v('neutral-high')}}
+  .node-border{stroke:${v('card-edge')};stroke-width:1.7}.node .node-junction-rim{stroke:#707780;stroke-width:10;fill:none}.node text{font-family:Arial,sans-serif;fill:${v('zone-text')};font-weight:700}
+  .node-treasure{font-size:23px}.node-size{font-size:12px}.node-type-hint{font-size:9px}.node-id-label{font-size:17px}.h3-slot-count{font-size:10px}.node-section-caption{font-size:10px}
+  .conn-line{fill:none;stroke:${v('soft')};stroke-width:2}.conn-hit{display:none}.conn-wide .conn-line{stroke-width:6}.conn-fictive .conn-line{stroke-dasharray:2 9}.conn-roadless .conn-line{stroke-dasharray:11 7}.conn-road-overlay{fill:none;stroke:white;stroke-width:1;stroke-dasharray:5 6}.conn-teleport .conn-line{stroke:${v('accent')};stroke-dasharray:6 4}.dangling .conn-line{stroke:${v('error')};stroke-dasharray:6 5}
+  .conn-label-bg{fill:${v('conn-label-bg')};stroke:${v('line')}}.conn-label{fill:${v('conn-label')};font:700 12px Arial;text-anchor:middle;dominant-baseline:middle}`;
+}
+
 async function exportPNG(){if(!current()?.zones.length)return;const map=current(),b=bounds(map),pad=54,w=Math.ceil(b.w+pad*2),h=Math.ceil(b.h+pad*2),cs=getComputedStyle(document.documentElement);
- const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><style>${svgStyles()}</style><rect width="100%" height="100%" fill="${cs.getPropertyValue('--canvas').trim()}"/><g transform="translate(${pad-b.x} ${pad-b.y})">${canvasMarkup(map)}</g></svg>`;
+ const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><defs>${document.querySelector('.sprite').innerHTML}</defs><style>${svgStyles()}</style><rect width="100%" height="100%" fill="${cs.getPropertyValue('--canvas').trim()}"/><g transform="translate(${pad-b.x} ${pad-b.y})">${canvasMarkup(map)}</g></svg>`;
  const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'})),img=new Image();
  try{await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=url;});
   const canvas=document.createElement('canvas');canvas.width=Math.min(w,9000);canvas.height=Math.min(h,9000);const ctx=canvas.getContext('2d');ctx.drawImage(img,0,0);
@@ -408,7 +490,22 @@ async function exportPNG(){if(!current()?.zones.length)return;const map=current(
 function validateDialog(){if(!store.pack)return;const issues=validatePack(store.pack),warnings=store.pack.warnings;
  modal('Проверка шаблона',`<p><strong>${store.pack.maps.length}</strong> карт · <strong>${issues.length}</strong> замечаний · <strong>${warnings.length}</strong> сообщений парсера.</p>${!issues.length?'<p>Семантических проблем не обнаружено.</p>':`<div class="issues">${issues.slice(0,70).map(x=>`<div class="issue ${x.level==='error'?'error':'badge-warning'}">${esc(x.text)}</div>`).join('')}${issues.length>70?`<p>Ещё ${issues.length-70} замечаний...</p>`:''}</div>`}${warnings.length?`<details><summary>Сообщения исходного файла (${warnings.length})</summary><div class="issues">${warnings.slice(0,35).map(x=>`<div class="issue">${esc(x)}</div>`).join('')}</div></details>`:''}<p class="field-note">Проверка не изменяет шаблон автоматически.</p>`,[{label:'Закрыть'}]);
 }
-function helpDialog(){modal('Справка · H3 Template Studio',`<p><strong>Редактор работает локально:</strong> ваши шаблоны остаются в браузере и скачиваются на компьютер.</p>
+function helpDialog(){
+ if(getLanguage()==='en'){
+  modal('Help · H3 Template Studio',`<p><strong>All processing is local:</strong> your templates stay on your device.</p>
+    <h3>Files</h3><ul><li>Open HotA 1.7/1.8 <code>.h3t</code> or SoD <code>.txt</code> using Open or drag a file onto the canvas.</li>
+    <li>Save downloads the current format. To convert, select the target version and click Convert.</li>
+    <li>Export a <code>.h3tc-layout.json</code> sidecar for SoD; moved HotA zones update their <code>image_settings</code> when saved.</li></ul>
+    <h3>Canvas</h3><ul><li>Scroll or use −/+ to zoom. Drag the background to pan; use Fit to see all zones.</li>
+    <li>Drag zones to reposition them. Alt + drag from one zone to another, or select Connection and then click two zones.</li>
+    <li>Click a zone or connection to edit its full schema-backed properties in the right panel. Icons show towns, castles and resource mines.</li></ul>
+    <h3>Keyboard shortcuts</h3><ul><li>Ctrl+O Open; Ctrl+S Save; Ctrl+Z / Ctrl+Y Undo / Redo.</li>
+    <li>Delete removes the selected item after confirmation. Ctrl+0 fits the graph, Ctrl+Shift++/- changes spacing; Esc cancels link mode.</li></ul>
+    <h3>Installation</h3><p>Open this site over HTTPS and choose Install in Chrome or Edge. On iPhone/iPad, choose Share → Add to Home Screen. Resources are cached for offline use.</p>
+    <p class="field-note">A separate browser implementation based on MIT-licensed sokie/heroes3-template-util.</p>`,[{label:'Close'}]);
+  return;
+ }
+modal('Справка · H3 Template Studio',`<p><strong>Редактор работает локально:</strong> ваши шаблоны остаются в браузере и скачиваются на компьютер.</p>
  <h3>Файлы</h3><ul><li>Откройте <code>.h3t</code> (HotA 1.7/1.8) или <code>.txt</code> (SoD) кнопкой «Открыть» либо перетащите файл на схему.</li><li>Сохранение в исходном формате — «Сохранить». Конвертация — выберите формат и нажмите «Конвертировать».</li><li>Для SoD сохраняйте положение всех карт в совместимом с исходным редактором файле <code>.h3tc-layout.json</code>. В HotA новые координаты записываются в <code>image_settings</code>.</li></ul>
  <h3>Полотно</h3><ul><li>Колесо мыши или кнопки −/+ — изменение масштаба; фон — перетаскивание; «Вместить» — разместить карту по экрану.</li><li>Перетаскивайте зоны; <code>Alt + перетаскивание</code> между зонами создаёт связь; также можно использовать кнопку «Связь» и два клика.</li><li>Выберите зону или связь для редактирования всех параметров в правой панели.</li></ul>
  <h3>Горячие клавиши</h3><ul><li><code>Ctrl+O</code> — открыть; <code>Ctrl+S</code> — сохранить; <code>Ctrl+Z</code> / <code>Ctrl+Y</code> — отменить / повторить.</li><li><code>Delete</code> — удалить выделенную зону/связь (с подтверждением).</li><li><code>Ctrl+0</code> — вместить; <code>Ctrl+Shift++/-</code> — раздвинуть/сблизить; <code>Esc</code> — отменить создание связи / закрыть панели.</li></ul>
@@ -417,10 +514,18 @@ function helpDialog(){modal('Справка · H3 Template Studio',`<p><strong>�
 async function installApp(){if(store.installPrompt){const prompt=store.installPrompt;store.installPrompt=null;prompt.prompt();const result=await prompt.userChoice;if(result.outcome==='accepted')toast('Приложение устанавливается.');return;}
  const standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;
  if(standalone){toast('Приложение уже открыто в установленном режиме.');return;}
+ if(getLanguage()==='en'){
+  modal('Install application',`<p>Open this app over HTTPS (for example, on GitHub Pages) and use your browser's install menu.</p><ul>
+   <li><b>Chrome / Edge:</b> choose Install app in the ⋮ menu or use the address-bar install icon.</li>
+   <li><b>iPhone / iPad (Safari):</b> Share → Add to Home Screen.</li>
+   <li><b>Android / Xiaomi:</b> accept the browser installation, then check your app drawer. Some launchers require you to add the installed app to the home screen manually.</li>
+   <li><b>Firefox:</b> desktop PWA installation may not be supported. Use Add to Home Screen on supported mobile devices.</li></ul>
+   <p>After the first load, you can work offline with local template files.</p>`,[{label:'Close'}]);return;
+ }
  modal('Установка приложения',`<p>Установка доступна через меню браузера при открытии сайта по HTTPS (например, на GitHub Pages).</p><ul><li><b>Chrome / Edge:</b> меню ⋮ → «Установить приложение» или значок установки в адресной строке.</li><li><b>iPhone / iPad (Safari):</b> «Поделиться» → «На экран Домой».</li><li><b>Firefox:</b> встроенная установка PWA на компьютере может быть недоступна; используйте «Добавить на главный экран» на поддерживаемом телефоне.</li></ul><p>После первого открытия сайт может работать без интернета; для больших шаблонов откройте локальные файлы после установки.</p>`,[{label:'Закрыть'}]);
 }
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();store.installPrompt=event;$('install-btn').title='Установить приложение';});
-window.addEventListener('appinstalled',()=>{store.installPrompt=null;toast('Приложение установлено.');});
+window.addEventListener('appinstalled',()=>{store.installPrompt=null;toast(getLanguage()==='ru'?'Приложение установлено. Если значка нет на главном экране Xiaomi, найдите приложение в списке всех приложений и добавьте значок вручную.':'App installed. On Xiaomi, find the app in the app drawer and add its icon to your home screen if needed.');});
 function runAction(action){$('more-menu').classList.add('hidden');if(!current())return;
  if(action==='layout')doLayout();else if(action==='spread')changeSpread(1.17);else if(action==='compact')changeSpread(.84);
  else if(action.startsWith('reid-'))doReid(action.slice(5));
@@ -441,8 +546,10 @@ $('add-conn-btn').onclick=addConnection;
 $('undo-btn').onclick=undo;$('redo-btn').onclick=redo;
 $('pack-props-btn').onclick=()=>{store.selected={kind:'pack',index:0};store.tab='Пакет';renderInspector();$('inspector').classList.add('open');$('sidebar').classList.remove('open');};
 $('validate-btn').onclick=validateDialog;$('new-pack-btn').onclick=newPackDialog;
+$('language-select').onchange=event=>{setLanguage(event.target.value);const placeholder=$('built-in-select').options[0];if(placeholder)placeholder.text=getLanguage()==='ru'?'Выберите встроенный шаблон…':translateText('Выберите встроенный шаблон…');};
+initializeLanguage();
 $('theme-btn').onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';setTheme(t);};
-function setTheme(t){document.documentElement.dataset.theme=t;$('theme-btn').innerHTML=icon(t==='dark'?'sun':'moon');
+function setTheme(t){document.documentElement.dataset.theme=t;$('theme-btn').innerHTML=icon(t==='dark'?'sun':'moon');renderCanvas();
  document.querySelector('meta[name="theme-color"]').content=t==='dark'?'#111827':'#ffffff';
  try{localStorage.setItem('h3tc-theme',t);}catch{}
 }
@@ -473,4 +580,4 @@ try{setTheme(localStorage.getItem('h3tc-theme')==='light'?'light':'dark');}catch
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(e=>console.warn('Service worker unavailable:',e)));
 }
-loadSample('tesseract.txt');
+renderAll();initializeCatalog();

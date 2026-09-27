@@ -62,3 +62,11 @@ test('all supplied HotA pixel-art resource symbols are inline and remain usable 
   assert.match(html,/<image[^>]+href="data:image\/png;base64,/);
   assert.ok(file('src/app.js').includes('HOTA_GLYPHS'));
 });
+
+
+test('Git attributes preserve original bytes of catalog templates and regression fixtures',()=>{
+  const attrs=file('.gitattributes').split(/\r?\n/).filter(line=>line && !line.startsWith('#'));
+  for(const rule of ['samples/*.txt -text','tests/fixtures/*.txt -text','tests/fixtures/*.h3t -text']){
+    assert.ok(attrs.includes(rule),`Missing byte-preservation rule: ${rule}`);
+  }
+});

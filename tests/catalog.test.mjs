@@ -33,7 +33,8 @@ test('all 59 uploaded Templates.zip items are accessible with original bytes and
  assert.equal(catalog.count,59);assert.equal(catalog.templates.length,59);
  assert.equal(new Set(catalog.templates.map(e=>e.file)).size,59);
  for(const {item,data,pack} of records){
-  assert.equal(crypto.createHash('sha256').update(data).digest('hex'),item.sha256,item.file);
+  assert.equal(crypto.createHash('sha256').update(data).digest('hex'),item.sha256,
+    `${item.file}: original bytes differ from catalog (possible Git line-ending conversion); restore files from the release archive and commit with .gitattributes`);
   assert.equal(data.length,item.bytes);
   assert.equal(pack.format,'sod',item.name);
   assert.ok(pack.maps.length>=1);

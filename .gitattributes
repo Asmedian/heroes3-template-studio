@@ -1,0 +1,5 @@
+# Template files are byte-exact user data, not editable source text.
+# Prevent Git CRLF/LF conversion on Windows, Linux and GitHub Actions.
+samples/*.txt -text
+tests/fixtures/*.txt -text
+tests/fixtures/*.h3t -text

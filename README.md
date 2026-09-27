@@ -28,6 +28,23 @@ This is an independent, browser-based implementation built from [sokie/heroes3-t
 4. Visit `https://USERNAME.github.io/REPOSITORY/`. All site assets and PWA paths work under a project subdirectory. Run the site over HTTPS for PWA installation; loading `index.html` directly with `file://` will not work.
 5. In GitHub's **About** sidebar, paste the suggested description above and add the suggested topics. The website's own meta description is already in English.
 
+### Important: preserve original template bytes when committing
+
+The 59 bundled template files and three regression fixtures contain original CRLF and sometimes mixed line endings. Git may silently convert them to LF on `git add` unless `.gitattributes` is present. This breaks the catalog SHA-256 check and untouched-template round trips; do **not** change the expected SHA-256 values or disable that test.
+
+For a **new repository**, extract the complete release archive, including `.gitattributes`, *before* running `git add .`. For a repository that already committed the previous 1.2.0 release, replace `samples/` and `tests/fixtures/` with the original copies in this release archive; copy `.gitattributes`, and restage all three paths before pushing:
+
+```bash
+git add .gitattributes
+git rm -r --cached -- samples tests/fixtures
+git add -- samples tests/fixtures
+npm test
+git commit -m "Fix byte-exact templates in Git checkout"
+git push
+```
+
+`git rm --cached` only removes the old normalized versions from Git's *index*; it does not delete your local files. **The files in your working directory must actually be the original bytes from the archive**; adding `.gitattributes` alone cannot repair files that were previously converted to LF. See [CI_FIX_RU.md](CI_FIX_RU.md) for Russian-language recovery instructions and an optional clean-clone check.
+
 The workflow publishes `index.html`, `styles.css`, `src/`, `public/`, `samples/`, `manifest.webmanifest` and `sw.js`. Test fixtures and reference documentation are not deployed by Pages, although they **will be public in the GitHub repository** if you create a public repository.
 
 ## Local preview and tests

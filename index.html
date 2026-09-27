@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#111827">
   <meta name="description" content="Offline visual editor and converter for Heroes III random map templates (SoD, HotA 1.7 and 1.8).">
   <meta name="application-name" content="H3 Template Studio">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./public/icons/icon.svg" type="image/svg+xml">
@@ -1772,13 +1773,16 @@
         <div id="more-menu" class="more-menu hidden" role="menu"><button data-action="layout">Автоматическая расстановка</button><button data-action="spread">Раздвинуть зоны</button><button data-action="compact">Сблизить зоны</button><button data-action="reid-players">Перенумеровать · Игроки первыми</button><button data-action="reid-center">Перенумеровать · Центр первым</button><button data-action="reid-row">Перенумеровать · По порядку</button><button data-action="duplicate-map">Дублировать карту</button><button data-action="remove-map">Удалить карту</button><button data-action="png">Экспорт графа в PNG</button><button data-action="export-layout">Сохранить позиции всех карт (.h3tc-layout.json)</button><button data-action="import-layout">Загрузить позиции (.h3tc-layout.json)</button></div>
         <div class="canvas-wrapper" id="canvas-wrapper">
           <svg id="canvas" tabindex="0" aria-label="Интерактивная схема зон и связей" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" class="grid-dot"/></pattern></defs><rect id="canvas-background" x="0" y="0" width="100%" height="100%" fill="url(#grid)"/><g id="canvas-content"></g><g id="drag-preview"></g></svg>
-          <div class="canvas-top-info"><span><i class="legend-dot dot-start"></i> Игрок</span><span><i class="legend-dot dot-treasure"></i> Сокровища</span><span><i class="legend-dot dot-neutral"></i> Нейтральная</span></div>
+          <details class="canvas-top-info" id="canvas-legend" hidden>
+            <summary id="legend-summary" aria-controls="legend-content"><svg class="legend-info-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg><span id="legend-heading">Legend</span><span class="legend-chevron" aria-hidden="true">⌄</span></summary>
+            <div id="legend-content" class="legend-content" aria-live="polite"></div>
+          </details>
           <div id="drop-hint" class="drop-hint hidden"><div class="drop-inner"><svg><use href="#i-upload"/></svg><h3>Перетащите шаблон сюда</h3><p>Поддерживаются .h3t и .txt</p></div></div>
           <div id="empty-hint" class="empty-hint"><div class="empty-icon">◇</div><h3>Шаблон не выбран</h3><p>Выберите встроенный шаблон, откройте файл или создайте новый пакет.</p><button class="btn btn-primary" id="empty-add-btn">Добавить зону</button></div>
           <div class="canvas-tools"><button class="canvas-tool" id="zoom-out" title="Уменьшить"><svg><use href="#i-minus"/></svg></button><span id="zoom-value">100%</span><button class="canvas-tool" id="zoom-in" title="Увеличить"><svg><use href="#i-plus"/></svg></button><span class="tool-divider"></span><button class="canvas-tool" id="zoom-fit" title="Вместить все зоны"><svg><use href="#i-fit"/></svg></button></div>
           <div class="canvas-hint">Колёсико — масштаб · Перетаскивание фона — перемещение · Alt + перетаскивание зоны — связь</div>
         </div>
-        <div class="statusbar"><div id="status-text">Все операции выполняются локально в браузере</div><div class="status-right"><span id="dirty-indicator"></span><span id="status-zones">0 зон</span><span class="status-divider"></span><span id="status-conns">0 связей</span><span class="status-divider"></span><span>v1.4.1</span></div></div>
+        <div class="statusbar"><div id="status-text">Все операции выполняются локально в браузере</div><div class="status-right"><span id="dirty-indicator"></span><span id="status-zones">0 зон</span><span class="status-divider"></span><span id="status-conns">0 связей</span><span class="status-divider"></span><span>v1.4.2</span></div></div>
       </main>
       <aside class="inspector" id="inspector"><div class="inspector-header"><button class="icon-btn inspector-close" id="inspector-close" title="Закрыть панель свойств" aria-label="Закрыть панель свойств">×</button><div class="eyebrow">СВОЙСТВА</div><div class="inspector-context-tabs" id="inspector-context-tabs" role="tablist" aria-label="Inspector views"><button type="button" data-inspector-view="map" role="tab" aria-selected="true">Параметры карты</button></div><h2 id="inspector-title">Выберите объект</h2><p id="inspector-subtitle">Нажмите на зону, связь или карту</p></div><div id="inspector-tabs" class="inspector-tabs"></div><div id="inspector-body" class="inspector-body"><div class="inspector-empty"><div class="selection-mark">◇</div><b>Редактируйте на схеме</b><p>Выберите зону или связь, чтобы настроить параметры шаблона.</p></div></div><div id="inspector-footer" class="inspector-footer"></div></aside>
     </div>

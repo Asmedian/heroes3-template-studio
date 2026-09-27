@@ -10,3 +10,12 @@ test-results/
 tests/browser_screenshot.png
 
 tests/artifacts/
+
+# Local unified release notes and test evidence (not tracked in Git)
+PROJECT_CHANGES.md
+PROJECT_TESTS.md
+# Local/browser artifacts
+coverage/
+*.pyc
+*.prof
+.tmp/

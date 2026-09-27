@@ -43,6 +43,8 @@ jobs:
         run: python tests/browser_v14.py
       - name: v1.4.1 pan performance, swords contrast and card regressions
         run: python tests/browser_pan_regression.py
+      - name: v1.4.2 enlarged cards, dynamic legend and native install checks
+        run: python tests/browser_v142.py
       - name: All 59 built-ins, 238 browser-rendered maps and localizations
         run: python tests/catalog_browser.py
       - name: English-language UI audit

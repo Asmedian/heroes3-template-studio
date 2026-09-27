@@ -64,6 +64,7 @@ async function openFile(file){
  }catch(e){modal('Ошибка открытия',`<p>${esc(e?.message||e)}</p><p>Поддерживаются текстовые шаблоны SoD, HotA 1.7.x и HotA 1.8.x.</p>`);}
 }
 function setPack(pack,bytes=null,builtinId=null,presetLayouts=null){
+ $('canvas-legend').open=false;
  store.pack=pack;store.builtinId=builtinId;store.presetLayouts=presetLayouts;if($('built-in-select'))$('built-in-select').value=builtinId||'';store.mapIndex=0;store.selected={kind:'map',index:0};store.tab='general';store.inspectorView='selection';store.undo=[];store.redo=[];
  store.connectMode=false;store.connectFrom=null;store.fileKey=fileSignature(bytes??new TextEncoder().encode(pack.filename),pack.filename);
  restoreLayout(0);store.loaded=true;
@@ -111,10 +112,11 @@ async function loadBuiltin(id){
 $('built-in-select').onchange=e=>loadBuiltin(e.target.value);
 
 function selectMap(index){if(!store.pack?.maps[index])return;
+ $('canvas-legend').open=false;
  persistLayout();store.mapIndex=index;restoreLayout(index);store.selected={kind:'map',index};store.tab='general';store.inspectorView='selection';store.connectMode=false;store.connectFrom=null;
  $('sidebar').classList.remove('open');renderAll();requestAnimationFrame(()=>fitView(true));
 }
-function renderAll(){renderSidebar();renderToolbar();renderCanvas();renderInspector();renderStatus();}
+function renderAll(){renderSidebar();renderToolbar();renderCanvas();renderLegend();renderInspector();renderStatus();}
 function renderSidebar(){const pack=store.pack;
  $('package-name').textContent=pack?.metadata?.name||pack?.filename||'Новый пакет';
  $('current-format').textContent=pack?upper(pack.format):'—';$('map-count').textContent=pack?`${pack.maps.length} карт`:'0 карт';
@@ -203,6 +205,7 @@ let pinch=null;
 const pinchGeometry=()=>{const [a,b]=[...touchPoints.values()];return{distance:Math.hypot(a.x-b.x,a.y-b.y),x:(a.x+b.x)/2,y:(a.y+b.y)/2};};
 const zoneType=z=>flag(z.human_start)||flag(z.computer_start)?'start':flag(z.treasure)||flag(z.junction)?'treasure':'neutral';
 const zoneLabel=z=>flag(z.human_start)?'Игрок':flag(z.computer_start)?'Компьютер':flag(z.treasure)?'Сокровища':flag(z.junction)?'Перекрёсток':'Нейтральная';
+const swordCount=zone=>({weak:1,avg:2,average:2,normal:2,strong:3})[String(zone.monster_strength??'').trim().toLowerCase()]||Math.min(3,Math.max(0,parseInt(zone.monster_strength)||0));
 
 /** Choose a visible outside-card stub for connections whose other endpoint is missing. */
 function danglingConnectors(map){
@@ -259,7 +262,7 @@ function smallSlot(kind,name,entry,x,y,owner='0'){
   const metadata=kind==='mine'?`data-resource="${esc(entry.resource)}"`:`data-faction="${esc(entry.faction)}" data-building="${esc(name)}"`;
   return `<g class="h3-slot h3-slot-${kind} ${Number(entry.min)===0?'optional':''}" ${metadata} data-count-raw="${esc(entry.min)}" data-density-raw="${esc(entry.density)}">
     <title>${esc((kind==='mine'?entry.resource:entry.faction+' '+name)+': '+raw)}</title>
-    ${svgIcon(symbol,x,y,26)}<text class="h3-slot-count" x="${x+13}" y="${y+37}" text-anchor="middle">${esc(label)}</text></g>`;
+    ${svgIcon(symbol,x,y,34)}<text class="h3-slot-count ${label.length>5?'count-condensed':''}" x="${x+17}" y="${y+43}" text-anchor="middle">${esc(label)}</text></g>`;
 }
 function canvasMarkup(map){
  const nodesById=new Map(map.zones.map(z=>[z.id.trim(),z]));
@@ -280,31 +283,102 @@ function canvasMarkup(map){
  const zones=map.zones.map((z,i)=>{
   const p=map.layout[z.id]??{x:110+i*240,y:120},appearance=zoneAppearance(z),selected=store.selected.kind==='zone'&&store.selected.index===i;
   const owner=appearance.owner||'0',towns=townEntries(z),mines=mineEntries(z),strength=String(z.monster_strength??'').trim().toLowerCase();
-  const swords=({weak:1,avg:2,average:2,normal:2,strong:3})[strength]||Math.min(3,Math.max(0,parseInt(strength)||0));
+  const swords=swordCount(z);
   // Keep factions distinct (player-colored roofs versus neutral-gray roofs).
   const playerTowns=towns.filter(t=>t.faction==='player'),neutralTowns=towns.filter(t=>t.faction==='neutral');
-  const townRow=(playerTowns.length?`<text class="node-section-caption" x="11" y="77">P:</text>`+playerTowns.map((entry,j)=>smallSlot('town',entry.kind,entry,32+j*37,69,owner)).join(''):'')+
-    (neutralTowns.length?`<text class="node-section-caption" x="${playerTowns.length?122:11}" y="77">N:</text>`+neutralTowns.map((entry,j)=>smallSlot('town',entry.kind,entry,(playerTowns.length?143:32)+j*37,69)).join(''):'');
-  const mineStart=towns.length?109:76;
-  const mineRow=mines.map((entry,j)=>smallSlot('mine',entry.resource,entry,14+(j%5)*43,mineStart+Math.floor(j/5)*43)).join('');
+  const townRow=(playerTowns.length?`<text class="node-section-caption" x="9" y="85">P:</text>`+playerTowns.map((entry,j)=>smallSlot('town',entry.kind,entry,34+j*42,72,owner)).join(''):'')+
+    (neutralTowns.length?`<text class="node-section-caption" x="${playerTowns.length?117:9}" y="85">N:</text>`+neutralTowns.map((entry,j)=>smallSlot('town',entry.kind,entry,(playerTowns.length?140:34)+j*42,72)).join(''):'');
+  const mineStart=towns.length?121:81;
+  const mineRow=mines.map((entry,j)=>smallSlot('mine',entry.resource,entry,10+(j%5)*43,mineStart+Math.floor(j/5)*43)).join('');
   const placement=String(z.zone_options?.placement??'').trim().toLowerCase();
-  const groundIcon=['ground','underground'].includes(placement)?svgIcon(placement,CARD_W/2-10,CARD_H-28,18,'#bbb6aa'):'';
+  const groundIcon=['ground','underground'].includes(placement)?`<text class="node-placement" x="${CARD_W-50}" y="58">${placement==='ground'?'↑':'↓'}</text>`:'';
   const modified=Boolean(String(z.zone_options?.objects??'').trim());
   return `<g class="node ${selected?'selected':''}" data-zone-index="${i}" data-owner="${owner}" data-richness="${appearance.richness}" data-junction="${appearance.junction?'true':'false'}" transform="translate(${p.x} ${p.y})" role="button" tabindex="0" aria-label="${esc('Zone '+z.id+', '+(appearance.owner?'player '+appearance.owner:'neutral')+', treasure '+appearance.score)}">
     <title>${esc('Zone '+z.id+' | treasure '+appearance.score+' | size '+(z.base_size||'—')+' | '+mines.map(m=>m.resource+' '+m.min+(m.density?'/'+m.density:'')).join(', '))}</title>
     <rect class="node-border" width="${CARD_W}" height="${CARD_H}" rx="8"/>
     ${appearance.junction?`<rect class="node-junction-rim" width="${CARD_W-14}" height="${CARD_H-14}" x="7" y="7" rx="5"/>`:''}
-    <g class="node-head">${svgIcon('chest',10,9,26)}<text class="node-treasure" x="41" y="29">${esc(compactExact(appearance.score))}${modified?'*':''}</text>
-    ${Array.from({length:swords},(_,j)=>svgIcon('swords',CARD_W-11-(j+1)*21,10,20)).join('')}
-    <text class="node-size" x="12" y="55">S ${esc(z.base_size||'—')}</text>${appearance.computer?svgIcon('computer',112,41,17,'#505a63'):''}</g>
+    <g class="node-head">${svgIcon('chest',8,6,36)}<text class="node-treasure" x="49" y="35" ${String(compactExact(appearance.score)).length>4?'style="font-size:24px"':String(compactExact(appearance.score)).length>3?'style="font-size:29px"':''}>${esc(compactExact(appearance.score))}${modified?'*':''}</text>
+    ${Array.from({length:swords},(_,j)=>svgIcon('swords',CARD_W-8-(j+1)*26,9,26)).join('')}
+    <text class="node-size" x="11" y="62">S ${esc(z.base_size||'—')}</text>${appearance.computer?`<text class="node-cpu" x="${CARD_W-14}" y="61" text-anchor="end">CPU</text>`:''}</g>
     ${townRow}
     ${mineRow}${groundIcon}
-    <text class="node-id-label" x="${CARD_W-12}" y="${CARD_H-11}" text-anchor="end">${esc(z.id)}</text>
-    ${appearance.computer?svgIcon('computer',CARD_W-45,CARD_H-25,13,'#565a5e'):''}</g>`;
+    <text class="node-id-label" x="${CARD_W-10}" y="${CARD_H-9}" text-anchor="end">${esc(z.id)}</text></g>`;
  }).join('');return edges+zones;
 }
 
 const strVal=v=>String(v??'');
+
+// The canvas legend describes only symbols present in the selected map. It intentionally
+// lives outside the SVG so it remains readable regardless of the current zoom.
+const legendWords=(ru,en)=>getLanguage()==='ru'?ru:en;
+const legendIcon=name=>`<svg class="legend-icon" viewBox="0 0 64 64" aria-hidden="true"><use href="#h3-${esc(name)}" width="64" height="64"/></svg>`;
+const legendSwatch=color=>`<span class="legend-swatch" style="background:${color}"></span>`;
+const legendItem=(symbol,description)=>`<div class="legend-item">${symbol}<span>${esc(description)}</span></div>`;
+const legendSection=(name,items)=>items.length?`<section class="legend-section"><h3>${esc(name)}</h3>${items.join('')}</section>`:'';
+const legendLine=(cls='')=>`<svg class="legend-conn ${cls}" viewBox="0 0 36 24" aria-hidden="true"><line x1="2" y1="12" x2="34" y2="12"/>${cls==='road-required'?'<line class="overlay" x1="2" y1="12" x2="34" y2="12"/>':''}</svg>`;
+const legendValue=value=>`<span class="legend-example">${esc(value)}</span>`;
+function renderLegend(){
+ const panel=$('canvas-legend'),content=$('legend-content'),map=current();
+ panel.hidden=!map?.zones.length;
+ if(panel.hidden){content.replaceChildren();return;}
+ $('legend-heading').textContent=legendWords('Обозначения','Legend');
+ const zones=map.zones,links=map.connections,looks=zones.map(zoneAppearance);
+ const owners=[...new Set(looks.map(a=>a.owner).filter(Boolean))].sort((a,b)=>Number(a)-Number(b));
+ const palette=['#e64d4d','#7083e7','#c8ac84','#79c662','#e47f16','#a878b3','#55c0c3','#db98a7'];
+ const ownerNamesRu=['Красный','Синий','Коричневый','Зелёный','Оранжевый','Фиолетовый','Бирюзовый','Розовый'];
+ const ownerNamesEn=['Red','Blue','Tan','Green','Orange','Purple','Teal','Pink'];
+ const zoneRows=owners.map(id=>legendItem(legendSwatch(palette[Number(id)-1]),legendWords('Стартовая зона игрока: '+ownerNamesRu[Number(id)-1],'Player start: '+ownerNamesEn[Number(id)-1])));
+ for(const [kind,paint,ru,en] of [
+   ['low','var(--neutral-low)','Нейтральная зона: бедное наполнение','Neutral: low richness'],
+   ['mid','linear-gradient(135deg,#9fa6b2 0%,#eef2f6 36%,#a4acb7 67%,#d9dee5 100%)','Нейтральная зона: богатое наполнение','Neutral: rich'],
+   ['high','linear-gradient(135deg,#d5a448 0%,#fff0b7 37%,#d5a147 66%,#ffe4a0 100%)','Нейтральная зона: очень богатое наполнение','Neutral: very rich']
+ ])if(looks.some(a=>!a.owner&&a.richness===kind))zoneRows.push(legendItem(legendSwatch(paint),legendWords(ru,en)));
+ if(looks.some(a=>a.junction))zoneRows.push(legendItem('<span class="legend-rim"></span>',legendWords('Толстая серая рамка: зона-перекрёсток','Thick gray border: junction zone')));
+ if(store.selected.kind==='zone'&&zones[store.selected.index])zoneRows.push(legendItem('<span class="legend-rim legend-selected-rim"></span>',legendWords('Синяя рамка: выбранная зона','Blue border: selected zone')));
+ if(looks.some(a=>a.computer))zoneRows.push(legendItem(legendValue('CPU'),legendWords('Начальная зона компьютера','Computer-only start')));
+ if(zones.some(z=>['ground','underground'].includes(String(z.zone_options?.placement??'').trim().toLowerCase()))){
+   if(zones.some(z=>String(z.zone_options?.placement??'').trim().toLowerCase()==='ground'))zoneRows.push(legendItem(legendValue('↑'),legendWords('Зона только на поверхности','Surface-only zone')));
+   if(zones.some(z=>String(z.zone_options?.placement??'').trim().toLowerCase()==='underground'))zoneRows.push(legendItem(legendValue('↓'),legendWords('Зона только под землёй','Underground-only zone')));
+ }
+ zoneRows.push(legendItem(legendIcon('chest'),legendWords('Число: богатство наполнения зоны'+(zones.some(z=>String(z.zone_options?.objects??'').trim())?'; * — индивидуальные параметры объектов':''),'Number: zone richness'+(zones.some(z=>String(z.zone_options?.objects??'').trim())?'; * marks custom object settings':''))));
+ if(zones.some(z=>z.base_size!==''))zoneRows.push(legendItem(legendValue('S '+esc(zones.find(z=>String(z.base_size??'').trim())?.base_size||'—')),legendWords('S: относительный базовый размер зоны','S: relative base zone size')));
+ zoneRows.push(legendItem(legendValue('#'+esc(zones[0].id)),legendWords('Номер зоны в правом нижнем углу','Zone ID at the bottom right')));
+ const swords=[...new Set(zones.map(swordCount))].sort((a,b)=>a-b);
+ const guardRows=swords.map(count=>legendItem(count?Array.from({length:count},()=>legendIcon('swords')).join(''):'<span class="legend-example">—</span>',[
+   legendWords('Нет охраны объектов','Unguarded objects'),
+   legendWords('Слабая охрана объектов','Weak object guards'),
+   legendWords('Средняя охрана объектов','Average object guards'),
+   legendWords('Сильная охрана объектов','Strong object guards')][count]));
+ const townKinds=new Set(zones.flatMap(townEntries).map(t=>t.faction+':'+t.kind));
+ const townRows=[];
+ if([...townKinds].some(kind=>kind.startsWith('player:')))townRows.push(legendItem(legendValue('P:'),legendWords('Города игрока','Player towns')));
+ if([...townKinds].some(kind=>kind.startsWith('neutral:')))townRows.push(legendItem(legendValue('N:'),legendWords('Нейтральные города','Neutral towns')));
+ for(const faction of ['player','neutral'])for(const kind of ['castle','town'])if(townKinds.has(faction+':'+kind)){
+   const own=owners[0]||'neutral';const symbol=(kind==='castle'?'fort':'village')+'-'+(faction==='player'?own:'neutral');
+   townRows.push(legendItem(legendIcon(symbol),legendWords((faction==='player'?'Город игрока: ':'Нейтральный город: ')+(kind==='castle'?'замок':'деревня'),(faction==='player'?'Player ':'Neutral ')+(kind==='castle'?'castle':'village'))));
+ }
+ if(townRows.length)townRows.push(legendItem(legendValue('1/3'),legendWords('Под значком: минимальное количество / дополнительная плотность','Below icons: minimum count / extra density')));
+ const resourceNames={Wood:['Дерево','Wood'],Mercury:['Ртуть','Mercury'],Ore:['Руда','Ore'],Sulfur:['Сера','Sulfur'],Crystal:['Кристаллы','Crystal'],Gems:['Самоцветы','Gems'],Gold:['Золото','Gold'],Airship:['Верфь дирижаблей','Airship shipyards']};
+ const present=new Set(zones.flatMap(mineEntries).map(e=>e.resource));
+ const mineRows=Object.entries(resourceNames).filter(([name])=>present.has(name)).map(([name,label])=>legendItem(name==='Airship'?legendValue('✦'):legendIcon(name.toLowerCase()),legendWords(label[0],label[1])+legendWords(' — количество/плотность шахт',' — mine count/density')));
+ const appearance=links.map(connectionAppearance),connRows=[];
+ if(links.length){
+   if(appearance.some(a=>!a.wide&&!a.fictive&&!['teleport','monolith'].includes(a.type)))connRows.push(legendItem(legendLine(),legendWords('Обычная связь между зонами','Normal zone connection')));
+   if(appearance.some(a=>a.wide))connRows.push(legendItem(legendLine('wide'),legendWords('Широкая связь без охраны','Wide, unguarded connection')));
+   if(appearance.some(a=>a.fictive))connRows.push(legendItem(legendLine('fictive'),legendWords('Фиктивная связь (влияет на размещение зон)','Fictive link (affects zone placement)')));
+   if(appearance.some(a=>a.roadRequired))connRows.push(legendItem(legendLine('road-required'),legendWords('Обязательная дорога через связь','Required road through connection')));
+   if(appearance.some(a=>a.roadForbidden))connRows.push(legendItem(legendLine('no-road'),legendWords('Дорога запрещена','Road forbidden')));
+   if(appearance.some(a=>['teleport','monolith'].includes(a.type)))connRows.push(legendItem(legendLine('teleport'),legendWords('Связь через портал/монолит','Teleport/monolith connection')));
+   if(appearance.some(a=>a.border))connRows.push(legendItem('<span class="legend-border-guard">┃</span>',legendWords('Связь со Стражем границы','Border Guard connection')));
+   if(store.selected.kind==='connection'&&links[store.selected.index])connRows.push(legendItem(legendLine('selected'),legendWords('Выделенная связь','Selected connection')));
+   if(links.some((c,i)=>!appearance[i].border&&String(c.value??'').trim()!==''&&Number(c.value)>0))connRows.push(legendItem(legendValue(compactExact(links.find((c,i)=>!appearance[i].border&&String(c.value??'').trim()!==''&&Number(c.value)>0).value)),legendWords('Ценность охраны связи, сокращённая запись','Connection guard value, abbreviated display')));
+   if(links.some((c,i)=>!appearance[i].border&&(!String(c.value??'').trim()||Number(c.value)===0)))connRows.push(legendItem(legendValue('—'),legendWords('Связь без числа: нет охраны','No number: unguarded connection')));
+   const ids=new Set(zones.map(z=>z.id.trim()));
+   if(links.some(c=>!ids.has(c.zone1.trim())||!ids.has(c.zone2.trim())))connRows.push(legendItem(legendLine('dangling'),legendWords('Красный пунктир с точкой: отсутствующая зона в исходном шаблоне','Red dashed link and endpoint: missing zone in the source template')));
+ }
+ content.innerHTML=legendSection(legendWords('Зоны','Zones'),zoneRows)+legendSection(legendWords('Охрана объектов','Object guards'),guardRows)+legendSection(legendWords('Города','Towns'),townRows)+legendSection(legendWords('Ресурсы','Resources'),mineRows)+legendSection(legendWords('Связи','Connections'),connRows);
+}
+
 function renderCanvas(){const map=current();$('canvas-content').innerHTML=map?canvasMarkup(map):'';
  $('empty-hint').classList.toggle('hidden',!!map?.zones.length);$('empty-add-btn').hidden=!store.pack;
  transformCanvas();
@@ -589,9 +663,9 @@ function svgStyles(){
   const root=getComputedStyle(document.documentElement),v=name=>root.getPropertyValue('--'+name).trim();
   const colors=['red','blue','tan','green','orange','purple','teal','pink'];
   const owners=colors.map((name,i)=>`.node[data-owner="${i+1}"] .node-border{fill:${v('player-'+name)}}`).join('');
-  return `${owners}.node[data-owner="0"][data-richness="low"] .node-border{fill:${v('neutral-low')}}.node[data-owner="0"][data-richness="mid"] .node-border{fill:${v('neutral-mid')}}.node[data-owner="0"][data-richness="high"] .node-border{fill:${v('neutral-high')}}
+  return `${owners}.node[data-owner="0"][data-richness="low"] .node-border{fill:${v('neutral-low')}}.node[data-owner="0"][data-richness="mid"] .node-border{fill:url(#zone-silver)}.node[data-owner="0"][data-richness="high"] .node-border{fill:url(#zone-gold)}
   .node-border{stroke:${v('card-edge')};stroke-width:1.7}.node .node-junction-rim{stroke:#707780;stroke-width:10;fill:none}.node text{font-family:Arial,sans-serif;fill:${v('zone-text')};font-weight:700}
-  .node-treasure{font-size:23px}.node-size{font-size:12px}.node-id-label{font-size:17px}.h3-slot-count{font-size:10px}.node-section-caption{font-size:10px}
+  .node-treasure{font-size:32px;font-weight:850}.node-size{font-size:15px}.node-id-label{font-size:23px}.h3-slot-count{font-size:14px;font-weight:850}.h3-slot-count.count-condensed{font-size:11px}.node-section-caption{font-size:14px}.node-cpu,.node-placement{font-size:12px;font-weight:800}
   .conn-line{fill:none;stroke:${v('soft')};stroke-width:2}.conn-hit{display:none}.conn-wide .conn-line{stroke-width:6}.conn-fictive .conn-line{stroke-dasharray:2 9}.conn-roadless .conn-line{stroke-dasharray:11 7}.conn-road-overlay{fill:none;stroke:white;stroke-width:1;stroke-dasharray:5 6}.conn-teleport .conn-line{stroke:${v('accent')};stroke-dasharray:6 4}.dangling .conn-line{stroke:${v('error')};stroke-dasharray:6 5}
   .conn-label-bg{fill:${v('conn-label-bg')};stroke:${v('line')}}.conn-label{fill:${v('conn-label')};font:700 12px Arial;text-anchor:middle;dominant-baseline:middle}`;
 }
@@ -629,7 +703,14 @@ modal('Справка · H3 Template Studio',`<p><strong>Редактор раб
  <h3>Горячие клавиши</h3><ul><li><code>Ctrl+O</code> — открыть; <code>Ctrl+S</code> — сохранить; <code>Ctrl+Z</code> / <code>Ctrl+Y</code> — отменить / повторить.</li><li><code>Delete</code> — удалить выделенную зону/связь (с подтверждением).</li><li><code>Ctrl+0</code> — вместить; <code>Ctrl+Shift++/-</code> — раздвинуть/сблизить; <code>Esc</code> — отменить создание связи / закрыть панели.</li></ul>
  <h3>Установка</h3><p>Нажмите «Установить» в Chrome/Edge на HTTPS. На iPhone/iPad: Share → Add to Home Screen. После первого открытия приложение сохраняет основные ресурсы для автономной работы.</p>
  <p class="field-note">Основано на MIT-лицензированном sokie/heroes3-template-util; браузерная версия является отдельной реализацией.</p>`,[{label:'Закрыть'}]);}
-async function installApp(){if(store.installPrompt){const prompt=store.installPrompt;store.installPrompt=null;prompt.prompt();const result=await prompt.userChoice;if(result.outcome==='accepted')toast('Приложение устанавливается.');return;}
+async function installApp(){if(store.installPrompt){
+  const prompt=store.installPrompt;store.installPrompt=null;
+  try{await prompt.prompt();const result=await prompt.userChoice;
+   if(result?.outcome==='accepted')toast(getLanguage()==='ru'?'Приложение устанавливается.':'App installation is in progress.');
+   return;
+  }catch(error){console.info('Native install prompt already consumed or unavailable:',error);}
+ }
+
  const standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone;
  if(standalone){toast('Приложение уже открыто в установленном режиме.');return;}
  if(getLanguage()==='en'){
@@ -642,7 +723,9 @@ async function installApp(){if(store.installPrompt){const prompt=store.installPr
  }
  modal('Установка приложения',`<p>Установка доступна через меню браузера при открытии сайта по HTTPS (например, на GitHub Pages).</p><ul><li><b>Chrome / Edge:</b> меню ⋮ → «Установить приложение» или значок установки в адресной строке.</li><li><b>iPhone / iPad (Safari):</b> «Поделиться» → «На экран Домой».</li><li><b>Firefox:</b> встроенная установка PWA на компьютере может быть недоступна; используйте «Добавить на главный экран» на поддерживаемом телефоне.</li></ul><p>После первого открытия сайт может работать без интернета; для больших шаблонов откройте локальные файлы после установки.</p>`,[{label:'Закрыть'}]);
 }
-window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();store.installPrompt=event;$('install-btn').title='Установить приложение';});
+// Allow Chrome to show its own install banner. The user may also use our Install
+// button while the saved event remains promptable; never claim that an icon is installed.
+window.addEventListener('beforeinstallprompt',event=>{store.installPrompt=event;$('install-btn').title='Установить приложение';});
 window.addEventListener('appinstalled',()=>{store.installPrompt=null;toast(getLanguage()==='ru'?'Приложение установлено. Если значка нет на главном экране Xiaomi, найдите приложение в списке всех приложений и добавьте значок вручную.':'App installed. On Xiaomi, find the app in the app drawer and add its icon to your home screen if needed.');});
 function runAction(action){$('more-menu').classList.add('hidden');if(!current())return;
  if(action==='layout')doLayout();else if(action==='spread')changeSpread(1.17);else if(action==='compact')changeSpread(.84);
@@ -664,7 +747,7 @@ $('add-conn-btn').onclick=addConnection;
 $('undo-btn').onclick=undo;$('redo-btn').onclick=redo;
 $('pack-props-btn').onclick=()=>{store.selected={kind:'pack',index:0};store.inspectorView='selection';store.tab='Пакет';renderInspector();$('inspector').classList.add('open');$('sidebar').classList.remove('open');};
 $('validate-btn').onclick=validateDialog;$('new-pack-btn').onclick=newPackDialog;
-$('language-select').onchange=event=>{setLanguage(event.target.value);const placeholder=$('built-in-select').options[0];if(placeholder)placeholder.text=getLanguage()==='ru'?'Выберите встроенный шаблон…':translateText('Выберите встроенный шаблон…');};
+$('language-select').onchange=event=>{setLanguage(event.target.value);renderLegend();const placeholder=$('built-in-select').options[0];if(placeholder)placeholder.text=getLanguage()==='ru'?'Выберите встроенный шаблон…':translateText('Выберите встроенный шаблон…');};
 initializeLanguage();
 $('theme-btn').onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';setTheme(t);};
 function setTheme(t){document.documentElement.dataset.theme=t;$('theme-btn').innerHTML=icon(t==='dark'?'sun':'moon');renderCanvas();

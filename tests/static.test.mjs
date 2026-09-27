@@ -103,3 +103,40 @@ test('Git attributes preserve original bytes of catalog templates and regression
     assert.ok(attrs.includes(rule),`Missing byte-preservation rule: ${rule}`);
   }
 });
+
+test('native PWA install banner is not suppressed and both mobile app meta tags exist',()=>{
+  const html=file('index.html'),app=file('src/app.js');
+  assert.ok(html.includes('<meta name="mobile-web-app-capable" content="yes">'));
+  assert.ok(html.includes('<meta name="apple-mobile-web-app-capable" content="yes">'));
+  const handler=app.match(/window\.addEventListener\('beforeinstallprompt',event=>\{([^}]*)\}\);/);
+  assert.ok(handler,'Missing native browser install handler');
+  assert.ok(!handler[1].includes('preventDefault'),'Native browser install banner should not be blocked');
+  assert.ok(app.includes('await prompt.prompt()'),'The visible Install button must invoke the browser prompt');
+});
+
+test('enlarged card artwork survives SVG/PNG export without a heavy legend rebuild on pan',()=>{
+  const app=file('src/app.js'),css=file('styles.css');
+  assert.ok(app.includes("svgIcon('chest',8,6,36)"));
+  assert.ok(app.includes("svgIcon('swords',CARD_W-8-(j+1)*26,9,26)"));
+  assert.ok(app.includes('svgIcon(symbol,x,y,34)'));
+  assert.ok(css.includes('.node-treasure{font-size:32px'));
+  assert.ok(css.includes('.node .h3-slot-count{font-size:14px'));
+  assert.ok(app.includes('.node-treasure{font-size:32px;font-weight:850}'));
+  assert.ok(app.includes('function renderAll(){renderSidebar();renderToolbar();renderCanvas();renderLegend();'));
+  const renderCanvas=app.match(/function renderCanvas\(\)\{([\s\S]*?)\n\}/);
+  assert.ok(renderCanvas&&!renderCanvas[1].includes('renderLegend()'),'Pan/zone drag must not rebuild the legend');
+});
+
+test('current-map legend is collapsed by default and release documentation is consolidated',()=>{
+  const html=file('index.html'),app=file('src/app.js'),ignore=file('.gitignore');
+  assert.ok(html.includes('<details class="canvas-top-info" id="canvas-legend" hidden>'));
+  assert.ok(html.includes('id="legend-summary"'));
+  assert.ok(html.includes('id="legend-content"'));
+  assert.ok(app.includes('const owners=[...new Set(looks.map(a=>a.owner).filter(Boolean))]'));
+  assert.ok(app.includes('const present=new Set(zones.flatMap(mineEntries)'));
+  assert.ok(app.includes('const appearance=links.map(connectionAppearance)'));
+  assert.ok(app.includes("$('canvas-legend').open=false"));
+  for(const name of ['PROJECT_CHANGES.md','PROJECT_TESTS.md'])assert.ok(ignore.split(/\r?\n/).includes(name),name);
+  for(const name of ['CHANGELOG.md','CI_FIX_RU.md','CI_TEST_REPORT.md','GITHUB_ABOUT.txt','PATCH_NOTES_RU.md','TEST_REPORT.md'])
+    assert.ok(!fs.existsSync(path.join(root,name)),`Obsolete release file: ${name}`);
+});

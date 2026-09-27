@@ -163,17 +163,44 @@ async def run():
                 return {'loaded_ms':read_ms,'switch_126_maps_ms':round(timing)}
             await trial('Large Jebus: import and switch through 126 maps',big)
             async def hota_conversion():
+                await page.evaluate("""() => {
+                  window.__convertedFile=null;
+                  Object.defineProperty(window,'showSaveFilePicker',{configurable:true,value:async options=>{
+                    window.__pickerOptions=options;
+                    let payload;
+                    return {name:options.suggestedName,createWritable:async()=>({
+                      write:async bytes=>{payload=new Uint8Array(bytes);},
+                      close:async()=>{window.__convertedFile={length:payload.length,head:[...payload.slice(0,24)]};},
+                      abort:async()=>{payload=null;}
+                    })};
+                  }});
+                }""")
                 await page.locator('#export-format').select_option('hota18')
-                async with page.expect_download(timeout=60000) as download:
-                    await page.locator('#convert-btn').click()
-                    if await page.locator('#modal').evaluate('(e)=>e.open'):
-                        await page.locator('#modal-buttons .btn-primary').click()
-                saved=await download.value
-                data=Path(await saved.path()).read_bytes()
-                assert saved.suggested_filename.lower().endswith('.h3t')
-                assert len(data)>100000
-                return {'filename':saved.suggested_filename,'bytes':len(data)}
-            await trial('Jebus conversion to HotA 1.8 downloads full template',hota_conversion)
+                await page.locator('#convert-btn').click()
+                if await page.locator('#modal').evaluate('(e)=>e.open'):
+                    await page.locator('#modal-buttons .btn-primary').click()
+                await page.wait_for_function('()=>window.__convertedFile?.length>100000',timeout=60000)
+                saved=await page.evaluate("()=>({file:window.__convertedFile,options:window.__pickerOptions})")
+                assert saved['options']['suggestedName'].lower().endswith('.h3t'),saved
+                assert saved['file']['length']>100000,saved
+                assert not await page.locator('#modal').evaluate('(e)=>e.open')
+                return {'filename':saved['options']['suggestedName'],'bytes':saved['file']['length'],'mechanism':'native Save as file picker'}
+            await trial('Jebus conversion to HotA 1.8 uses native Save as picker',hota_conversion)
+            async def unsupported_picker():
+                await page.evaluate("""() => {
+                  Object.defineProperty(window,'showSaveFilePicker',{configurable:true,value:undefined});
+                }""")
+                # The unsupported-browser fallback must never start a download until the user clicks Download.
+                count={'downloads':0}
+                page.on('download',lambda d: count.__setitem__('downloads',count['downloads']+1))
+                await page.locator('#save-btn').click()
+                await page.locator('#modal-title').get_by_text('Save as').wait_for()
+                assert count['downloads']==0, 'Save started a download before explicit consent.'
+                assert await page.locator('#modal-buttons button').count()==2
+                await page.locator('#modal-buttons button').first.click()
+                assert count['downloads']==0, 'Cancel triggered a download.'
+                return 'fallback asks for explicit permission; Cancel does not download'
+            await trial('Save fallback never downloads without an explicit user choice',unsupported_picker)
             async def offline():
                 await page.locator('#file-input').set_input_files(str(ROOT/'tests/fixtures/tesseract.txt'))
                 await page.locator('.node').first.wait_for()

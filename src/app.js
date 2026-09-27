@@ -10,7 +10,7 @@ const flag=s=>String(s??'').trim().toLowerCase()==='x';
 const icon=(name,size=16)=>`<svg width="${size}" height="${size}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
 const store={pack:null,mapIndex:0,selected:{kind:'map',index:0},tab:'general',scale:1,tx:0,ty:0,
   viewport:{w:700,h:600},drag:null,connectMode:false,connectFrom:null,undo:[],redo:[],installPrompt:null,toastTimer:0,
-  fileKey:'',loaded:false,loadToken:0,builtinId:null};
+  fileKey:'',loaded:false,loadToken:0,builtinId:null,presetLayouts:null};
 const current=()=>store.pack?.maps[store.mapIndex];
 function toast(message){$('toast').textContent=message;$('toast').classList.add('visible');clearTimeout(store.toastTimer);store.toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),3500);}
 function status(s){$('status-text').textContent=s;}
@@ -39,11 +39,11 @@ function restore(data){const snap=JSON.parse(data.snapshot);store.pack.maps=snap
 function undo(){if(!store.undo.length)return;const change=store.undo.pop();store.redo.push({snapshot:capture(),selection:{...store.selected},tab:store.tab,label:change.label});restore(change);status('Отменено: '+change.label);}
 function redo(){if(!store.redo.length)return;const change=store.redo.pop();store.undo.push({snapshot:capture(),selection:{...store.selected},tab:store.tab,label:change.label});restore(change);status('Повторено: '+change.label);}
 function persistLayout(){const map=current();if(!map||!store.fileKey)return;
- try{localStorage.setItem('h3tc-layout-'+store.fileKey+'-'+store.mapIndex,JSON.stringify(map.layout));}catch{ /* Storage can be disabled or full. */ }
+ try{localStorage.setItem((store.builtinId?'h3tc-layout-v2-':'h3tc-layout-')+store.fileKey+'-'+store.mapIndex,JSON.stringify(map.layout));}catch{ /* Storage can be disabled or full. */ }
 }
 function restoreLayout(index){const map=store.pack.maps[index];if(!map)return;
  let restored={...map.layout};
- try{const json=localStorage.getItem('h3tc-layout-'+store.fileKey+'-'+index);
+ try{const json=localStorage.getItem((store.builtinId?'h3tc-layout-v2-':'h3tc-layout-')+store.fileKey+'-'+index);
   if(json){const parsed=JSON.parse(json);if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))restored={...restored,...parsed};}
  }catch{}
  const ids=new Set(map.zones.map(z=>z.id));
@@ -51,8 +51,9 @@ function restoreLayout(index){const map=store.pack.maps[index];if(!map)return;
  const candidate=Object.keys(restored).length===ids.size?restored:{...autoLayout(map),...restored};
  // Repair crowded pre-1.1.0 cached layouts only; preserve collision-free edits.
  const points=Object.values(candidate);
- const crowded=points.some((p,i)=>points.slice(i+1).some(q=>Math.abs(p.x-q.x)<CARD_W+95&&Math.abs(p.y-q.y)<CARD_H+95));
- map.layout=crowded?separate(candidate,130):candidate;
+ const pad=store.builtinId&&store.presetLayouts?18:95;
+ const crowded=points.some((p,i)=>points.slice(i+1).some(q=>Math.abs(p.x-q.x)<CARD_W+pad&&Math.abs(p.y-q.y)<CARD_H+pad));
+ map.layout=crowded?separate(candidate,store.builtinId?55:130):candidate;
 }
 async function openFile(file){
  if(!file)return;
@@ -62,8 +63,8 @@ async function openFile(file){
   toast(`Открыт ${file.name} · ${pack.maps.length} карт · ${total} зон`);
  }catch(e){modal('Ошибка открытия',`<p>${esc(e?.message||e)}</p><p>Поддерживаются текстовые шаблоны SoD, HotA 1.7.x и HotA 1.8.x.</p>`);}
 }
-function setPack(pack,bytes=null,builtinId=null){
- store.pack=pack;store.builtinId=builtinId;if($('built-in-select'))$('built-in-select').value=builtinId||'';store.mapIndex=0;store.selected={kind:'map',index:0};store.tab='general';store.undo=[];store.redo=[];
+function setPack(pack,bytes=null,builtinId=null,presetLayouts=null){
+ store.pack=pack;store.builtinId=builtinId;store.presetLayouts=presetLayouts;if($('built-in-select'))$('built-in-select').value=builtinId||'';store.mapIndex=0;store.selected={kind:'map',index:0};store.tab='general';store.undo=[];store.redo=[];
  store.connectMode=false;store.connectFrom=null;store.fileKey=fileSignature(bytes??new TextEncoder().encode(pack.filename),pack.filename);
  restoreLayout(0);store.loaded=true;
  $('export-format').value=pack.format;
@@ -95,7 +96,15 @@ async function loadBuiltin(id){
   if(!response.ok)throw new Error(`HTTP ${response.status}`);
   const bytes=new Uint8Array(await response.arrayBuffer());if(token!==store.loadToken)return;
   const pack=parseBytes(bytes,{filename:option.textContent+'.txt'});
-  setPack(pack,bytes,id);
+  let presetLayouts=null;
+  try{const layouts=await fetch('./samples/upstream-layouts.json').then(r=>{if(!r.ok)throw new Error('Layout catalog unavailable');return r.json()});
+   presetLayouts=layouts.templates[id]||null;
+   if(presetLayouts?.length===pack.maps.length)for(let i=0;i<pack.maps.length;i++){
+    const map=pack.maps[i],preset=presetLayouts[i];
+    if(preset.name===map.name&&preset.connections===map.connections.length&&preset.ids.join('\0')===map.zones.map(z=>z.id).join('\0'))map.layout=structuredClone(preset.positions);
+   }
+  }catch(error){console.warn('Upstream layout unavailable, using browser layout:',error);}
+  setPack(pack,bytes,id,presetLayouts);
  }catch(e){if(token!==store.loadToken)return;select.value=store.builtinId||'';toast('Cannot open built-in template: '+e.message);}
  finally{select.disabled=false;}
 }
@@ -115,27 +124,47 @@ function renderSidebar(){const pack=store.pack;
 $('map-list').addEventListener('click',e=>{const btn=e.target.closest('[data-map-index]');if(btn)selectMap(+btn.dataset.mapIndex);});
 $('map-search').addEventListener('input',renderSidebar);
 function renderToolbar(){const map=current();$('toolbar-format').textContent=store.pack?upper(store.pack.format):'—';
- $('map-title').textContent=map?.name||'Нет выбранной карты';$('map-stats').textContent=map?`${map.zones.length} зон · ${map.connections.length} связей`:'';
+ $('map-title').textContent=map?.name||'Нет выбранной карты';$('map-title').setAttribute('aria-label',$('map-title').textContent);hideMapTitle();$('map-stats').textContent=map?`${map.zones.length} зон · ${map.connections.length} связей`:'';
  for(const id of ['add-zone-btn','add-conn-btn','undo-btn','redo-btn','save-btn','convert-btn'])$(id).disabled=!store.pack||(id==='undo-btn'&&!store.undo.length)||(id==='redo-btn'&&!store.redo.length)||(id==='add-zone-btn'&&!map)||(id==='add-conn-btn'&&!map);
  $('add-conn-btn').style.background=store.connectMode?'var(--accent-bg)':'';
 }
+
+const fullTitleTooltip=$('map-title-tooltip');
+function showMapTitle(){
+ const title=$('map-title'),rect=title.getBoundingClientRect();
+ if(title.scrollWidth<=title.clientWidth+2){fullTitleTooltip.hidden=true;return;}
+ fullTitleTooltip.textContent=title.textContent;
+ fullTitleTooltip.style.width=Math.min(540,window.innerWidth-24)+'px';
+ fullTitleTooltip.hidden=false;
+ const w=fullTitleTooltip.getBoundingClientRect().width;
+ fullTitleTooltip.style.left=Math.max(12,Math.min(rect.left,window.innerWidth-w-12))+'px';
+ const h=fullTitleTooltip.getBoundingClientRect().height;
+ fullTitleTooltip.style.top=(rect.bottom+h+12<window.innerHeight?rect.bottom+8:Math.max(8,rect.top-h-8))+'px';
+}
+function hideMapTitle(){fullTitleTooltip.hidden=true;}
+$('map-title').addEventListener('mouseenter',showMapTitle);
+$('map-title').addEventListener('mouseleave',hideMapTitle);
+$('map-title').addEventListener('focus',showMapTitle);
+$('map-title').addEventListener('blur',hideMapTitle);
+window.addEventListener('resize',hideMapTitle);
 function renderStatus(){const map=current();$('status-zones').textContent=`${map?.zones.length||0} зон`;$('status-conns').textContent=`${map?.connections.length||0} связей`;
  $('dirty-indicator').textContent=store.pack?.dirty?'● Изменено':'✓ Сохранено';$('dirty-indicator').style.color=store.pack?.dirty?'var(--treasure)':'var(--soft)';
  $('zoom-value').textContent=Math.round(store.scale*100)+'%';
 }
 function bounds(map=current()){const p=Object.values(map?.layout??{});if(!p.length)return{x:0,y:0,w:620,h:430};
- const minX=Math.min(...p.map(v=>v.x)),minY=Math.min(...p.map(v=>v.y)),maxX=Math.max(...p.map(v=>v.x+CARD_W)),maxY=Math.max(...p.map(v=>v.y+CARD_H));
+ const minX=Math.min(...p.map(v=>v.x))-145,minY=Math.min(...p.map(v=>v.y))-70,maxX=Math.max(...p.map(v=>v.x+CARD_W))+145,maxY=Math.max(...p.map(v=>v.y+CARD_H))+70;
  const ids=new Set(map.zones.map(z=>z.id.trim()));
+ const stubPoints=[...danglingConnectors(map).values()];
+ const stubMinX=Math.min(minX,...stubPoints.map(p=>p.ex-45)),stubMaxX=Math.max(maxX,...stubPoints.map(p=>p.ex+45));
+ const stubMinY=Math.min(minY,...stubPoints.map(p=>p.ey-28)),stubMaxY=Math.max(maxY,...stubPoints.map(p=>p.ey+28));
  const orphanCount=map.connections.filter(c=>!ids.has(c.zone1.trim())&&!ids.has(c.zone2.trim())).length;
- return{x:minX,y:minY,w:Math.max(1,maxX-minX)+(orphanCount?170:0),h:Math.max(1,maxY-minY)};
+ return{x:stubMinX,y:stubMinY,w:Math.max(1,stubMaxX-stubMinX)+(orphanCount?170:0),h:Math.max(1,stubMaxY-stubMinY)};
 }
 function fitView(initial=false){const m=current();if(!m||!m.zones.length)return;
  const box=$('canvas').getBoundingClientRect();store.viewport={w:box.width||700,h:box.height||500};let b=bounds(m);
- const fit=Math.min(2.3,Math.min((store.viewport.w-90)/b.w,(store.viewport.h-130)/b.h));
- // On initial open, prioritize legibility over squeezing every node onto one screen.
- // The explicit Fit button always fits the complete graph.
- const minimumInitial=store.viewport.w<620?.42:.48;
- store.scale=Math.max(initial?minimumInitial:.1,fit);
+ const fit=Math.min(2.3,Math.max(.12,Math.min((store.viewport.w-36)/b.w,(store.viewport.h-92)/b.h)));
+ // Initial load and Fit must display every node and every endpoint label.
+ store.scale=fit;
  store.tx=(store.viewport.w-b.w*store.scale)/2-b.x*store.scale;
  store.ty=(store.viewport.h-b.h*store.scale)/2-b.y*store.scale;
  transformCanvas();
@@ -150,6 +179,43 @@ let pinch=null;
 const pinchGeometry=()=>{const [a,b]=[...touchPoints.values()];return{distance:Math.hypot(a.x-b.x,a.y-b.y),x:(a.x+b.x)/2,y:(a.y+b.y)/2};};
 const zoneType=z=>flag(z.human_start)||flag(z.computer_start)?'start':flag(z.treasure)||flag(z.junction)?'treasure':'neutral';
 const zoneLabel=z=>flag(z.human_start)?'Игрок':flag(z.computer_start)?'Компьютер':flag(z.treasure)?'Сокровища':flag(z.junction)?'Перекрёсток':'Нейтральная';
+
+/** Choose a visible outside-card stub for connections whose other endpoint is missing. */
+function danglingConnectors(map){
+ const result=new Map(),used=[];
+ const positions=Object.values(map.layout??{});
+ if(!positions.length)return result;
+ const cx=positions.reduce((n,p)=>n+p.x+CARD_W/2,0)/positions.length;
+ const cy=positions.reduce((n,p)=>n+p.y+CARD_H/2,0)/positions.length;
+ const dirs=[[1,0],[0,1],[-1,0],[0,-1],[.707,.707],[-.707,.707],[.707,-.707],[-.707,-.707]];
+ const intersects=(rect,x,y)=>x>rect.x&&x<rect.x+rect.w&&y>rect.y&&y<rect.y+rect.h;
+ const boxes=positions.map(p=>({x:p.x-20,y:p.y-20,w:CARD_W+40,h:CARD_H+40}));
+ map.connections.forEach((c,i)=>{
+  const a=map.layout[c.zone1.trim()],b=map.layout[c.zone2.trim()];
+  if(Boolean(a)===Boolean(b))return;
+  const pt=a||b,ox=pt.x+CARD_W/2,oy=pt.y+CARD_H/2;
+  const value=compactExact(String(c.value??'').trim());
+  const labelW=Math.max(44,value.length*9+22);
+  const candidates=dirs.map(([dx,dy],j)=>{
+   const edgeDist=Math.min(CARD_W/2/(Math.abs(dx)||.00001),CARD_H/2/(Math.abs(dy)||.00001));
+   const sx=ox+dx*(edgeDist+10),sy=oy+dy*(edgeDist+10);
+   const lx=sx+dx*75,ly=sy+dy*75,ex=sx+dx*148,ey=sy+dy*148;
+   let penalty=0;
+   const sourceIndex=positions.indexOf(pt);
+   boxes.forEach((box,k)=>{if(k===sourceIndex)return;
+    for(let t=0;t<=12;t++){if(intersects(box,sx+(ex-sx)*t/12,sy+(ey-sy)*t/12)){penalty+=200;break;}}
+    if(lx+labelW/2>box.x&&lx-labelW/2<box.x+box.w&&ly+14>box.y&&ly-14<box.y+box.h)penalty+=350;
+   });
+   for(const old of used)if(Math.abs(old.x-lx)<(old.w+labelW)/2+20&&Math.abs(old.y-ly)<40)penalty+=500;
+   // Prefer the exterior side of the diagram when alternatives are equally clear.
+   penalty-=((ox-cx)*dx+(oy-cy)*dy)*.005;
+   return {sx,sy,lx,ly,ex,ey,penalty,j};
+  }).sort((a,b)=>a.penalty-b.penalty||a.j-b.j);
+  const p=candidates[0];used.push({x:p.lx,y:p.ly,w:labelW});
+  result.set(i,{d:`M${p.sx} ${p.sy} L${p.ex} ${p.ey}`,x:p.lx,y:p.ly,ex:p.ex,ey:p.ey});
+ });
+ return result;
+}
 function getConnectorPath(a,b,offset=0){
  const ax=a.x+CARD_W/2,ay=a.y+CARD_H/2,bx=b.x+CARD_W/2,by=b.y+CARD_H/2,dx=bx-ax,dy=by-ay;
  if(Math.hypot(dx,dy)<2)return{d:`M${ax-10} ${ay-15} C${ax-80} ${ay-110} ${ax+90} ${ay-110} ${ax+35} ${ay-14}`,x:ax+14,y:ay-83};
@@ -162,10 +228,9 @@ function getConnectorPath(a,b,offset=0){
 // The icon symbols are shipped with the page, so diagram and PNG export stay offline.
 const GLYPH_COLORS={chest:'#cc9957',swords:'#c0c5d1',castle:'#b18d67',town:'#9d806b',
   Wood:'#b88944',Mercury:'#85b5d1',Ore:'#9eabba',Sulfur:'#dfc747',Crystal:'#c88eb9',Gems:'#6ec7bc',Gold:'#dbb540',Airship:'#83a4c8'};
-const HOTA_GLYPHS=new Set(['chest','swords','wood','mercury','ore','sulfur','crystal','gems','gold','castle','town']);
-const svgIcon=(name,x,y,size,color=GLYPH_COLORS[name]||'#726655',classic=true)=>{
-  const glyph=String(name).toLowerCase(),original=classic&&HOTA_GLYPHS.has(glyph);
-  return `<use class="h3-icon ${original?'hota-glyph':'vector-glyph'} h3-icon-${esc(name)}" href="#${original?'hota':'h3'}-${esc(glyph)}" x="${x}" y="${y}" width="${size}" height="${size}" style="color:${color}"/>`;
+const svgIcon=(name,x,y,size,color=GLYPH_COLORS[name]||'#726655')=>{
+  const glyph=String(name).toLowerCase();
+  return `<use class="h3-icon upstream-glyph h3-icon-${esc(name)}" href="#h3-${esc(glyph)}" x="${x}" y="${y}" width="${size}" height="${size}" style="color:${color}"/>`;
 };
 const PLAYER_ICON_COLORS={'1':'#b73939','2':'#4077d2','3':'#b49a73','4':'#58a66c','5':'#dca03f','6':'#a56bc5','7':'#4aabb0','8':'#d68db5'};
 function smallSlot(kind,name,entry,x,y,owner='0'){
@@ -179,16 +244,18 @@ function smallSlot(kind,name,entry,x,y,owner='0'){
 }
 function canvasMarkup(map){
  const nodesById=new Map(map.zones.map(z=>[z.id.trim(),z]));
+ const visibleStubs=danglingConnectors(map);
  const connectionCount=new Map(),edges=map.connections.map((c,i)=>{
   const a=map.layout[c.zone1.trim()],b=map.layout[c.zone2.trim()],ok=!!(a&&b),visual=connectionAppearance(c);
   let path;let className=`connection ${store.selected.kind==='connection'&&store.selected.index===i?'selected':''} ${visual.wide?'conn-wide':''} ${visual.fictive?'conn-fictive':''} ${visual.roadRequired?'conn-road-required':''} ${visual.roadForbidden?'conn-roadless':''} ${visual.border?'conn-border':''} ${visual.type==='teleport'?'conn-teleport':''} ${ok?'':'dangling'}`;
   if(ok){const key=[c.zone1.trim(),c.zone2.trim()].sort().join(':'),offsetIndex=connectionCount.get(key)||0;connectionCount.set(key,offsetIndex+1);path=getConnectorPath(a,b,offsetIndex?25*Math.ceil(offsetIndex/2)*(offsetIndex%2?-1:1):0);}
-  else if(a||b){const pt=a??b,x=pt.x+CARD_W/2,y=pt.y+CARD_H/2;path={d:`M${x} ${y} l${a?95:-95} 0`,x:x+(a?49:-49),y:y};}
+  else if(a||b){path=visibleStubs.get(i);}
   else{const lastX=Math.max(...Object.values(map.layout??{}).map(pt=>pt.x+CARD_W),CARD_W),x=lastX+36,y=Math.min(...Object.values(map.layout??{}).map(pt=>pt.y),110)+36+(i%8)*54;path={d:`M${x} ${y} l88 0`,x:x+44,y:y};}
   const raw=strVal(c.value).trim(),label=!a&&!b?'⚠':visual.border?'┃':raw&&raw!=='0'?compactExact(raw):'';
   const textW=Math.max(36,label.length*7+12);
   return `<g class="${className}" data-conn-index="${i}" data-value-raw="${esc(raw)}" aria-label="${esc('Connection '+c.zone1+' to '+c.zone2+', exact guard value '+(raw||'0'))}"><title>${esc('Connection '+c.zone1+'–'+c.zone2+'; guard '+(raw||'0')+(visual.wide?'; wide':'')+(visual.roadRequired?'; road required':'')+(visual.roadForbidden?'; roads forbidden':''))}</title>
     <path class="conn-line" d="${path.d}"/>${visual.roadRequired?`<path class="conn-road-overlay" d="${path.d}"/>`:''}<path class="conn-hit" d="${path.d}"/>
+    ${path.ex!==undefined?`<circle class="conn-terminal" cx="${path.ex}" cy="${path.ey}" r="5"/>`:''}
     ${label?`<rect class="conn-label-bg" x="${path.x-textW/2}" y="${path.y-11}" width="${textW}" height="22" rx="7"/><text class="conn-label" x="${path.x}" y="${path.y}">${esc(label)}</text>`:''}</g>`;
  }).join('');
  const zones=map.zones.map((z,i)=>{
@@ -417,7 +484,9 @@ function addZone(){if(!current())return;
  });}
 function addConnection(){if(!current()?.zones.length||current().zones.length<2){toast('Для связи нужны минимум две зоны.');return;}
  store.connectMode=true;store.connectFrom=null;renderToolbar();toast('Нажмите на первую зону, затем на вторую. Или Alt + перетащите между ними.');}
-function doLayout(){commit('Расстановка зон',()=>{current().layout=autoLayout(current(),{preferStored:false});current().layoutDirty=true;});fitView();}
+function doLayout(){commit('Расстановка зон',()=>{const map=current(),preset=store.presetLayouts?.[store.mapIndex];
+  const matches=preset&&preset.name===map.name&&preset.connections===map.connections.length&&preset.ids.join('\0')===map.zones.map(z=>z.id).join('\0');
+  map.layout=matches?structuredClone(preset.positions):autoLayout(map,{preferStored:false});map.layoutDirty=true;});fitView();}
 function changeSpread(factor){commit(factor>1?'Раздвинуты зоны':'Сближены зоны',()=>{resizeLayout(current(),factor);current().layoutDirty=true;});fitView();}
 function doReid(sort){const warnings=[];commit('Перенумерованы зоны',()=>renumberMap(current(),{sort,warnings}));
  if(warnings.length)modal('Проверка подсказок зон',`<p>Некоторые HotA-подсказки не изменены из-за неизвестного синтаксиса или ссылок:</p><div class="issues">${warnings.slice(0,30).map(w=>`<div class="issue badge-warning">${esc(w)}</div>`).join('')}</div>`);
@@ -429,13 +498,38 @@ function download(bytes,filename,mime='application/octet-stream'){
  const blob=new Blob([bytes],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
 }
 function fileName(format){const original=store.pack.filename??'template',base=original.replace(/\.(h3t|txt)$/i,'');return base+(format==='sod'?'.txt':'.h3t');}
-function performSave(format){const source=store.pack,converted=format===source.format?source:convertPack(source,format,{packName:source.filename.replace(/\.[^.]+$/,'')});
- if(SCHEMA.formats[format].isHota)for(const m of converted.maps){if(m.layoutDirty)saveImagePositions(m);}
- const output=serializePack(converted);download(output.bytes,fileName(format));
- if(format===source.format){if(SCHEMA.formats[format].isHota)for(let i=0;i<source.maps.length;i++)if(source.maps[i].layoutDirty){source.maps[i].zones.forEach((z,j)=>z.zone_options.image_settings=converted.maps[i].zones[j].zone_options.image_settings);source.maps[i].layoutDirty=false;}
-   source.originalBytes=output.bytes;source.dirty=false;}
- renderAll();status(`Экспортировано: ${fileName(format)} (${upper(format)})`);toast(`Сохранено: ${fileName(format)}`);
- if(output.warnings.some(w=>/replaced/i.test(w)))modal('Предупреждение о кодировке',output.warnings.filter(w=>/replaced/i.test(w)).map(esc).join('<br>'));
+async function performSave(format){
+ if(!store.pack)return;
+ const source=store.pack;
+ try{
+  const converted=format===source.format?structuredClone(source):convertPack(source,format,{packName:source.filename.replace(/\.[^.]+$/,'')});
+  if(SCHEMA.formats[format].isHota)for(const m of converted.maps)if(m.layoutDirty)saveImagePositions(m);
+  const output=serializePack(converted),name=fileName(format);
+  // showSaveFilePicker must run directly in a user gesture; do not await before invoking it.
+  if(typeof window.showSaveFilePicker!=='function'){
+   modal('Save as',`<p>${esc(getLanguage()==='ru'?'Ваш браузер не поддерживает системный диалог выбора файла. Нажмите «Скачать», чтобы явно разрешить загрузку, или воспользуйтесь Chrome/Edge на компьютере.':'Your browser does not support the native Save as file picker. Choose Download explicitly, or use desktop Chrome/Edge.')}</p>`,[
+    {label:getLanguage()==='ru'?'Отмена':'Cancel'},
+    {label:getLanguage()==='ru'?'Скачать':'Download',primary:true,handler:()=>{download(output.bytes,name);status(getLanguage()==='ru'?'Загрузка запрошена: '+name:'Download requested: '+name);}}
+   ]);
+   return;
+  }
+  const handle=await window.showSaveFilePicker({suggestedName:name,types:[{description:format==='sod'?'SoD template':'HotA template',accept:{'application/octet-stream':[format==='sod'?'.txt':'.h3t']}}]});
+  const writer=await handle.createWritable();
+  try{await writer.write(output.bytes);await writer.close();}
+  catch(error){try{await writer.abort();}catch{}throw error;}
+  if(format===source.format){
+   if(SCHEMA.formats[format].isHota)for(let i=0;i<source.maps.length;i++)if(source.maps[i].layoutDirty){
+    source.maps[i].zones.forEach((z,j)=>{z.zone_options.image_settings=converted.maps[i].zones[j].zone_options.image_settings;});
+    source.maps[i].layoutDirty=false;
+   }
+   source.originalBytes=output.bytes;source.dirty=false;
+  }
+  renderAll();status(`Saved: ${handle.name||name} (${upper(format)})`);toast(getLanguage()==='ru'?'Сохранено: '+(handle.name||name):'Saved: '+(handle.name||name));
+  if(output.warnings.some(w=>/replaced/i.test(w)))modal('Encoding warning',output.warnings.filter(w=>/replaced/i.test(w)).map(esc).join('<br>'));
+ }catch(error){
+  if(error?.name==='AbortError'){status(getLanguage()==='ru'?'Сохранение отменено.':'Save cancelled.');return;}
+  console.error('Save failed:',error);toast((getLanguage()==='ru'?'Ошибка сохранения: ':'Save failed: ')+(error?.message||error));
+ }
 }
 function askSave(format){if(!store.pack)return;
  let converted;try{converted=format===store.pack.format?store.pack:convertPack(store.pack,format);}catch(e){toast(e.message);return;}
@@ -463,7 +557,7 @@ async function importLayout(file){try{
  commit('Позиции загружены',()=>{
   for(const [i,valid] of positions){const map=store.pack.maps[i];
     Object.assign(map.layout,valid);map.layoutDirty=true;
-    try{localStorage.setItem('h3tc-layout-'+store.fileKey+'-'+i,JSON.stringify(map.layout));}catch{}
+    try{localStorage.setItem((store.builtinId?'h3tc-layout-v2-':'h3tc-layout-')+store.fileKey+'-'+i,JSON.stringify(map.layout));}catch{}
   }
  });fitView();toast(`Позиции восстановлены: ${positions.size} карт`);
  }catch(e){toast('Layout import failed: '+e.message);}}

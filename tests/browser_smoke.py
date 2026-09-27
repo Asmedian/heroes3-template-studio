@@ -64,18 +64,30 @@ async def run():
             await page.locator('#redo-btn').click()
             await page.locator('.node').first.click(force=True)
             assert await page.locator('input[data-path="base_size"]').input_value()=='117'
-            async with page.expect_download() as down:
-                await page.locator('#save-btn').click()
-            download=await down.value
-            exported=await download.path()
-            assert Path(exported).read_bytes(), 'Save produced empty file.'
+            # Intercept the native Save as picker and write target, without faking a download.
+            await page.evaluate('''() => {
+              window.__savePickerCalls=[];window.__savedFiles=[];
+              Object.defineProperty(window,'showSaveFilePicker',{configurable:true,value:async options=>{
+                window.__savePickerCalls.push(options);
+                let payload=null;
+                return {name:options.suggestedName,createWritable:async()=>({
+                  write:async bytes=>{payload=new Uint8Array(bytes);},
+                  close:async()=>{window.__savedFiles.push([...payload]);},
+                  abort:async()=>{payload=null;}
+                })};
+              }});
+            }''')
+            await page.locator('#save-btn').click()
+            await page.wait_for_function('()=>window.__savedFiles.length===1')
+            size=await page.evaluate('window.__savedFiles[0].length')
+            assert size>1000, 'Native Save as wrote an empty file.'
             assert (await page.locator('#dirty-indicator').inner_text()).startswith('✓')
             await page.locator('#export-format').select_option('hota18')
-            # A conversion may warn; choose the explicit confirm if it appears.
             await page.locator('#convert-btn').click()
             if await page.locator('#modal').evaluate('(e)=>e.open'):
                 await page.locator('#modal-buttons .btn-primary').click()
-            # Confirm conversion triggered a second download where supported.
+            await page.wait_for_function('()=>window.__savedFiles.length===2')
+            assert await page.evaluate('window.__savePickerCalls.every(x=>x.suggestedName.endsWith(x.types[0].accept["application/octet-stream"][0]))')
             await page.locator('#add-zone-btn').click()
             assert await page.locator('.node').count()==17
             await page.locator('#more-btn').click()

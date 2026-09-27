@@ -52,18 +52,22 @@ test('raster install icons have declared exact PNG dimensions',()=>{
 });
 
 
-test('all supplied HotA pixel-art resource symbols are inline and remain usable in exported SVG/PNG',()=>{
-  const html=file('index.html');
-  for(const glyph of ['chest','swords','wood','mercury','ore','sulfur','crystal','gems','gold','castle']){
-    assert.ok(html.includes(`id="hota-${glyph}"`),`Missing screenshot glyph: ${glyph}`);
-    const sprite=fs.readFileSync(path.join(root,`public/hota-icons/${glyph}.png`));
-    assert.equal(sprite.subarray(0,8).toString('hex'),'89504e470d0a1a0a');
-  }
-  assert.match(html,/<image[^>]+href="data:image\/png;base64,/);
-  assert.ok(file('src/app.js').includes('HOTA_GLYPHS'));
+test('every template symbol uses upstream SVG artwork, bundled for offline export',()=>{
+ const html=file('index.html'),app=file('src/app.js');
+ for(const glyph of ['chest','swords','wood','mercury','ore','sulfur','crystal','gems','gold','castle']){
+  assert.ok(html.includes(`id="h3-${glyph}"`),`Missing upstream SVG symbol: ${glyph}`);
+  assert.ok(fs.existsSync(path.join(root,`public/h3-icons/${glyph}.svg`)));
+ }
+ assert.ok(app.includes('upstream-glyph'));
+ assert.ok(!app.includes('HOTA_GLYPHS'));
 });
-
-
+test('original-software layouts are available for all 59 catalog packages offline',()=>{
+ const catalog=JSON.parse(file('samples/catalog.json'));
+ const layouts=JSON.parse(file('samples/upstream-layouts.json'));
+ assert.equal(Object.keys(layouts.templates).length,59);
+ for(const item of catalog.templates)assert.ok(layouts.templates[item.id]?.length>=1,item.name);
+ assert.ok(sw.includes("'./samples/upstream-layouts.json'"));
+});
 test('Git attributes preserve original bytes of catalog templates and regression fixtures',()=>{
   const attrs=file('.gitattributes').split(/\r?\n/).filter(line=>line && !line.startsWith('#'));
   for(const rule of ['samples/*.txt -text','tests/fixtures/*.txt -text','tests/fixtures/*.h3t -text']){

@@ -2,7 +2,7 @@
 
 **Offline, installable visual random-map template editor and format converter for Heroes of Might and Magic III: Shadow of Death and Horn of the Abyss.**
 
-This is an independent, browser-based implementation built from [sokie/heroes3-template-util](https://github.com/sokie/heroes3-template-util) (upstream Python/PySide6 v0.3.0, commit `e0143ce06d5cb8d616d5facd4e05569437878a07`). It runs as a static site on GitHub Pages without a server, account, npm build or external API. App version: **1.2.0**.
+This is an independent, browser-based implementation built from [sokie/heroes3-template-util](https://github.com/sokie/heroes3-template-util) (upstream Python/PySide6 v0.3.0, commit `e0143ce06d5cb8d616d5facd4e05569437878a07`). It runs as a static site on GitHub Pages without a server, account, npm build or external API. App version: **1.3.0**.
 
 **Suggested GitHub repository description:**
 > Offline PWA for editing, visualizing, and converting Heroes III random-map templates (SoD, HotA 1.7/1.8), with English/Russian UI.
@@ -11,10 +11,10 @@ This is an independent, browser-based implementation built from [sokie/heroes3-t
 
 ## Features
 
-- Import, inspect, edit, save and convert **SoD `.txt`**, **HotA 1.7.x `.h3t`** and **HotA 1.8.x `.h3t`** templates. Original files are processed locally; untouched save preserves original bytes. Edited files are downloaded by the browser.
+- Import, inspect, edit, save and convert **SoD `.txt`**, **HotA 1.7.x `.h3t`** and **HotA 1.8.x `.h3t`** templates. Original files are processed locally; untouched save preserves original bytes. On compatible browsers, Save opens the native Save as picker; unsupported browsers show a confirmation before downloading.
 - Multi-map packs with a searchable map list, zone/connection creation, duplication and deletion, a full field inspector, undo/redo, validation and loss diagnostics for conversions.
 - Pan, wheel/toolbar zoom, touch/pinch zoom, dragging individual zones, Alt+drag or two clicks to create a link, collision-avoiding initial layout, spread/compact actions, and fit-to-screen. Save/load multi-map layouts compatible with upstream sidecars; HotA also supports `image_settings` positions.
-- **Player-color zones**, neutral-zone richness coloring, treasure and guards, town/castle markers, **all seven resource/mine icons and exact counts/densities**. Common diagram glyphs are adapted from screenshots in the user-provided HotA documentation; missing/version-specific glyphs use the upstream editor's SVG-based visual style. HotA 1.8-exclusive settings remain format-specific in the editor.
+- **Player-color zones**, neutral-zone richness coloring, treasure and guards, town/castle markers, **all seven resource/mine icons and exact counts/densities**. All available diagram glyphs come from the original upstream desktop editor SVG sources; additional town, computer, placement and airship symbols follow the desktop editor canvas implementation. HotA 1.8-exclusive settings remain format-specific in the editor.
 - Display numbers compactly (e.g. `8500 → 8.5k`, `8501 → 8.501k`) without modifying stored values; exact originals remain available in field editors, titles and downloaded templates.
 - English UI by default, Russian on the **first visit** when the browser's primary language is Russian; explicit language choice persists in `localStorage`. Independent dark/light theme persistence and dark-native dropdowns.
 - Installable PWA: relative manifest `id`, scope and start URL (GitHub Pages subpaths supported), distinct 192/512 PNG and maskable icons, Android/Apple icons, versioned service worker, **offline precaching of all 59 built-in templates**, and in-app install guidance.
@@ -101,7 +101,7 @@ On iOS, use Safari **Share → Add to Home Screen**. On desktop Chrome/Edge, use
 |---|---|
 | `src/core.js`, `src/schema-data.js`, `src/schema.json` | Parsers, format schemas, serialization, conversion and validation. |
 | `src/layout.js`, `src/sidecar.js` | Collision-free graph layout and upstream-compatible positions. |
-| `src/visuals.js`, `public/hota-icons/` | Exact display-number abbreviations, owner colors, mines/towns and HotA-source diagram glyphs. |
+| `src/visuals.js`, `public/h3-icons/` | Exact display-number abbreviations, owner colors, mines/towns and upstream desktop-editor vector glyphs. |
 | `src/i18n.js`, `src/app.js`, `index.html`, `styles.css` | English/Russian UI, application state, interactions and themes. |
 | `samples/catalog.json`, `samples/*.txt` | 59 included SoD templates. |
 | `manifest.webmanifest`, `sw.js`, `public/icons/` | Installability and versioned offline cache. |
@@ -110,4 +110,4 @@ On iOS, use Safari **Share → Add to Home Screen**. On desktop Chrome/Edge, use
 
 ## Attribution and distribution
 
-Source implementation and upstream-supplied editor SVG icon shapes are MIT-licensed (see [LICENSE](LICENSE)). The HotA diagram glyphs in `public/hota-icons/` are cropped from the **user-provided** HotA documentation screenshots. They are third-party game/documentation artwork, **not covered by the upstream MIT license**. The built-in templates are also user-supplied community materials. Before publishing a public repository or site, verify you have the necessary rights to redistribute the game artwork and template collections. This application is not affiliated with Ubisoft or the HotA Crew.
+Source implementation and upstream-supplied editor SVG icon shapes are MIT-licensed (see [LICENSE](LICENSE)). The canonical glyphs in `public/h3-icons/` are included from the upstream MIT-licensed editor. Any separately distributed game screenshots or optional game-art assets are third-party materials and not covered by MIT. The built-in templates are also user-supplied community materials. Before publishing a public repository or site, verify you have the necessary rights to redistribute the game artwork and template collections. This application is not affiliated with Ubisoft or the HotA Crew.

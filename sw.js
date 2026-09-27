@@ -1,5 +1,5 @@
 /* Offline service worker. Keep VERSION in sync with package.json and manifest. */
-const VERSION='1.2.0';
+const VERSION='1.3.0';
 const CACHE=`h3tc-studio-v${VERSION}`;
 const ASSETS=[
   './','./index.html','./styles.css','./manifest.webmanifest',
@@ -8,7 +8,7 @@ const ASSETS=[
   './public/icons/icon.svg','./public/icons/icon-192.png',
   './public/icons/icon-512.png','./public/icons/apple-touch-icon.png',
   './public/icons/icon-192-maskable.png','./public/icons/icon-512-maskable.png',
-  './samples/catalog.json',
+  './samples/catalog.json','./samples/upstream-layouts.json',
   './samples/01-skirmish.txt',
   './samples/02-skirmish-m-u-200.txt',
   './samples/03-speed1-m-u.txt',

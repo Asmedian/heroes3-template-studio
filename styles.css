@@ -143,3 +143,26 @@ html[data-theme="light"] select option{background-color:#fff;color:#1b293d}
 
 /* Keep supplied HotA screenshot glyphs recognizable against darker player cards. */
 .node .hota-glyph{filter:drop-shadow(0 0 1px rgba(250,252,255,.34));image-rendering:auto}
+
+/* v1.3: constrain long map headings at all viewport widths. */
+.editor-toolbar{min-width:0;max-width:100%;overflow:visible}
+.editor-toolbar>.map-heading{flex:1 1 0;min-width:0;max-width:100%;overflow:hidden}
+.map-title-row{min-width:0;max-width:100%;width:100%;gap:10px}
+.map-title-row #map-title{display:block;min-width:0;max-width:100%;flex:1 1 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help}
+.map-stats{flex:0 0 auto;min-width:0;max-width:40%;overflow:hidden;text-overflow:ellipsis}
+.editor-actions{flex:0 0 auto;min-width:0}
+.map-title-tooltip[hidden]{display:none}
+.map-title-tooltip{position:fixed;z-index:100;max-width:calc(100vw - 24px);box-sizing:border-box;max-height:min(50vh,350px);overflow:auto;padding:12px 14px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-size:13px;line-height:1.55;white-space:normal;overflow-wrap:anywhere;word-break:break-word;box-shadow:0 10px 34px var(--shadow);pointer-events:none}
+#map-title:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:650px){
+ .editor-toolbar>.map-heading{width:100%}
+ .map-title-row #map-title{max-width:none;margin:0}
+ .map-stats{max-width:38%}
+ .map-title-row{align-items:center}
+}
+/* Upstream vector icons remain crisp in both themes and exported SVG/PNG. */
+.node .upstream-glyph{filter:drop-shadow(0 0 .8px rgba(255,255,255,.14));image-rendering:auto}
+
+.connection.dangling .conn-line{stroke:var(--error);stroke-dasharray:9 6;stroke-width:2}
+.connection.dangling .conn-label{fill:var(--error)}
+.connection .conn-terminal{fill:var(--error);stroke:var(--panel);stroke-width:2;pointer-events:none}

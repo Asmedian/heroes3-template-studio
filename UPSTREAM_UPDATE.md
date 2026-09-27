@@ -4,7 +4,7 @@
 
 ## 1. Зафиксировать текущую базу и скачать upstream
 
-Версия, по которой создана веб-версия 1.2.0: `sokie/heroes3-template-util` commit **`e0143ce06d5cb8d616d5facd4e05569437878a07`**, upstream package version **`0.3.0`**. Веб-проект использует MIT-лицензию upstream (см. `LICENSE`).
+Версия, по которой создана веб-версия 1.3.0: `sokie/heroes3-template-util` commit **`e0143ce06d5cb8d616d5facd4e05569437878a07`**, upstream package version **`0.3.0`**. Веб-проект использует MIT-лицензию upstream (см. `LICENSE`).
 
 ```bash
 # From the web project root:
@@ -59,7 +59,7 @@ git diff -- src/schema.json src/schema-data.js
 | Sidecar `.h3tc-layout.json` | `src/sidecar.js`, экспорт/импорт `src/app.js` |
 | Команды редактора, перетаскивание, экспорт | `src/app.js`, `index.html`, `styles.css` |
 | Темы и размер окна, PWA | `styles.css`, `manifest.webmanifest`, `sw.js`, `public/icons/` |
-| Новые иконки шахт/городов и графика шаблонов | `src/visuals.js`, `index.html` (inline SVG), `public/hota-icons/`; следите за правами на стороннюю графику |
+| Новые иконки шахт/городов и графика шаблонов | `src/visuals.js`, `index.html` (inline SVG), `public/h3-icons/`; следите за правами на стороннюю графику |
 | Английский/русский язык | `src/i18n.js` плюс видимые строки `src/app.js`, `index.html` |
 | Каталог встроенных шаблонов | `samples/catalog.json`, `samples/*.txt`, `sw.js`; сохранить корректность SHA-256 и лицензионных прав |
 

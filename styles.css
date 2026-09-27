@@ -85,7 +85,7 @@ html[data-theme="dark"]{
 .node-treasure{font-size:23px;font-weight:800;font-variant-numeric:tabular-nums}
 .node-size{font-size:12px;font-weight:700;opacity:.85}
 .node-section-caption{font-size:10px;font-weight:700}
-.node-type-hint{font-size:9px;font-weight:700;opacity:.78;text-transform:uppercase}
+
 .node-id-label{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
 .node .h3-slot-count{font-size:10px;font-weight:800;paint-order:stroke;stroke:var(--neutral-low);stroke-opacity:.18;stroke-width:1px}
 .h3-slot{cursor:grab}
@@ -189,3 +189,10 @@ html[data-theme="light"],html[data-theme="dark"]{--player-red:#e64d4d;--player-b
  /* Keep every toolbar button clickable even when the properties drawer is open. */
  .inspector{top:110px}
 }
+
+/* v1.4.1: composite the graph while panning instead of repainting per SVG event. */
+#canvas-content,#drag-preview{transform-origin:0 0;transform-box:view-box;will-change:transform}
+#canvas.canvas-panning .node .node-border{filter:none}
+/* Swords must contrast with light player, silver and gold cards in dark mode. */
+.node .h3-icon-swords{color:#263344}
+html[data-theme="dark"] .node[data-owner="0"][data-richness="low"] .h3-icon-swords{color:#e5edf7}

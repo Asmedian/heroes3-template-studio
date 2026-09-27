@@ -167,13 +167,37 @@ function fitView(initial=false){const m=current();if(!m||!m.zones.length)return;
  store.scale=fit;
  store.tx=(store.viewport.w-b.w*store.scale)/2-b.x*store.scale;
  store.ty=(store.viewport.h-b.h*store.scale)/2-b.y*store.scale;
- transformCanvas();
+ finishCanvasTransform();
 }
-function transformCanvas(){const g=$('canvas-content');g.setAttribute('transform',`translate(${store.tx} ${store.ty}) scale(${store.scale})`);$('drag-preview').setAttribute('transform',`translate(${store.tx} ${store.ty}) scale(${store.scale})`);renderStatus();}
+// Keep pointer events cheap: draw at most once per animation frame. A CSS transform
+// lets the browser composite the cached SVG layer instead of repainting all icons
+// and SVG drop shadows for every high-frequency pointer event.
+let canvasFrame=0;
+let renderedZoom=null;
+let dragRect=null;
+function flushCanvasTransform(){
+ canvasFrame=0;
+ const css=`translate3d(${store.tx}px, ${store.ty}px, 0) scale(${store.scale})`;
+ const svg=`translate(${store.tx} ${store.ty}) scale(${store.scale})`;
+ for(const id of ['canvas-content','drag-preview']){
+  const layer=$(id);
+  layer.style.transform=css;
+  // Preserve the SVG transform attribute for serialization, inspection and
+  // browsers that fall back from compositor-backed CSS transforms.
+  layer.setAttribute('transform',svg);
+ }
+}
+function updateZoomIndicator(){
+ const zoom=Math.round(store.scale*100),label=zoom+'%';
+ if(zoom!==renderedZoom||$('zoom-value').textContent!==label){$('zoom-value').textContent=label;renderedZoom=zoom;}
+}
+function transformCanvas(){updateZoomIndicator();if(!canvasFrame)canvasFrame=requestAnimationFrame(flushCanvasTransform);}
+function finishCanvasTransform(){if(canvasFrame){cancelAnimationFrame(canvasFrame);canvasFrame=0;}flushCanvasTransform();updateZoomIndicator();}
+
 function zoomAt(factor,x=store.viewport.w/2,y=store.viewport.h/2){const old=store.scale,ne=Math.max(.14,Math.min(3.5,old*factor));
- store.tx=x-(x-store.tx)*ne/old;store.ty=y-(y-store.ty)*ne/old;store.scale=ne;transformCanvas();}
+ store.tx=x-(x-store.tx)*ne/old;store.ty=y-(y-store.ty)*ne/old;store.scale=ne;finishCanvasTransform();}
 const world=({x,y})=>({x:(x-store.tx)/store.scale,y:(y-store.ty)/store.scale});
-const mousePos=e=>{const b=$('canvas').getBoundingClientRect();return{x:e.clientX-b.left,y:e.clientY-b.top};};
+const mousePos=e=>{const b=dragRect??$('canvas').getBoundingClientRect();return{x:e.clientX-b.left,y:e.clientY-b.top};};
 const touchPoints=new Map();
 let pinch=null;
 const pinchGeometry=()=>{const [a,b]=[...touchPoints.values()];return{distance:Math.hypot(a.x-b.x,a.y-b.y),x:(a.x+b.x)/2,y:(a.y+b.y)/2};};
@@ -263,7 +287,6 @@ function canvasMarkup(map){
     (neutralTowns.length?`<text class="node-section-caption" x="${playerTowns.length?122:11}" y="77">N:</text>`+neutralTowns.map((entry,j)=>smallSlot('town',entry.kind,entry,(playerTowns.length?143:32)+j*37,69)).join(''):'');
   const mineStart=towns.length?109:76;
   const mineRow=mines.map((entry,j)=>smallSlot('mine',entry.resource,entry,14+(j%5)*43,mineStart+Math.floor(j/5)*43)).join('');
-  const caption=appearance.computer?'AI':appearance.owner?'P'+appearance.owner:appearance.richness;
   const placement=String(z.zone_options?.placement??'').trim().toLowerCase();
   const groundIcon=['ground','underground'].includes(placement)?svgIcon(placement,CARD_W/2-10,CARD_H-28,18,'#bbb6aa'):'';
   const modified=Boolean(String(z.zone_options?.objects??'').trim());
@@ -275,7 +298,7 @@ function canvasMarkup(map){
     ${Array.from({length:swords},(_,j)=>svgIcon('swords',CARD_W-11-(j+1)*21,10,20)).join('')}
     <text class="node-size" x="12" y="55">S ${esc(z.base_size||'—')}</text>${appearance.computer?svgIcon('computer',112,41,17,'#505a63'):''}</g>
     ${townRow}
-    ${mineRow}${groundIcon}<text class="node-type-hint" x="12" y="${CARD_H-12}">${esc(caption)}</text>
+    ${mineRow}${groundIcon}
     <text class="node-id-label" x="${CARD_W-12}" y="${CARD_H-11}" text-anchor="end">${esc(z.id)}</text>
     ${appearance.computer?svgIcon('computer',CARD_W-45,CARD_H-25,13,'#565a5e'):''}</g>`;
  }).join('');return edges+zones;
@@ -289,28 +312,30 @@ function renderCanvas(){const map=current();$('canvas-content').innerHTML=map?ca
 function select(kind,index){store.selected={kind,index};store.tab='general';store.inspectorView='selection';store.inspectorView='selection';store.connectMode=false;
  $('inspector').classList.add('open');renderAll();}
 function handleCanvasDown(e){if(e.button!==0&&e.button!==1)return;
+ dragRect=$('canvas').getBoundingClientRect();
  const btn=e.target.closest('[data-zone-index]'),conn=e.target.closest('[data-conn-index]'),p=mousePos(e);
  if(e.pointerType==='touch'){
   touchPoints.set(e.pointerId,p);
   if(touchPoints.size===2){
    const g=pinchGeometry();pinch={startDistance:Math.max(1,g.distance),startScale:store.scale,anchor:world(g)};
-   store.drag=null;$('drag-preview').innerHTML='';
+   store.drag=null;$('drag-preview').innerHTML='';$('canvas').classList.add('canvas-panning');
    e.preventDefault();$('canvas').setPointerCapture(e.pointerId);return;
   }
   if(touchPoints.size>2){e.preventDefault();return;}
  }
- if(conn&&!btn){select('connection',+conn.dataset.connIndex);return;}
+ if(conn&&!btn){dragRect=null;select('connection',+conn.dataset.connIndex);return;}
  if(btn){const i=+btn.dataset.zoneIndex,z=current()?.zones[i];if(!z)return;
   if(store.connectMode){if(!store.connectFrom){store.connectFrom=z.id;toast('Выберите вторую зону');}else{
     let from=store.connectFrom;store.connectFrom=null;store.connectMode=false;
     commit('Добавлена связь',()=>{current().connections.push(freshConnection(store.pack.format,from,z.id));store.selected={kind:'connection',index:current().connections.length-1};});
-  }return;}
+  }dragRect=null;return;}
   store.drag={type:e.altKey?'connect':'zone',index:i,from:z.id,initial:current().layout[z.id]?{...current().layout[z.id]}:{x:0,y:0},moved:false,at:p,snapshot:capture()};
   if(!e.altKey){store.selected={kind:'zone',index:i};store.inspectorView='selection';}
   if(e.pointerType!=='touch')$('inspector').classList.add('open');renderInspector();renderCanvas();
  }else{
   if(store.connectMode){store.connectMode=false;store.connectFrom=null;toast('Добавление связи отменено.');renderToolbar();}
   store.drag={type:'pan',at:p,initial:{x:store.tx,y:store.ty}};
+  $('canvas').classList.add('canvas-panning');
  }
  e.preventDefault();$('canvas').setPointerCapture(e.pointerId);
 }
@@ -334,8 +359,9 @@ function handleCanvasMove(e){
 }
 function handleCanvasUp(e){
  if(e.pointerType==='touch')touchPoints.delete(e.pointerId);
- if(pinch){if(touchPoints.size<2)pinch=null;store.drag=null;return;}
- const d=store.drag;if(!d)return;store.drag=null;$('drag-preview').innerHTML='';
+ if(pinch){if(touchPoints.size<2){pinch=null;$('canvas').classList.remove('canvas-panning');dragRect=null;finishCanvasTransform();}store.drag=null;return;}
+ const d=store.drag;if(!d){dragRect=null;return;}store.drag=null;$('drag-preview').innerHTML='';
+ dragRect=null;finishCanvasTransform();$('canvas').classList.remove('canvas-panning');
  if(d.type==='zone'&&!d.moved&&e.pointerType==='touch'){$('inspector').classList.add('open');renderInspector();}
  try{$('canvas').releasePointerCapture(e.pointerId);}catch{}
  if(d.type==='zone'&&d.moved){
@@ -352,7 +378,7 @@ function handleCanvasUp(e){
 $('canvas').addEventListener('pointerdown',handleCanvasDown);
 $('canvas').addEventListener('pointermove',handleCanvasMove);
 $('canvas').addEventListener('pointerup',handleCanvasUp);
-$('canvas').addEventListener('pointercancel',e=>{touchPoints.delete(e.pointerId);pinch=null;store.drag=null;$('drag-preview').innerHTML='';});
+$('canvas').addEventListener('pointercancel',e=>{touchPoints.delete(e.pointerId);pinch=null;store.drag=null;dragRect=null;$('canvas').classList.remove('canvas-panning');$('drag-preview').innerHTML='';finishCanvasTransform();});
 $('canvas').addEventListener('wheel',e=>{e.preventDefault();let p=mousePos(e);zoomAt(Math.exp(-e.deltaY*.00125),p.x,p.y);},{passive:false});
 $('zoom-in').onclick=()=>zoomAt(1.25);$('zoom-out').onclick=()=>zoomAt(.8);$('zoom-fit').onclick=()=>fitView();
 $('canvas').addEventListener('keydown',e=>{const n=e.target.closest?.('[data-zone-index]');if(n&&(e.key==='Enter'||e.key===' ')){e.preventDefault();select('zone',+n.dataset.zoneIndex);}});
@@ -565,7 +591,7 @@ function svgStyles(){
   const owners=colors.map((name,i)=>`.node[data-owner="${i+1}"] .node-border{fill:${v('player-'+name)}}`).join('');
   return `${owners}.node[data-owner="0"][data-richness="low"] .node-border{fill:${v('neutral-low')}}.node[data-owner="0"][data-richness="mid"] .node-border{fill:${v('neutral-mid')}}.node[data-owner="0"][data-richness="high"] .node-border{fill:${v('neutral-high')}}
   .node-border{stroke:${v('card-edge')};stroke-width:1.7}.node .node-junction-rim{stroke:#707780;stroke-width:10;fill:none}.node text{font-family:Arial,sans-serif;fill:${v('zone-text')};font-weight:700}
-  .node-treasure{font-size:23px}.node-size{font-size:12px}.node-type-hint{font-size:9px}.node-id-label{font-size:17px}.h3-slot-count{font-size:10px}.node-section-caption{font-size:10px}
+  .node-treasure{font-size:23px}.node-size{font-size:12px}.node-id-label{font-size:17px}.h3-slot-count{font-size:10px}.node-section-caption{font-size:10px}
   .conn-line{fill:none;stroke:${v('soft')};stroke-width:2}.conn-hit{display:none}.conn-wide .conn-line{stroke-width:6}.conn-fictive .conn-line{stroke-dasharray:2 9}.conn-roadless .conn-line{stroke-dasharray:11 7}.conn-road-overlay{fill:none;stroke:white;stroke-width:1;stroke-dasharray:5 6}.conn-teleport .conn-line{stroke:${v('accent')};stroke-dasharray:6 4}.dangling .conn-line{stroke:${v('error')};stroke-dasharray:6 5}
   .conn-label-bg{fill:${v('conn-label-bg')};stroke:${v('line')}}.conn-label{fill:${v('conn-label')};font:700 12px Arial;text-anchor:middle;dominant-baseline:middle}`;
 }

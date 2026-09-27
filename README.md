@@ -2,7 +2,7 @@
 
 **Offline, installable visual random-map template editor and format converter for Heroes of Might and Magic III: Shadow of Death and Horn of the Abyss.**
 
-This is an independent, browser-based implementation built from [sokie/heroes3-template-util](https://github.com/sokie/heroes3-template-util) (upstream Python/PySide6 v0.3.0, commit `e0143ce06d5cb8d616d5facd4e05569437878a07`). It runs as a static site on GitHub Pages without a server, account, npm build or external API. App version: **1.4.0**.
+This is an independent, browser-based implementation built from [sokie/heroes3-template-util](https://github.com/sokie/heroes3-template-util) (upstream Python/PySide6 v0.3.0, commit `e0143ce06d5cb8d616d5facd4e05569437878a07`). It runs as a static site on GitHub Pages without a server, account, npm build or external API. App version: **1.4.1**.
 
 **Suggested GitHub repository description:**
 > Offline PWA for editing, visualizing, and converting Heroes III random-map templates (SoD, HotA 1.7/1.8), with English/Russian UI.
@@ -114,3 +114,8 @@ On iOS, use Safari **Share → Add to Home Screen**. On desktop Chrome/Edge, use
 ## Attribution and distribution
 
 The upstream software implementation is MIT-licensed (see [LICENSE](LICENSE)). The eight raster icons and Fort/Village SVGs in `public/template-icons/` were supplied separately by the user; their redistribution rights are **not established by the upstream MIT license**. The built-in templates are likewise user-supplied community materials. Before publishing a public repository or site, verify you have the necessary rights to redistribute the game artwork and template collections. This application is not affiliated with Ubisoft or the HotA Crew.
+
+
+### 1.4.1 visual and performance corrections
+
+Zone type labels are no longer rendered on cards. Neutral zones use white, silver-gradient, or gold-gradient backgrounds based on their score. Swords on bright cards remain dark in either theme. High-frequency canvas pan events are coalesced to one compositor-backed transform per animation frame, with SVG card shadows temporarily disabled during a pan. Run `python3 tests/browser_pan_regression.py` for browser-specific coverage. This check is also part of GitHub Actions; the full responsive suite tests 13 PC/tablet/mobile resolutions in both themes.

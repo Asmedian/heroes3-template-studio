@@ -4,7 +4,7 @@
 
 ## 1. Зафиксировать текущую базу и скачать upstream
 
-Версия, по которой создана веб-версия 1.4.0: `sokie/heroes3-template-util` commit **`e0143ce06d5cb8d616d5facd4e05569437878a07`**, upstream package version **`0.3.0`**. Веб-проект использует MIT-лицензию upstream (см. `LICENSE`).
+Версия, по которой создана веб-версия 1.4.1: `sokie/heroes3-template-util` commit **`e0143ce06d5cb8d616d5facd4e05569437878a07`**, upstream package version **`0.3.0`**. Веб-проект использует MIT-лицензию upstream (см. `LICENSE`).
 
 ```bash
 # From the web project root:

@@ -109,23 +109,35 @@ async def main():
                         await page.screenshot(path=str(ARTIFACTS/f'{name}-sidebar.png'))
                         await page.locator('.map-item').first.click()
                         await page.locator('#zoom-fit').click()
-                    # Test a fully visible node rather than assuming zone #1 is onscreen
-                    # after deliberate initial readable-zoom on compact screens.
+                    # selectMap() schedules fitView() on requestAnimationFrame. On very narrow
+                    # CI viewports the frame can land between a bounding-box read and a raw
+                    # coordinate tap, making an otherwise visible node move underneath the tap.
+                    # Wait for the deferred fit, then require a node whose CENTER is actually
+                    # hit-testable and let Playwright resolve the element's current tap point.
+                    await page.evaluate('()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
                     cv=await page.locator('#canvas').bounding_box()
                     visible_index=await page.evaluate('''() => {
                       const c=document.querySelector('#canvas').getBoundingClientRect();
                       return [...document.querySelectorAll('.node')].findIndex(n=>{
-                        const r=n.getBoundingClientRect();return r.width>=8&&r.height>=8&&
-                        r.left>=c.left+3&&r.top>=c.top+Math.min(68,c.height*.25)&&r.right<=c.right-3&&r.bottom<=c.bottom-Math.min(62,c.height*.17);
+                        const r=n.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2;
+                        const hit=document.elementFromPoint(x,y);
+                        return r.width>=8&&r.height>=8&&
+                          r.left>=c.left+3&&r.top>=c.top+Math.min(68,c.height*.25)&&
+                          r.right<=c.right-3&&r.bottom<=c.bottom-Math.min(62,c.height*.17)&&
+                          hit?.closest('.node')===n;
                       });
                     }''')
                     node=page.locator('.node').nth(visible_index) if visible_index>=0 else page.locator('.node').first
                     r=await node.bounding_box()
                     if visible_index>=0 and r and cv and r['width']>=8 and r['height']>=10 and r['x']>=cv['x'] and r['y']>=cv['y'] and r['x']+r['width']<=cv['x']+cv['width'] and r['y']+r['height']<=cv['y']+cv['height']:
-                        cx,cy=r['x']+r['width']/2,r['y']+r['height']/2
-                        if mobile: await page.touchscreen.tap(cx,cy)
-                        else: await page.mouse.click(cx,cy)
-                        check('open' in (await page.locator('#inspector').get_attribute('class')).split(),f'{name}: inspector did not open after node select')
+                        if mobile: await node.tap()
+                        else: await node.click()
+                        try:
+                            await page.wait_for_function("()=>document.querySelector('#inspector')?.classList.contains('open')",timeout=2500)
+                            inspector_open=True
+                        except Exception:
+                            inspector_open=False
+                        check(inspector_open,f'{name}: inspector did not open after node select')
                         await page.wait_for_timeout(250)
                         await page.screenshot(path=str(ARTIFACTS/f'{name}-inspector.png'))
                         if width<=970:
@@ -135,7 +147,7 @@ async def main():
                                 await close.click()
                                 check('open' not in (await page.locator('#inspector').get_attribute('class')).split(),f'{name}: inspector did not close')
                     else:
-                        failures.append(f'{name}: first node not fully within canvas (node={r}, canvas={cv})')
+                        failures.append(f'{name}: no fully visible hit-testable node within canvas (node={r}, canvas={cv})')
                     check(not errors,f'{name}: JavaScript errors after interactions: {errors}')
                 except Exception as exc:
                     failures.append(f'{name}: EXCEPTION: {exc}')

@@ -263,11 +263,21 @@ async def run():
                 await mpage.locator('#zoom-fit').click()
                 await mpage.locator('#zoom-in').click()
                 await mpage.locator('#zoom-in').click()
-                node=mpage.locator('.node').first
-                box=await node.bounding_box()
-                assert box
-                await mpage.touchscreen.tap(box['x']+box['width']/2,box['y']+box['height']/2)
-                await mpage.locator('#inspector-title').get_by_text('Зона #1').wait_for()
+                # Topology-aware diagrams can put the first zone outside the screen
+                # after manual zooming. Tap an actually visible card instead of its
+                # off-screen bounding box or a card hidden by the editor toolbar.
+                target=await mpage.evaluate('''() => {
+                  for (const node of document.querySelectorAll('.node')) {
+                    const box=node.getBoundingClientRect();
+                    const x=box.x+box.width/2,y=box.y+box.height/2;
+                    if(document.elementFromPoint(x,y)?.closest('.node')===node)
+                      return {x,y,id:node.querySelector('.node-id-label')?.textContent.trim()};
+                  }
+                  return null;
+                }''')
+                assert target,'No visible card can be selected at the current zoom level.'
+                await mpage.touchscreen.tap(target['x'],target['y'])
+                await mpage.locator('#inspector-title').get_by_text('Зона #'+target['id']).wait_for()
                 await mpage.locator('input[data-path="base_size"]').fill('123')
                 await mpage.locator('input[data-path="base_size"]').press('Tab')
                 await mpage.locator('#inspector-close').click()

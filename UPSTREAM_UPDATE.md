@@ -4,7 +4,7 @@
 
 ## 1. Зафиксировать текущую базу и скачать upstream
 
-Версия, по которой создана веб-версия 1.4.2: `sokie/heroes3-template-util` commit **`e0143ce06d5cb8d616d5facd4e05569437878a07`**, upstream package version **`0.3.0`**. Веб-проект использует MIT-лицензию upstream (см. `LICENSE`).
+Версия, по которой создана веб-версия 1.5.0: `sokie/heroes3-template-util` commit **`e0143ce06d5cb8d616d5facd4e05569437878a07`**, upstream package version **`0.3.0`**. Веб-проект использует MIT-лицензию upstream (см. `LICENSE`).
 
 ```bash
 # From the web project root:
@@ -55,7 +55,8 @@ git diff -- src/schema.json src/schema-data.js
 | Конвертеры SoD↔HotA, HotA 1.7↔1.8 | `src/core.js`: `sodTo17`, `hota17To18`, `hota18To17`, `hotaToSod` |
 | Новые поля `Map`, `Zone`, `Connection`, `PackMetadata` | `src/core.js`, инспектор и формы `src/app.js` |
 | Перенумерация, подсказки, список проверок | `src/core.js`: `renumberMap`, `remapHintRefsDetailed`, `validatePack` |
-| Алгоритм раскладки, координаты HotA | `src/layout.js`, `src/app.js` |
+| Алгоритмы раскладки, графовые мотивы и координаты HotA | `src/layout.js`, `src/layout-motifs.js`, `src/app.js` |
+| Множественные соединения и подписи охраны | `src/geometry.js`, `src/app.js`, `styles.css` |
 | Sidecar `.h3tc-layout.json` | `src/sidecar.js`, экспорт/импорт `src/app.js` |
 | Команды редактора, перетаскивание, экспорт | `src/app.js`, `index.html`, `styles.css` |
 | Темы и размер окна, PWA | `styles.css`, `manifest.webmanifest`, `sw.js`, `public/icons/` |
@@ -124,3 +125,7 @@ python3 scripts/bump_version.py 1.4.2
 ## Сохранение исходных байтов при обновлениях каталога (Git/CI)
 
 Все файлы `templates/*.txt` и `tests/fixtures/*` содержат оригинальные байты, включая CRLF и иногда смешанные переводы строк. Файл `.gitattributes` **обязателен** при `git add`: он запрещает автоматическую конвертацию переводов строк для этих файлов. При обновлении `Templates.zip` сначала сохраните `.gitattributes`, затем копируйте оригинальные байты в `templates/` и пересчитывайте контрольные суммы только по оригинальным файлам. После добавления данных выполните `npm test` и проверку Git checkout из нового коммита. Не исправляйте падение CI заменой ожидаемых SHA-256 на хеши испорченных после нормализации файлов. See README for clean-checkout guidance; the release ZIP includes local-only `PROJECT_TESTS.md`.
+
+## 1.5.0: Проверка графических алгоритмов после синхронизации
+
+Если upstream меняет модель связей, в особенности параллельные строки между двумя зонами, заново проверьте `src/geometry.js` и `src/layout-motifs.js`. Они не должны сливать одинаковые пары зон: каждой исходной строке соответствуют отдельный SVG-путь и собственный индекс редактирования. Проверки: `npm test`, `python3 tests/browser_v150.py`, `python3 tests/catalog_browser.py`. Для повторения эталонного сравнения используйте сохранённые пользователем схемы только как визуальные образцы — они не являются обязательными файловыми зависимостями сайта.

@@ -1,9 +1,9 @@
 /* Offline service worker. Keep VERSION in sync with package.json and manifest. */
-const VERSION='1.4.2';
+const VERSION='1.5.0';
 const CACHE=`h3tc-studio-v${VERSION}`;
 const ASSETS=[
   './','./index.html','./styles.css','./manifest.webmanifest',
-  './src/app.js','./src/core.js','./src/layout.js','./src/sidecar.js','./src/schema-data.js',
+  './src/app.js','./src/core.js','./src/layout.js','./src/layout-motifs.js','./src/geometry.js','./src/sidecar.js','./src/schema-data.js',
   './src/i18n.js','./src/visuals.js',
   './public/icons/icon.svg','./public/icons/icon-192.png',
   './public/icons/icon-512.png','./public/icons/apple-touch-icon.png',

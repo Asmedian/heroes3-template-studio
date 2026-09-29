@@ -1,5 +1,6 @@
 import {SCHEMA,FORMATS,parseBytes,parseText,serializePack,convertPack,freshPack,freshZone,freshConnection,validatePack,renumberMap,remapHintRefsDetailed} from './core.js';
-import {autoLayout,resizeLayout,saveImagePositions,separate,CARD_W,CARD_H} from './layout.js';
+import {autoLayout,topologyLayout,resizeLayout,saveImagePositions,separate,CARD_W,CARD_H} from './layout.js';
+import {connectionGeometry,connectionBundles} from './geometry.js';
 import {createSidecar,readSidecar} from './sidecar.js';
 import {compactExact,treasureScore,zoneAppearance,townEntries,mineEntries,connectionAppearance} from './visuals.js';
 import {initializeLanguage,setLanguage,getLanguage,translateText} from './i18n.js';
@@ -44,7 +45,10 @@ function persistLayout(){const map=current();if(!map||!store.fileKey)return;
 function restoreLayout(index){const map=store.pack.maps[index];if(!map)return;
  let restored={...map.layout};
  try{const json=localStorage.getItem((store.builtinId?'h3tc-layout-v2-':'h3tc-layout-')+store.fileKey+'-'+index);
-  if(json){const parsed=JSON.parse(json);if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))restored={...restored,...parsed};}
+  if(json){const parsed=JSON.parse(json),previous=store.presetLayouts?.[index]?.positions;
+   const sameAsOldPreset=previous&&Object.keys(parsed).length===Object.keys(previous).length&&Object.keys(previous).every(id=>Math.abs(Number(parsed[id]?.x)-previous[id].x)<2&&Math.abs(Number(parsed[id]?.y)-previous[id].y)<2);
+   // Migrate unmodified cached automatic presets while retaining manually moved zones.
+   if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)&&!sameAsOldPreset)restored={...restored,...parsed};}
  }catch{}
  const ids=new Set(map.zones.map(z=>z.id));
  restored=Object.fromEntries(Object.entries(restored).filter(([id,p])=>ids.has(id)&&Number.isFinite(p?.x)&&Number.isFinite(p?.y)));
@@ -63,10 +67,18 @@ async function openFile(file){
   toast(`Открыт ${file.name} · ${pack.maps.length} карт · ${total} зон`);
  }catch(e){modal('Ошибка открытия',`<p>${esc(e?.message||e)}</p><p>Поддерживаются текстовые шаблоны SoD, HotA 1.7.x и HotA 1.8.x.</p>`);}
 }
+const topologyPrepared=new WeakSet();
+function upgradeTopology(map){
+ if(topologyPrepared.has(map))return;
+ topologyPrepared.add(map);
+ const suggested=topologyLayout(map);
+ if(suggested)map.layout=suggested;
+}
 function setPack(pack,bytes=null,builtinId=null,presetLayouts=null){
  $('canvas-legend').open=false;
  store.pack=pack;store.builtinId=builtinId;store.presetLayouts=presetLayouts;if($('built-in-select'))$('built-in-select').value=builtinId||'';store.mapIndex=0;store.selected={kind:'map',index:0};store.tab='general';store.inspectorView='selection';store.undo=[];store.redo=[];
  store.connectMode=false;store.connectFrom=null;store.fileKey=fileSignature(bytes??new TextEncoder().encode(pack.filename),pack.filename);
+ if(builtinId&&pack.maps[0])upgradeTopology(pack.maps[0]);
  restoreLayout(0);store.loaded=true;
  $('export-format').value=pack.format;
  renderAll();requestAnimationFrame(()=>fitView(true));
@@ -113,7 +125,7 @@ $('built-in-select').onchange=e=>loadBuiltin(e.target.value);
 
 function selectMap(index){if(!store.pack?.maps[index])return;
  $('canvas-legend').open=false;
- persistLayout();store.mapIndex=index;restoreLayout(index);store.selected={kind:'map',index};store.tab='general';store.inspectorView='selection';store.connectMode=false;store.connectFrom=null;
+ persistLayout();store.mapIndex=index;if(store.builtinId)upgradeTopology(store.pack.maps[index]);restoreLayout(index);store.selected={kind:'map',index};store.tab='general';store.inspectorView='selection';store.connectMode=false;store.connectFrom=null;
  $('sidebar').classList.remove('open');renderAll();requestAnimationFrame(()=>fitView(true));
 }
 function renderAll(){renderSidebar();renderToolbar();renderCanvas();renderLegend();renderInspector();renderStatus();}
@@ -243,15 +255,6 @@ function danglingConnectors(map){
  });
  return result;
 }
-function getConnectorPath(a,b,offset=0){
- const ax=a.x+CARD_W/2,ay=a.y+CARD_H/2,bx=b.x+CARD_W/2,by=b.y+CARD_H/2,dx=bx-ax,dy=by-ay;
- if(Math.hypot(dx,dy)<2)return{d:`M${ax-10} ${ay-15} C${ax-80} ${ay-110} ${ax+90} ${ay-110} ${ax+35} ${ay-14}`,x:ax+14,y:ay-83};
- const angle=Math.atan2(dy,dx),startDist=Math.min(CARD_W/2/Math.max(.0001,Math.abs(Math.cos(angle))),CARD_H/2/Math.max(.0001,Math.abs(Math.sin(angle)))),endDist=startDist;
- const x1=ax+Math.cos(angle)*startDist,y1=ay+Math.sin(angle)*startDist,x2=bx-Math.cos(angle)*endDist,y2=by-Math.sin(angle)*endDist;
- const mx=(x1+x2)/2-Math.sin(angle)*offset,my=(y1+y2)/2+Math.cos(angle)*offset;
- const d=Math.abs(offset)>1?`M${x1} ${y1} Q${2*mx-(x1+x2)/2} ${2*my-(y1+y2)/2} ${x2} ${y2}`:`M${x1} ${y1} L${x2} ${y2}`;
- return{d,x:mx,y:my};
-}
 // The icon symbols are shipped with the page, so diagram and PNG export stay offline.
 const GLYPH_COLORS={chest:'#cc9957',swords:'#ccd2dd'};
 const svgIcon=(name,x,y,size,color='')=>`<use class="h3-icon h3-icon-${esc(name)}" href="#h3-${esc(String(name).toLowerCase())}" x="${x}" y="${y}" width="${size}" height="${size}"/>`;
@@ -267,18 +270,22 @@ function smallSlot(kind,name,entry,x,y,owner='0'){
 function canvasMarkup(map){
  const nodesById=new Map(map.zones.map(z=>[z.id.trim(),z]));
  const visibleStubs=danglingConnectors(map);
- const connectionCount=new Map(),edges=map.connections.map((c,i)=>{
+ const geometry=connectionGeometry(map.connections,map.layout,{width:CARD_W,height:CARD_H,
+   labelWidths:map.connections.map(c=>{const value=String(c.value??'').trim();
+     const label=String(c.border_guard??'').trim().toLowerCase()==='x'?'┃':value&&value!=='0'?compactExact(value):'';
+     return label?Math.max(44,label.length*14+20):0;})});
+ const edges=map.connections.map((c,i)=>{
   const a=map.layout[c.zone1.trim()],b=map.layout[c.zone2.trim()],ok=!!(a&&b),visual=connectionAppearance(c);
   let path;let className=`connection ${store.selected.kind==='connection'&&store.selected.index===i?'selected':''} ${visual.wide?'conn-wide':''} ${visual.fictive?'conn-fictive':''} ${visual.roadRequired?'conn-road-required':''} ${visual.roadForbidden?'conn-roadless':''} ${visual.border?'conn-border':''} ${visual.type==='teleport'?'conn-teleport':''} ${ok?'':'dangling'}`;
-  if(ok){const key=[c.zone1.trim(),c.zone2.trim()].sort().join(':'),offsetIndex=connectionCount.get(key)||0;connectionCount.set(key,offsetIndex+1);path=getConnectorPath(a,b,offsetIndex?25*Math.ceil(offsetIndex/2)*(offsetIndex%2?-1:1):0);}
+  if(ok){path=geometry[i];}
   else if(a||b){path=visibleStubs.get(i);}
   else{const lastX=Math.max(...Object.values(map.layout??{}).map(pt=>pt.x+CARD_W),CARD_W),x=lastX+36,y=Math.min(...Object.values(map.layout??{}).map(pt=>pt.y),110)+36+(i%8)*54;path={d:`M${x} ${y} l88 0`,x:x+44,y:y};}
   const raw=strVal(c.value).trim(),label=!a&&!b?'⚠':visual.border?'┃':raw&&raw!=='0'?compactExact(raw):'';
-  const textW=Math.max(36,label.length*7+12);
-  return `<g class="${className}" data-conn-index="${i}" data-value-raw="${esc(raw)}" aria-label="${esc('Connection '+c.zone1+' to '+c.zone2+', exact guard value '+(raw||'0'))}"><title>${esc('Connection '+c.zone1+'–'+c.zone2+'; guard '+(raw||'0')+(visual.wide?'; wide':'')+(visual.roadRequired?'; road required':'')+(visual.roadForbidden?'; roads forbidden':''))}</title>
+  const textW=Math.max(44,label.length*14+20);
+  return `<g class="${className}" data-conn-index="${i}" data-parallel-count="${path.total||1}" data-lane="${path.lane??0}" data-value-raw="${esc(raw)}" aria-label="${esc('Connection '+c.zone1+' to '+c.zone2+', exact guard value '+(raw||'0'))}"><title>${esc('Connection '+c.zone1+'–'+c.zone2+'; guard '+(raw||'0')+(visual.wide?'; wide':'')+(visual.roadRequired?'; road required':'')+(visual.roadForbidden?'; roads forbidden':''))}</title>
     <path class="conn-line" d="${path.d}"/>${visual.roadRequired?`<path class="conn-road-overlay" d="${path.d}"/>`:''}<path class="conn-hit" d="${path.d}"/>
     ${path.ex!==undefined?`<circle class="conn-terminal" cx="${path.ex}" cy="${path.ey}" r="5"/>`:''}
-    ${label?`<rect class="conn-label-bg" x="${path.x-textW/2}" y="${path.y-11}" width="${textW}" height="22" rx="7"/><text class="conn-label" x="${path.x}" y="${path.y}">${esc(label)}</text>`:''}</g>`;
+    ${label?`<rect class="conn-label-bg" x="${path.x-textW/2}" y="${path.y-18}" width="${textW}" height="36" rx="8"/><text class="conn-label" x="${path.x}" y="${path.y}">${esc(label)}</text>`:''}</g>`;
  }).join('');
  const zones=map.zones.map((z,i)=>{
   const p=map.layout[z.id]??{x:110+i*240,y:120},appearance=zoneAppearance(z),selected=store.selected.kind==='zone'&&store.selected.index===i;
@@ -365,6 +372,7 @@ function renderLegend(){
  if(links.length){
    if(appearance.some(a=>!a.wide&&!a.fictive&&!['teleport','monolith'].includes(a.type)))connRows.push(legendItem(legendLine(),legendWords('Обычная связь между зонами','Normal zone connection')));
    if(appearance.some(a=>a.wide))connRows.push(legendItem(legendLine('wide'),legendWords('Широкая связь без охраны','Wide, unguarded connection')));
+   if([...connectionBundles(links).values()].some(rows=>rows.length>1))connRows.push(legendItem(legendLine('multi'),legendWords('Параллельные линии — отдельные связи между одними зонами; каждое число относится к своей линии','Parallel lines are separate connections between the same two zones, each with its own guard value')));
    if(appearance.some(a=>a.fictive))connRows.push(legendItem(legendLine('fictive'),legendWords('Фиктивная связь (влияет на размещение зон)','Fictive link (affects zone placement)')));
    if(appearance.some(a=>a.roadRequired))connRows.push(legendItem(legendLine('road-required'),legendWords('Обязательная дорога через связь','Required road through connection')));
    if(appearance.some(a=>a.roadForbidden))connRows.push(legendItem(legendLine('no-road'),legendWords('Дорога запрещена','Road forbidden')));
@@ -385,6 +393,11 @@ function renderCanvas(){const map=current();$('canvas-content').innerHTML=map?ca
 }
 function select(kind,index){store.selected={kind,index};store.tab='general';store.inspectorView='selection';store.inspectorView='selection';store.connectMode=false;
  $('inspector').classList.add('open');renderAll();}
+function captureCanvasPointer(pointerId){
+ // Some synthetic pointer events have no active pointer in the browser; do not
+ // let them crash unrelated click-away handlers or leave a drag half-started.
+ try{$('canvas').setPointerCapture(pointerId);}catch(error){if(error.name!=='NotFoundError'&&error.name!=='InvalidStateError')throw error;}
+}
 function handleCanvasDown(e){if(e.button!==0&&e.button!==1)return;
  dragRect=$('canvas').getBoundingClientRect();
  const btn=e.target.closest('[data-zone-index]'),conn=e.target.closest('[data-conn-index]'),p=mousePos(e);
@@ -393,7 +406,7 @@ function handleCanvasDown(e){if(e.button!==0&&e.button!==1)return;
   if(touchPoints.size===2){
    const g=pinchGeometry();pinch={startDistance:Math.max(1,g.distance),startScale:store.scale,anchor:world(g)};
    store.drag=null;$('drag-preview').innerHTML='';$('canvas').classList.add('canvas-panning');
-   e.preventDefault();$('canvas').setPointerCapture(e.pointerId);return;
+   e.preventDefault();captureCanvasPointer(e.pointerId);return;
   }
   if(touchPoints.size>2){e.preventDefault();return;}
  }
@@ -411,7 +424,7 @@ function handleCanvasDown(e){if(e.button!==0&&e.button!==1)return;
   store.drag={type:'pan',at:p,initial:{x:store.tx,y:store.ty}};
   $('canvas').classList.add('canvas-panning');
  }
- e.preventDefault();$('canvas').setPointerCapture(e.pointerId);
+ e.preventDefault();captureCanvasPointer(e.pointerId);
 }
 function handleCanvasMove(e){
  if(e.pointerType==='touch'&&touchPoints.has(e.pointerId))touchPoints.set(e.pointerId,mousePos(e));
@@ -529,8 +542,42 @@ function renderInspector(){const p=store.pack,m=current(),s=inspectorSelection()
 }
 $('inspector-context-tabs').addEventListener('click',e=>{const button=e.target.closest('[data-inspector-view]');if(!button||button.disabled)return;store.inspectorView=button.dataset.inspectorView;store.tab=store.inspectorView==='map'?'Карта':'Основное';renderInspector();});
 $('inspector-tabs').addEventListener('click',e=>{const el=e.target.closest('[data-tab]');if(el){store.tab=el.dataset.tab;renderInspector();}});
+// Live preview updates the model on each keystroke, but expensive diagram updates
+// are coalesced to one animation frame and one undo entry per editing session.
+const liveEdits=new WeakMap();
+let liveRefreshId=0;
+function scheduleInspectorPreview(){
+ if(liveRefreshId)return;
+ liveRefreshId=requestAnimationFrame(()=>{
+  liveRefreshId=0;
+  renderSidebar();renderToolbar();renderCanvas();renderLegend();renderStatus();
+ });
+}
+$('inspector-body').addEventListener('input',e=>{
+ const field=e.target.closest('[data-path]');
+ if(!field||field.type==='checkbox'||field.tagName==='SELECT'||e.isComposing)return;
+ const selection=inspectorSelection(),path=field.dataset.path.split('.'),model=selectedModel();if(!model)return;
+ // Renaming a zone must atomically update all links, layout keys and object hints.
+ if(selection.kind==='zone'&&path.length===1&&path[0]==='id')return;
+ let obj=model;for(let i=0;i<path.length-1;i++){if(obj[path[i]]==null)obj[path[i]]={};obj=obj[path[i]];}
+ const key=path.at(-1),value=field.value;
+ if(obj[key]===value)return;
+ if(!liveEdits.has(field))liveEdits.set(field,{snapshot:capture(),selection:{...store.selected},tab:store.tab,label:'Updated: '+path.join(' / ')});
+ obj[key]=value;store.pack.dirty=true;scheduleInspectorPreview();
+});
+function finishLiveEdit(field){
+ const edit=liveEdits.get(field);if(!edit)return false;
+ liveEdits.delete(field);
+ if(edit.snapshot!==capture()){
+  store.undo.push(edit);if(store.undo.length>(store.pack.maps.length>90?18:50))store.undo.shift();store.redo=[];
+  store.pack.dirty=true;persistLayout();if(liveRefreshId){cancelAnimationFrame(liveRefreshId);liveRefreshId=0;}
+  renderAll();status(edit.label);
+ }
+ return true;
+}
 $('inspector-body').addEventListener('change',e=>{
  const field=e.target.closest('[data-path]');if(!field)return;
+ if(finishLiveEdit(field))return;
  const path=field.dataset.path.split('.'),selected=selectedModel();if(!selected)return;
  const value=field.type==='checkbox'?(field.checked?'x':''):field.value;
  let obj=selected;for(let i=0;i<path.length-1;i++){if(obj[path[i]]==null)obj[path[i]]={};obj=obj[path[i]];}
@@ -584,7 +631,7 @@ function addConnection(){if(!current()?.zones.length||current().zones.length<2){
  store.connectMode=true;store.connectFrom=null;renderToolbar();toast('Нажмите на первую зону, затем на вторую. Или Alt + перетащите между ними.');}
 function doLayout(){commit('Расстановка зон',()=>{const map=current(),preset=store.presetLayouts?.[store.mapIndex];
   const matches=preset&&preset.name===map.name&&preset.connections===map.connections.length&&preset.ids.join('\0')===map.zones.map(z=>z.id).join('\0');
-  map.layout=matches?structuredClone(preset.positions):autoLayout(map,{preferStored:false});map.layoutDirty=true;});fitView();}
+  map.layout=topologyLayout(map)||(matches?structuredClone(preset.positions):autoLayout(map,{preferStored:false}));map.layoutDirty=true;});fitView();}
 function changeSpread(factor){commit(factor>1?'Раздвинуты зоны':'Сближены зоны',()=>{resizeLayout(current(),factor);current().layoutDirty=true;});fitView();}
 function doReid(sort){const warnings=[];commit('Перенумерованы зоны',()=>renumberMap(current(),{sort,warnings}));
  if(warnings.length)modal('Проверка подсказок зон',`<p>Некоторые HotA-подсказки не изменены из-за неизвестного синтаксиса или ссылок:</p><div class="issues">${warnings.slice(0,30).map(w=>`<div class="issue badge-warning">${esc(w)}</div>`).join('')}</div>`);
@@ -667,7 +714,7 @@ function svgStyles(){
   .node-border{stroke:${v('card-edge')};stroke-width:1.7}.node .node-junction-rim{stroke:#707780;stroke-width:10;fill:none}.node text{font-family:Arial,sans-serif;fill:${v('zone-text')};font-weight:700}
   .node-treasure{font-size:32px;font-weight:850}.node-size{font-size:15px}.node-id-label{font-size:23px}.h3-slot-count{font-size:14px;font-weight:850}.h3-slot-count.count-condensed{font-size:11px}.node-section-caption{font-size:14px}.node-cpu,.node-placement{font-size:12px;font-weight:800}
   .conn-line{fill:none;stroke:${v('soft')};stroke-width:2}.conn-hit{display:none}.conn-wide .conn-line{stroke-width:6}.conn-fictive .conn-line{stroke-dasharray:2 9}.conn-roadless .conn-line{stroke-dasharray:11 7}.conn-road-overlay{fill:none;stroke:white;stroke-width:1;stroke-dasharray:5 6}.conn-teleport .conn-line{stroke:${v('accent')};stroke-dasharray:6 4}.dangling .conn-line{stroke:${v('error')};stroke-dasharray:6 5}
-  .conn-label-bg{fill:${v('conn-label-bg')};stroke:${v('line')}}.conn-label{fill:${v('conn-label')};font:700 12px Arial;text-anchor:middle;dominant-baseline:middle}`;
+  .conn-label-bg{fill:${v('conn-label-bg')};stroke:${v('line')}}.conn-label{fill:${v('conn-label')};font:750 24px Arial;text-anchor:middle;dominant-baseline:middle}`;
 }
 
 async function exportPNG(){if(!current()?.zones.length)return;const map=current(),b=bounds(map),pad=54,w=Math.ceil(b.w+pad*2),h=Math.ceil(b.h+pad*2),cs=getComputedStyle(document.documentElement);
@@ -717,7 +764,7 @@ async function installApp(){if(store.installPrompt){
   modal('Install application',`<p>Open this app over HTTPS (for example, on GitHub Pages) and use your browser's install menu.</p><ul>
    <li><b>Chrome / Edge:</b> choose Install app in the ⋮ menu or use the address-bar install icon.</li>
    <li><b>iPhone / iPad (Safari):</b> Share → Add to Home Screen.</li>
-   <li><b>Android / Xiaomi:</b> accept the browser installation, then check your app drawer. Some launchers require you to add the installed app to the home screen manually.</li>
+   <li><b>Android:</b> accept the browser installation, then check your app drawer. Some launchers require you to add the installed app to the home screen manually.</li>
    <li><b>Firefox:</b> desktop PWA installation may not be supported. Use Add to Home Screen on supported mobile devices.</li></ul>
    <p>After the first load, you can work offline with local template files.</p>`,[{label:'Close'}]);return;
  }
@@ -726,7 +773,7 @@ async function installApp(){if(store.installPrompt){
 // Allow Chrome to show its own install banner. The user may also use our Install
 // button while the saved event remains promptable; never claim that an icon is installed.
 window.addEventListener('beforeinstallprompt',event=>{store.installPrompt=event;$('install-btn').title='Установить приложение';});
-window.addEventListener('appinstalled',()=>{store.installPrompt=null;toast(getLanguage()==='ru'?'Приложение установлено. Если значка нет на главном экране Xiaomi, найдите приложение в списке всех приложений и добавьте значок вручную.':'App installed. On Xiaomi, find the app in the app drawer and add its icon to your home screen if needed.');});
+window.addEventListener('appinstalled',()=>{store.installPrompt=null;toast(getLanguage()==='ru'?'Приложение установлено. Если значка нет на главном экране Android, найдите приложение в списке всех приложений и добавьте значок вручную.':'App installed. On Android, find the app in the app drawer and add its icon to your home screen if needed.');});
 function runAction(action){$('more-menu').classList.add('hidden');if(!current())return;
  if(action==='layout')doLayout();else if(action==='spread')changeSpread(1.17);else if(action==='compact')changeSpread(.84);
  else if(action.startsWith('reid-'))doReid(action.slice(5));
@@ -735,7 +782,12 @@ function runAction(action){$('more-menu').classList.add('hidden');if(!current())
 }
 $('more-menu').addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(b)runAction(b.dataset.action);});
 $('more-btn').onclick=()=>$('more-menu').classList.toggle('hidden');
-document.addEventListener('pointerdown',e=>{if(!e.target.closest('#more-menu,#more-btn'))$('more-menu').classList.add('hidden');});
+document.addEventListener('pointerdown',e=>{
+ if(!e.target.closest('#more-menu,#more-btn'))$('more-menu').classList.add('hidden');
+ if(!e.target.closest('#canvas-legend'))$('canvas-legend').open=false;
+ if(window.matchMedia('(max-width:970px)').matches&&$('inspector').classList.contains('open')&&
+    !e.target.closest('#inspector,#canvas [data-zone-index],#canvas [data-conn-index]'))$('inspector').classList.remove('open');
+},true);
 $('open-btn').onclick=()=>$('file-input').click();
 $('file-input').onchange=e=>{openFile(e.target.files[0]);e.target.value='';};
 $('layout-input').onchange=e=>{if(e.target.files[0])importLayout(e.target.files[0]);e.target.value='';};
@@ -772,7 +824,7 @@ document.addEventListener('keydown',e=>{
  if((e.ctrlKey||e.metaKey)&&e.key==='0'){e.preventDefault();fitView();}
  if((e.ctrlKey||e.metaKey)&&e.shiftKey&&!editing&&e.key==='+'){e.preventDefault();if(current())changeSpread(1.17);}
  if((e.ctrlKey||e.metaKey)&&e.shiftKey&&!editing&&e.key==='_'){e.preventDefault();if(current())changeSpread(.84);}
- if(e.key==='Escape'){store.connectMode=false;store.connectFrom=null;$('more-menu').classList.add('hidden');$('sidebar').classList.remove('open');$('inspector').classList.remove('open');renderToolbar();}
+ if(e.key==='Escape'){store.connectMode=false;store.connectFrom=null;$('canvas-legend').open=false;$('more-menu').classList.add('hidden');$('sidebar').classList.remove('open');$('inspector').classList.remove('open');renderToolbar();}
  if(!editing&&(e.key==='Delete'||e.key==='Backspace')&&['zone','connection'].includes(store.selected.kind)){
   e.preventDefault();$('inspector-footer').querySelector('[data-inspector-action="delete"]')?.click();
  }

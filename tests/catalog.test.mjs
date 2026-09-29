@@ -68,7 +68,8 @@ test('every non-empty map has collision-free initial layout including widest pac
 });
 test('resource icons, colors and numeric shortening never mutate exact template values',()=>{
  assert.equal(compactExact('8500'),'8.5k');assert.equal(compactExact('10000'),'10k');
- assert.equal(compactExact('8501'),'8.501k');assert.equal(compactExact('999999999'),'999.999999m');
+ assert.equal(compactExact('8501'),'8501');assert.equal(compactExact('999999999'),'999999999');
+ assert.equal(compactExact('1001'),'1001');assert.equal(compactExact('10500'),'10.5k');
  assert.equal(compactExact('1000000000'),'1b');
  for(let owner=1;owner<=8;owner++){
   const zone=freshZone('sod',String(owner));zone.human_start='x';zone.ownership=String(owner);

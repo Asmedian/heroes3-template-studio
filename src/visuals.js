@@ -14,7 +14,10 @@ export function compactExact(value){
   if(!magnitude)return raw;
   const unit={3:'k',6:'m',9:'b'}[magnitude];
   const lead=digits.slice(0,-magnitude)||'0', fractional=(digits.slice(-magnitude)+decimal).replace(/0+$/,'');
-  return (negative?'-':'')+lead+(fractional?'.'+fractional:'')+unit;
+  const compact=(negative?'-':'')+lead+(fractional?'.'+fractional:'')+unit;
+  // Only abbreviate when it saves or preserves display space; never round a value.
+  // For example 8500 -> 8.5k, but 8501 -> 8501 (not 8.501k).
+  return compact.length<=raw.length?compact:raw;
 }
 const amount=value=>{const number=Number(String(value??'').trim());return Number.isFinite(number)?number:0;};
 export function treasureScore(zone){

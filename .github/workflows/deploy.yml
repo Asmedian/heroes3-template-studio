@@ -49,6 +49,8 @@ jobs:
         run: python tests/browser_v143.py
       - name: v1.5 topology motifs and multi-edge browser regressions
         run: python tests/browser_v150.py
+      - name: v1.5.1 canonical file layout, numeric inputs and PWA cache regressions
+        run: python tests/browser_v151.py
       - name: All 59 built-ins, 238 browser-rendered maps and localizations
         run: python tests/catalog_browser.py
       - name: English-language UI audit

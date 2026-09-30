@@ -1,5 +1,5 @@
 /* Offline service worker. Keep VERSION in sync with package.json and manifest. */
-const VERSION='1.5.0';
+const VERSION='1.5.1';
 const CACHE=`h3tc-studio-v${VERSION}`;
 const ASSETS=[
   './','./index.html','./styles.css','./manifest.webmanifest',
@@ -104,18 +104,32 @@ self.addEventListener('install',event=>{
 self.addEventListener('activate',event=>{
  event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('h3tc-studio-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
 });
-self.addEventListener('fetch',event=>{
- const request=event.request,url=new URL(request.url);
- if(request.method!=='GET'||url.origin!==self.location.origin||!url.pathname.startsWith(new URL(self.registration.scope).pathname))return;
- if(request.mode==='navigate'){
-  event.respondWith(fetch(request).then(response=>{
-    if(response.ok){const copy=response.clone();caches.open(CACHE).then(c=>c.put('./index.html',copy));}
-    return response;
-  }).catch(async()=>(await caches.match('./index.html'))||new Response('Offline page unavailable',{status:503})));
- }else{
-  event.respondWith(caches.match(request).then(cached=>cached||fetch(request).then(response=>{
-    if(response.ok&&response.type==='basic'){const copy=response.clone();caches.open(CACHE).then(c=>c.put(request,copy));}
-    return response;
-  })));
+self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting();});
+const freshRequest=request=>new Request(request,{cache:'no-store'});
+async function networkFirst(request,fallback){
+ try{
+  const response=await fetch(freshRequest(request));
+  if(response.ok&&response.type==='basic'){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy));}
+  return response;
+ }catch{
+  return (await caches.match(request,{ignoreSearch:true}))||(fallback?await caches.match(fallback,{ignoreSearch:true}):null)||new Response('Resource unavailable offline',{status:503});
  }
+}
+self.addEventListener('fetch',event=>{
+ const request=event.request,url=new URL(request.url),scopePath=new URL(self.registration.scope).pathname;
+ if(request.method!=='GET'||url.origin!==self.location.origin||!url.pathname.startsWith(scopePath))return;
+ if(request.mode==='navigate'){
+  event.respondWith(networkFirst(request,'./index.html'));
+  return;
+ }
+ // Application code and catalogs are network-first so reopening an installed/PWA
+ // copy cannot silently combine a new HTML document with stale JS/CSS from an old cache.
+ const relative=url.pathname.slice(scopePath.length);
+ const mutable=/\.(?:html|css|js|webmanifest|json)$/i.test(relative);
+ if(mutable){event.respondWith(networkFirst(request));return;}
+ // Large immutable template/icon assets remain fast and available offline.
+ event.respondWith(caches.match(request).then(cached=>cached||fetch(request).then(response=>{
+  if(response.ok&&response.type==='basic'){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy));}
+  return response;
+ })));
 });

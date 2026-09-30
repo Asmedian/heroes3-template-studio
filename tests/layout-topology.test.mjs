@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {parseBytes} from '../src/core.js';
-import {topologyLayout,autoLayout,edgeCrossings,CARD_W,CARD_H} from '../src/layout.js';
+import {topologyLayout,autoLayout,compactLayout,edgeCrossings,CARD_W,CARD_H} from '../src/layout.js';
 
 const input=name=>parseBytes(new Uint8Array(fs.readFileSync(new URL(name,import.meta.url))));
 const noCollision=points=>{
@@ -61,4 +61,13 @@ test('layout depends on topology rather than template name or connection multipl
  const renamed=structuredClone(map);renamed.name='Definitely not Jebus';
  renamed.connections=[...renamed.connections,...renamed.connections.filter(c=>c.zone1==='1'&&c.zone2==='5')];
  assert.deepEqual(topologyLayout(renamed),plain);
+});
+
+
+test('layout compaction preserves topology while enforcing a practical base card gap',()=>{
+ const original={a:{x:0,y:0},b:{x:1300,y:0},c:{x:2600,y:0}};
+ const compact=compactLayout(original,{gap:68});
+ assert.ok(compact.b.x-compact.a.x>=CARD_W+68);
+ assert.ok(compact.c.x-compact.b.x>=CARD_W+68);
+ assert.ok(compact.c.x-compact.a.x<original.c.x-original.a.x);
 });

@@ -27,7 +27,7 @@ export function edgeCrossings(edges,points){
  }
  return count;
 }
-function normalizeTopology(points,pad=115){
+function normalizeTopology(points,pad=78){
  const ids=Object.keys(points),res={};
  let factor=0;
  for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){
@@ -73,7 +73,7 @@ function hypercubeLayout(map,graph){
    positions[id]={x:4.5*Math.cos(angle),y:4.5*Math.sin(angle)};
   }
  }
- return normalizeTopology(positions,110);
+ return compactLayout(normalizeTopology(positions,72),{gap:68});
 }
 function symmetricFourStarts(map,graph){
  if(graph.ids.length<8||graph.ids.length>42)return null;
@@ -102,7 +102,7 @@ function symmetricFourStarts(map,graph){
    }
    if(change<1e-8)break;
   }
-  const positioned=normalizeTopology(points,125);if(!positioned)continue;
+  const positioned=normalizeTopology(points,82);if(!positioned)continue;
   const crossing=edgeCrossings(graph.edges,positioned);
   if(crossing===0&&order===orders[0])return positioned;
   const edgeDistances=graph.edges.map(([a,b])=>Math.hypot(positioned[a].x-positioned[b].x,positioned[a].y-positioned[b].y));
@@ -119,7 +119,24 @@ function symmetricFourStarts(map,graph){
 export function topologyLayout(map){
  if(!map?.zones?.length)return null;
  const graph=topologyGraph(map);if(!graph)return null;
- return hypercubeLayout(map,graph)||symmetricFourStarts(map,graph)||motifLayout(map,graph);
+ const proposed=hypercubeLayout(map,graph)||symmetricFourStarts(map,graph)||motifLayout(map,graph);
+ return proposed?compactLayout(proposed,{gap:68}):null;
+}
+
+/** Uniformly compact a finished layout until the nearest pair reaches a small,
+ * readable card gap. Uniform scaling preserves symmetry and edge crossings. */
+export function compactLayout(positions,{gap=68,minScale=.38}={}){
+ const ids=Object.keys(positions??{});if(ids.length<2)return structuredClone(positions??{});
+ const p=structuredClone(positions),cx=ids.reduce((n,id)=>n+p[id].x,0)/ids.length,cy=ids.reduce((n,id)=>n+p[id].y,0)/ids.length;
+ let required=Math.max(0,minScale);
+ for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){
+  const a=p[ids[i]],b=p[ids[j]],dx=Math.abs(a.x-b.x),dy=Math.abs(a.y-b.y);
+  const sx=dx>1e-7?(CARD_W+gap)/dx:Infinity,sy=dy>1e-7?(CARD_H+gap)/dy:Infinity;
+  required=Math.max(required,Math.min(sx,sy));
+ }
+ const scale=Math.min(1,required);
+ if(scale<.995)for(const id of ids){p[id].x=cx+(p[id].x-cx)*scale;p[id].y=cy+(p[id].y-cy)*scale;}
+ return separate(p,gap);
 }
 
 /** Small deterministic crossing-reduction pass for layouts without a strong motif.
@@ -173,7 +190,7 @@ export function autoLayout(map,{preferStored=true}={}){
    const points=neighbor.length?neighbor:Object.values(positions);
    positions[z.id]={x:mean(points,'x')+((hash(z.id)%5)-2)*44,y:mean(points,'y')+((hash(z.id)%7)-3)*34};
   }
-  return separate(positions,155);
+  return compactLayout(separate(positions,82),{gap:68});
  }
  const topology=topologyLayout(map);
  if(topology)return topology;
@@ -198,7 +215,7 @@ export function autoLayout(map,{preferStored=true}={}){
   let cool=Math.max(0.15,1-iter/160);
   for(const z of zones){const d=delta[z.id];positions[z.id].x+=Math.max(-24,Math.min(24,d.x))*cool;positions[z.id].y+=Math.max(-24,Math.min(24,d.y))*cool;}
  }
- return refineCrossings(map,separate(positions,155));
+ return compactLayout(refineCrossings(map,separate(positions,155)),{gap:68});
 }
 export function separate(positions,pad=110){
  let p=structuredClone(positions);const ids=Object.keys(p);
@@ -220,7 +237,7 @@ export function resizeLayout(map,factor){
  if(!Object.keys(map.layout??{}).length)map.layout=autoLayout(map);
  const points=Object.values(map.layout),cx=points.reduce((n,p)=>n+p.x,0)/points.length,cy=points.reduce((n,p)=>n+p.y,0)/points.length;
  for(const p of points){p.x=Math.round(cx+(p.x-cx)*factor);p.y=Math.round(cy+(p.y-cy)*factor);}
- map.layout=separate(map.layout,110);return map.layout;
+ map.layout=separate(map.layout,68);return map.layout;
 }
 export function saveImagePositions(map){
  const zones=map.zones.filter(z=>map.layout?.[z.id]);if(!zones.length)return;

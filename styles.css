@@ -240,3 +240,27 @@ html[data-theme="dark"] .node[data-owner="0"][data-richness="low"] .h3-icon-swor
 .legend-conn.selected line{stroke:var(--accent);stroke-width:3}
 
 .legend-conn.dangling line{stroke:var(--error);stroke-dasharray:6 5}
+
+/* v1.5.1: unified controls, dropdown chevrons and scrollbars. */
+html[data-theme="dark"]{--scroll-track:#121a27;--scroll-thumb:#3a4a60;--scroll-thumb-hover:#50637e;--select-chevron:#93a2b8}
+html[data-theme="light"]{--scroll-track:#edf1f6;--scroll-thumb:#c0cada;--scroll-thumb-hover:#9eabc0;--select-chevron:#66758c}
+*{scrollbar-width:thin;scrollbar-color:var(--scroll-thumb) var(--scroll-track)}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-track{background:var(--scroll-track)}
+*::-webkit-scrollbar-thumb{background:var(--scroll-thumb);border:2px solid var(--scroll-track);border-radius:999px}
+*::-webkit-scrollbar-thumb:hover{background:var(--scroll-thumb-hover)}
+select{
+ appearance:none;-webkit-appearance:none;
+ background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='m3 5 4 4 4-4' fill='none' stroke='%238b98ac' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+ background-repeat:no-repeat;background-position:right 8px center;background-size:14px 14px;padding-right:28px!important;
+}
+.export-wrap select{padding-right:25px!important;background-position:right 5px center}
+.lang-select{padding-right:18px!important;background-position:right 2px center;background-size:11px 11px}
+.canvas-top-info .legend-chevron{width:25px;height:25px;flex-basis:25px;border:1px solid var(--line);border-radius:6px;background:var(--button);color:var(--muted);transition:background var(--transition),border-color var(--transition)}
+.canvas-top-info .legend-chevron svg{width:14px;height:14px;transition:transform .15s ease;transform-origin:50% 50%}
+.canvas-top-info summary:hover .legend-chevron{background:var(--button-hover);border-color:var(--card-edge)}
+.canvas-top-info[open] .legend-chevron{transform:none}
+.canvas-top-info[open] .legend-chevron svg{transform:rotate(180deg)}
+.field input,.field select,.field textarea,.map-search,#built-in-select,.lang-select,.export-wrap{transition:border-color var(--transition),background-color var(--transition),box-shadow var(--transition)}
+.field input:hover,.field select:hover,.field textarea:hover,.map-search:hover,#built-in-select:hover,.lang-select:hover{border-color:var(--card-edge)}
+.field input:focus,.field select:focus,.field textarea:focus,.map-search:focus,#built-in-select:focus,.lang-select:focus{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 18%,transparent)}

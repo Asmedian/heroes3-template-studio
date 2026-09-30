@@ -4,7 +4,7 @@
  */
 const cmp=(a,b)=>Number.isFinite(+a)&&Number.isFinite(+b)?+a-+b:String(a).localeCompare(String(b));
 const START=z=>String(z.human_start??'').toLowerCase().trim()==='x'||String(z.computer_start??'').toLowerCase().trim()==='x';
-const norm=(coords,width=228,height=220,pad=140)=>{
+const norm=(coords,width=228,height=220,pad=82)=>{
  const ids=Object.keys(coords);if(!ids.length)return null;
  let scale=1;
  for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){

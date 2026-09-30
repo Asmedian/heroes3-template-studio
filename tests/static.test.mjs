@@ -35,7 +35,7 @@ test('HTML contains named install, theme, upload, canvas, zoom and export contro
   const html=file('index.html');
   for(const id of ['install-btn','theme-btn','file-input','canvas','zoom-in','zoom-out','zoom-fit','save-btn','convert-btn','export-format','drop-hint','layout-input'])
     assert.ok(html.includes(`id="${id}"`),`Missing control ${id}`);
-  assert.ok(html.includes('rel="manifest"'));assert.ok(html.includes('src="./src/app.js"'));
+  assert.ok(html.includes('rel="manifest"'));assert.match(html,/src="\.\/src\/app\.js(?:\?v=[^"]+)?"/);
   assert.ok(file('styles.css').includes('html[data-theme="dark"]'));
   assert.ok(file('styles.css').includes('html[data-theme="light"]'));
   assert.ok(!file('styles.css').includes('.file-actions #save-btn{display:none}')); // Save must remain on mobile.
@@ -116,9 +116,9 @@ test('native PWA install banner is not suppressed and both mobile app meta tags 
 
 test('enlarged card artwork survives SVG/PNG export without a heavy legend rebuild on pan',()=>{
   const app=file('src/app.js'),css=file('styles.css');
-  assert.ok(app.includes("svgIcon('chest',8,6,36)"));
-  assert.ok(app.includes("svgIcon('swords',CARD_W-8-(j+1)*26,9,26)"));
-  assert.ok(app.includes('svgIcon(symbol,x,y,34)'));
+  assert.ok(app.includes("svgIcon('chest',6,3,43)"));
+  assert.ok(app.includes("svgIcon('swords',CARD_W-7-(j+1)*30,7,30)"));
+  assert.ok(app.includes('svgIcon(symbol,x,y,40)'));
   assert.ok(css.includes('.node-treasure{font-size:32px'));
   assert.ok(css.includes('.node .h3-slot-count{font-size:14px'));
   assert.ok(app.includes('.node-treasure{font-size:32px;font-weight:850}'));
@@ -139,4 +139,42 @@ test('current-map legend is collapsed by default and release documentation is co
   for(const name of ['PROJECT_CHANGES.md','PROJECT_TESTS.md'])assert.ok(ignore.split(/\r?\n/).includes(name),name);
   for(const name of ['CHANGELOG.md','CI_FIX_RU.md','CI_TEST_REPORT.md','GITHUB_ABOUT.txt','PATCH_NOTES_RU.md','TEST_REPORT.md'])
     assert.ok(!fs.existsSync(path.join(root,name)),`Obsolete release file: ${name}`);
+});
+
+
+test('v1.5.1 uses strict digit-only numeric controls and live sanitization',()=>{
+ const app=file('src/app.js');
+ assert.ok(app.includes('const isNumericField=path=>'));
+ assert.ok(app.includes('data-numeric="1" inputmode="numeric" pattern="[0-9]*"'));
+ assert.ok(app.includes("addEventListener('beforeinput'"));
+ assert.ok(app.includes("replace(/[^0-9]/g,''"));
+});
+
+test('v1.5.1 PWA update path bypasses stale app-shell caches',()=>{
+ const html=file('index.html'),app=file('src/app.js');
+ assert.ok(html.includes('styles.css?v=1.5.1'));
+ assert.ok(html.includes('src="./src/app.js?v=1.5.1"'));
+ assert.ok(app.includes("register('./sw.js?v=1.5.1'"));
+ assert.ok(app.includes("updateViaCache:'none'"));
+ assert.ok(app.includes('await registration.update()'));
+ assert.ok(sw.includes("const mutable=/\\.(?:html|css|js|webmanifest|json)$/i"));
+ assert.ok(sw.includes("cache:'no-store'"));
+ assert.ok(sw.includes("caches.match(request,{ignoreSearch:true})"));
+});
+
+test('opened files share canonical built-in layouts and do not reuse obsolete layout cache namespaces',()=>{
+ const app=file('src/app.js');
+ assert.ok(app.includes('function matchPackPresets(pack,layouts)'));
+ assert.ok(app.includes('matchPackPresets(pack,await loadUpstreamLayouts())'));
+ assert.ok(app.includes('h3tc-layout-v3-'));
+ assert.ok(app.includes('topologyLayout(map)||autoLayout(map,{preferStored:false})'));
+});
+
+test('unified scrollbars and dropdown/legend chevrons are styled consistently',()=>{
+ const css=file('styles.css');
+ assert.ok(css.includes('*::-webkit-scrollbar-thumb'));
+ assert.ok(css.includes('scrollbar-color:var(--scroll-thumb) var(--scroll-track)'));
+ assert.ok(css.includes('select{\n appearance:none'));
+ assert.ok(css.includes('.canvas-top-info .legend-chevron{width:25px'));
+ assert.ok(css.includes('.canvas-top-info[open] .legend-chevron svg{transform:rotate(180deg)}'));
 });

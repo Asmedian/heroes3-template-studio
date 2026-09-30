@@ -1,5 +1,5 @@
 import {SCHEMA,FORMATS,parseBytes,parseText,serializePack,convertPack,freshPack,freshZone,freshConnection,validatePack,renumberMap,remapHintRefsDetailed} from './core.js';
-import {autoLayout,topologyLayout,resizeLayout,saveImagePositions,separate,CARD_W,CARD_H} from './layout.js';
+import {autoLayout,topologyLayout,compactLayout,resizeLayout,saveImagePositions,separate,CARD_W,CARD_H} from './layout.js';
 import {connectionGeometry,connectionBundles} from './geometry.js';
 import {createSidecar,readSidecar} from './sidecar.js';
 import {compactExact,treasureScore,zoneAppearance,townEntries,mineEntries,connectionAppearance} from './visuals.js';
@@ -39,46 +39,51 @@ function restore(data){const snap=JSON.parse(data.snapshot);store.pack.maps=snap
  store.pack.dirty=true;persistLayout();renderAll();}
 function undo(){if(!store.undo.length)return;const change=store.undo.pop();store.redo.push({snapshot:capture(),selection:{...store.selected},tab:store.tab,label:change.label});restore(change);status('Отменено: '+change.label);}
 function redo(){if(!store.redo.length)return;const change=store.redo.pop();store.undo.push({snapshot:capture(),selection:{...store.selected},tab:store.tab,label:change.label});restore(change);status('Повторено: '+change.label);}
+const layoutStorageKey=index=>`h3tc-layout-v3-${store.fileKey}-${index}`;
+function presetMatches(map,preset){return Boolean(preset&&preset.name===map.name&&preset.connections===map.connections.length&&preset.ids.join('\0')===map.zones.map(z=>String(z.id)).join('\0'));}
+function recommendedLayout(map,index){const preset=store.presetLayouts?.[index];return presetMatches(map,preset)?compactLayout(structuredClone(preset.positions),{gap:68}):(topologyLayout(map)||autoLayout(map,{preferStored:false}));}
 function persistLayout(){const map=current();if(!map||!store.fileKey)return;
- try{localStorage.setItem((store.builtinId?'h3tc-layout-v2-':'h3tc-layout-')+store.fileKey+'-'+store.mapIndex,JSON.stringify(map.layout));}catch{ /* Storage can be disabled or full. */ }
+ try{localStorage.setItem(layoutStorageKey(store.mapIndex),JSON.stringify(map.layout));}catch{ /* Storage can be disabled or full. */ }
 }
 function restoreLayout(index){const map=store.pack.maps[index];if(!map)return;
- let restored={...map.layout};
- try{const json=localStorage.getItem((store.builtinId?'h3tc-layout-v2-':'h3tc-layout-')+store.fileKey+'-'+index);
-  if(json){const parsed=JSON.parse(json),previous=store.presetLayouts?.[index]?.positions;
-   const sameAsOldPreset=previous&&Object.keys(parsed).length===Object.keys(previous).length&&Object.keys(previous).every(id=>Math.abs(Number(parsed[id]?.x)-previous[id].x)<2&&Math.abs(Number(parsed[id]?.y)-previous[id].y)<2);
-   // Migrate unmodified cached automatic presets while retaining manually moved zones.
-   if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed)&&!sameAsOldPreset)restored={...restored,...parsed};}
- }catch{}
- const ids=new Set(map.zones.map(z=>z.id));
- restored=Object.fromEntries(Object.entries(restored).filter(([id,p])=>ids.has(id)&&Number.isFinite(p?.x)&&Number.isFinite(p?.y)));
- const candidate=Object.keys(restored).length===ids.size?restored:{...autoLayout(map),...restored};
- // Repair crowded pre-1.1.0 cached layouts only; preserve collision-free edits.
- const points=Object.values(candidate);
- const pad=store.builtinId&&store.presetLayouts?18:95;
- const crowded=points.some((p,i)=>points.slice(i+1).some(q=>Math.abs(p.x-q.x)<CARD_W+pad&&Math.abs(p.y-q.y)<CARD_H+pad));
- map.layout=crowded?separate(candidate,store.builtinId?55:130):candidate;
+ const ids=new Set(map.zones.map(z=>String(z.id))),generated=recommendedLayout(map,index);
+ let restored={};
+ // v3 deliberately does not import the old automatic cache namespace. It prevents
+ // obsolete 1.4/1.5 layouts from overriding the newer topology engine after update.
+ try{const json=localStorage.getItem(layoutStorageKey(index));if(json){const parsed=JSON.parse(json);if(parsed&&typeof parsed==='object'&&!Array.isArray(parsed))restored=parsed;}}catch{}
+ restored=Object.fromEntries(Object.entries(restored).filter(([id,p])=>ids.has(String(id))&&Number.isFinite(p?.x)&&Number.isFinite(p?.y)));
+ const candidate=Object.keys(restored).length===ids.size?restored:{...generated,...restored};
+ const points=Object.values(candidate),pad=46;
+ const crowded=points.some((a,i)=>points.slice(i+1).some(b=>Math.abs(a.x-b.x)<CARD_W+pad&&Math.abs(a.y-b.y)<CARD_H+pad));
+ map.layout=crowded?separate(candidate,68):candidate;
+}
+let upstreamLayoutsPromise=null;
+async function loadUpstreamLayouts(){
+ if(!upstreamLayoutsPromise)upstreamLayoutsPromise=fetch('./templates/upstream-layouts.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('Layout catalog unavailable');return r.json();}).catch(error=>{upstreamLayoutsPromise=null;throw error;});
+ return upstreamLayoutsPromise;
+}
+function matchPackPresets(pack,layouts){
+ const pool=Object.values(layouts?.templates??{}).flat(),used=new Set();
+ return pack.maps.map(map=>{
+  const key=map.name+'\0'+map.connections.length+'\0'+map.zones.map(z=>String(z.id)).join('\0');
+  const index=pool.findIndex((preset,i)=>!used.has(i)&&(preset.name+'\0'+preset.connections+'\0'+preset.ids.join('\0'))===key);
+  if(index<0)return null;used.add(index);return pool[index];
+ });
 }
 async function openFile(file){
  if(!file)return;
  const token=++store.loadToken;
- try{const bytes=new Uint8Array(await file.arrayBuffer());if(!/\.(h3t|txt)$/i.test(file.name))throw new Error(getLanguage()==='ru'?'Неверный тип файла. Выберите текстовый шаблон .txt (SoD) или .h3t (HotA).':'Unsupported file type. Choose a .txt (SoD) or .h3t (HotA) template.');if(bytes.some(b=>b===0)||bytes.slice(0,4096).some(b=>b<9||(b>13&&b<32)))throw new Error(getLanguage()==='ru'?'Файл содержит двоичные данные и не является текстовым шаблоном SoD/HotA.':'The file contains binary data and is not a text SoD/HotA template.');const pack=parseBytes(bytes,{filename:file.name});if(token!==store.loadToken)return;setPack(pack,bytes);
+ try{const bytes=new Uint8Array(await file.arrayBuffer());if(!/\.(h3t|txt)$/i.test(file.name))throw new Error(getLanguage()==='ru'?'Неверный тип файла. Выберите текстовый шаблон .txt (SoD) или .h3t (HotA).':'Unsupported file type. Choose a .txt (SoD) or .h3t (HotA) template.');if(bytes.some(b=>b===0)||bytes.slice(0,4096).some(b=>b<9||(b>13&&b<32)))throw new Error(getLanguage()==='ru'?'Файл содержит двоичные данные и не является текстовым шаблоном SoD/HotA.':'The file contains binary data and is not a text SoD/HotA template.');const pack=parseBytes(bytes,{filename:file.name});if(token!==store.loadToken)return;
+  let presetLayouts=null;try{presetLayouts=matchPackPresets(pack,await loadUpstreamLayouts());}catch(error){console.warn('Canonical layout catalog unavailable:',error);}
+  if(token!==store.loadToken)return;setPack(pack,bytes,null,presetLayouts);
   const total=pack.maps.reduce((s,m)=>s+m.zones.length,0);
   toast(`Открыт ${file.name} · ${pack.maps.length} карт · ${total} зон`);
  }catch(e){modal('Ошибка открытия',`<p>${esc(e?.message||e)}</p><p>Поддерживаются текстовые шаблоны SoD, HotA 1.7.x и HotA 1.8.x.</p>`);}
-}
-const topologyPrepared=new WeakSet();
-function upgradeTopology(map){
- if(topologyPrepared.has(map))return;
- topologyPrepared.add(map);
- const suggested=topologyLayout(map);
- if(suggested)map.layout=suggested;
 }
 function setPack(pack,bytes=null,builtinId=null,presetLayouts=null){
  $('canvas-legend').open=false;
  store.pack=pack;store.builtinId=builtinId;store.presetLayouts=presetLayouts;if($('built-in-select'))$('built-in-select').value=builtinId||'';store.mapIndex=0;store.selected={kind:'map',index:0};store.tab='general';store.inspectorView='selection';store.undo=[];store.redo=[];
  store.connectMode=false;store.connectFrom=null;store.fileKey=fileSignature(bytes??new TextEncoder().encode(pack.filename),pack.filename);
- if(builtinId&&pack.maps[0])upgradeTopology(pack.maps[0]);
  restoreLayout(0);store.loaded=true;
  $('export-format').value=pack.format;
  renderAll();requestAnimationFrame(()=>fitView(true));
@@ -110,13 +115,8 @@ async function loadBuiltin(id){
   const bytes=new Uint8Array(await response.arrayBuffer());if(token!==store.loadToken)return;
   const pack=parseBytes(bytes,{filename:option.textContent+'.txt'});
   let presetLayouts=null;
-  try{const layouts=await fetch('./templates/upstream-layouts.json').then(r=>{if(!r.ok)throw new Error('Layout catalog unavailable');return r.json()});
-   presetLayouts=layouts.templates[id]||null;
-   if(presetLayouts?.length===pack.maps.length)for(let i=0;i<pack.maps.length;i++){
-    const map=pack.maps[i],preset=presetLayouts[i];
-    if(preset.name===map.name&&preset.connections===map.connections.length&&preset.ids.join('\0')===map.zones.map(z=>z.id).join('\0'))map.layout=structuredClone(preset.positions);
-   }
-  }catch(error){console.warn('Upstream layout unavailable, using browser layout:',error);}
+  try{const layouts=await loadUpstreamLayouts();presetLayouts=layouts.templates[id]||null;}
+  catch(error){console.warn('Upstream layout unavailable, using browser layout:',error);}
   setPack(pack,bytes,id,presetLayouts);
  }catch(e){if(token!==store.loadToken)return;select.value=store.builtinId||'';toast('Cannot open built-in template: '+e.message);}
  finally{select.disabled=false;}
@@ -125,7 +125,7 @@ $('built-in-select').onchange=e=>loadBuiltin(e.target.value);
 
 function selectMap(index){if(!store.pack?.maps[index])return;
  $('canvas-legend').open=false;
- persistLayout();store.mapIndex=index;if(store.builtinId)upgradeTopology(store.pack.maps[index]);restoreLayout(index);store.selected={kind:'map',index};store.tab='general';store.inspectorView='selection';store.connectMode=false;store.connectFrom=null;
+ persistLayout();store.mapIndex=index;restoreLayout(index);store.selected={kind:'map',index};store.tab='general';store.inspectorView='selection';store.connectMode=false;store.connectFrom=null;
  $('sidebar').classList.remove('open');renderAll();requestAnimationFrame(()=>fitView(true));
 }
 function renderAll(){renderSidebar();renderToolbar();renderCanvas();renderLegend();renderInspector();renderStatus();}
@@ -265,7 +265,7 @@ function smallSlot(kind,name,entry,x,y,owner='0'){
   const metadata=kind==='mine'?`data-resource="${esc(entry.resource)}"`:`data-faction="${esc(entry.faction)}" data-building="${esc(name)}"`;
   return `<g class="h3-slot h3-slot-${kind} ${Number(entry.min)===0?'optional':''}" ${metadata} data-count-raw="${esc(entry.min)}" data-density-raw="${esc(entry.density)}">
     <title>${esc((kind==='mine'?entry.resource:entry.faction+' '+name)+': '+raw)}</title>
-    ${svgIcon(symbol,x,y,34)}<text class="h3-slot-count ${label.length>5?'count-condensed':''}" x="${x+17}" y="${y+43}" text-anchor="middle">${esc(label)}</text></g>`;
+    ${svgIcon(symbol,x,y,40)}<text class="h3-slot-count ${label.length>5?'count-condensed':''}" x="${x+20}" y="${y+44}" text-anchor="middle">${esc(label)}</text></g>`;
 }
 function canvasMarkup(map){
  const nodesById=new Map(map.zones.map(z=>[z.id.trim(),z]));
@@ -293,10 +293,10 @@ function canvasMarkup(map){
   const swords=swordCount(z);
   // Keep factions distinct (player-colored roofs versus neutral-gray roofs).
   const playerTowns=towns.filter(t=>t.faction==='player'),neutralTowns=towns.filter(t=>t.faction==='neutral');
-  const townRow=(playerTowns.length?`<text class="node-section-caption" x="9" y="85">P:</text>`+playerTowns.map((entry,j)=>smallSlot('town',entry.kind,entry,34+j*42,72,owner)).join(''):'')+
-    (neutralTowns.length?`<text class="node-section-caption" x="${playerTowns.length?117:9}" y="85">N:</text>`+neutralTowns.map((entry,j)=>smallSlot('town',entry.kind,entry,(playerTowns.length?140:34)+j*42,72)).join(''):'');
-  const mineStart=towns.length?121:81;
-  const mineRow=mines.map((entry,j)=>smallSlot('mine',entry.resource,entry,10+(j%5)*43,mineStart+Math.floor(j/5)*43)).join('');
+  const townRow=(playerTowns.length?`<text class="node-section-caption" x="9" y="85">P:</text>`+playerTowns.map((entry,j)=>smallSlot('town',entry.kind,entry,32+j*44,70,owner)).join(''):'')+
+    (neutralTowns.length?`<text class="node-section-caption" x="${playerTowns.length?117:9}" y="85">N:</text>`+neutralTowns.map((entry,j)=>smallSlot('town',entry.kind,entry,(playerTowns.length?138:32)+j*44,70)).join(''):'');
+  const mineStart=towns.length?120:79;
+  const mineRow=mines.map((entry,j)=>smallSlot('mine',entry.resource,entry,7+(j%5)*44,mineStart+Math.floor(j/5)*43)).join('');
   const placement=String(z.zone_options?.placement??'').trim().toLowerCase();
   const groundIcon=['ground','underground'].includes(placement)?`<text class="node-placement" x="${CARD_W-50}" y="58">${placement==='ground'?'↑':'↓'}</text>`:'';
   const modified=Boolean(String(z.zone_options?.objects??'').trim());
@@ -304,8 +304,8 @@ function canvasMarkup(map){
     <title>${esc('Zone '+z.id+' | treasure '+appearance.score+' | size '+(z.base_size||'—')+' | '+mines.map(m=>m.resource+' '+m.min+(m.density?'/'+m.density:'')).join(', '))}</title>
     <rect class="node-border" width="${CARD_W}" height="${CARD_H}" rx="8"/>
     ${appearance.junction?`<rect class="node-junction-rim" width="${CARD_W-14}" height="${CARD_H-14}" x="7" y="7" rx="5"/>`:''}
-    <g class="node-head">${svgIcon('chest',8,6,36)}<text class="node-treasure" x="49" y="35" ${String(compactExact(appearance.score)).length>4?'style="font-size:24px"':String(compactExact(appearance.score)).length>3?'style="font-size:29px"':''}>${esc(compactExact(appearance.score))}${modified?'*':''}</text>
-    ${Array.from({length:swords},(_,j)=>svgIcon('swords',CARD_W-8-(j+1)*26,9,26)).join('')}
+    <g class="node-head">${svgIcon('chest',6,3,43)}<text class="node-treasure" x="55" y="35" ${String(compactExact(appearance.score)).length>4?'style="font-size:24px"':String(compactExact(appearance.score)).length>3?'style="font-size:29px"':''}>${esc(compactExact(appearance.score))}${modified?'*':''}</text>
+    ${Array.from({length:swords},(_,j)=>svgIcon('swords',CARD_W-7-(j+1)*30,7,30)).join('')}
     <text class="node-size" x="11" y="62">S ${esc(z.base_size||'—')}</text>${appearance.computer?`<text class="node-cpu" x="${CARD_W-14}" y="61" text-anchor="end">CPU</text>`:''}</g>
     ${townRow}
     ${mineRow}${groundIcon}
@@ -472,12 +472,20 @@ $('canvas').addEventListener('keydown',e=>{const n=e.target.closest?.('[data-zon
 try{new ResizeObserver(()=>{let b=$('canvas').getBoundingClientRect();store.viewport={w:b.width||700,h:b.height||500};}).observe($('canvas'));}catch{}
 
 // Every form field is schema-backed and updated without implicit conversions.
+// Numeric schema fields accept decimal digits only. Values remain strings so serialization stays byte-compatible.
+const isNumericField=path=>/^(?:id|base_size|ownership|min_size|max_size|max_battle_rounds|zone1|zone2|value)$/.test(path)||
+ /^(?:positions)\.(?:min_human|max_human|min_total|max_total)$/.test(path)||
+ /^(?:player_towns|neutral_towns)\.(?:min_towns|min_castles|town_density|castle_density)$/.test(path)||
+ /^treasure_tiers\.\d+\.(?:low|high|density)$/.test(path)||
+ /^(?:min_mines|mine_density)\.[^.]+$/.test(path)||/^field_counts\.[^.]+$/.test(path)||
+ /^zone_options\.(?:min_objects|zone_repulsion|monsters_joining_percentage|min_airship_shipyards|airship_shipyard_density|max_block_value)$/.test(path);
+const digitsOnly=value=>String(value??'').replace(/[^0-9]/g,'');
 const f=(path,label,value,{hint='',multiline=false,select=null,placeholder=''}={})=>{
  const attr=`data-path="${esc(path)}"`,v=strVal(value);
  let elem;
  if(select){const opts=[...select];if(!opts.some(x=>x[1]===v))opts.push([v,v||'(empty)']);elem=`<select ${attr}>${opts.map(([name,val])=>`<option value="${esc(val)}" ${val===v?'selected':''}>${esc(name)}</option>`).join('')}</select>`;}
  else if(multiline)elem=`<textarea ${attr} rows="3">${esc(v)}</textarea>`;
- else elem=`<input type="text" ${attr} value="${esc(v)}" placeholder="${esc(placeholder)}" spellcheck="false">`;
+ else {const numeric=isNumericField(path);elem=`<input type="text" ${attr} ${numeric?'data-numeric="1" inputmode="numeric" pattern="[0-9]*" autocomplete="off"':'spellcheck="false"'} value="${esc(v)}" placeholder="${esc(placeholder)}">`;}
  return `<div class="field"><label>${esc(label)}</label>${elem}${hint?`<small class="field-note">${esc(hint)}</small>`:''}</div>`;
 };
 const check=(path,label,value)=>`<div class="field row-field"><label for="${esc(path)}">${esc(label)}</label><input id="${esc(path)}" type="checkbox" data-path="${esc(path)}" ${flag(value)?'checked':''}></div>`;
@@ -553,9 +561,15 @@ function scheduleInspectorPreview(){
   renderSidebar();renderToolbar();renderCanvas();renderLegend();renderStatus();
  });
 }
+$('inspector-body').addEventListener('beforeinput',e=>{
+ const field=e.target.closest?.('[data-numeric="1"]');
+ if(!field||e.isComposing||!e.inputType?.startsWith('insert')||e.data==null)return;
+ if(/[^0-9]/.test(e.data))e.preventDefault();
+});
 $('inspector-body').addEventListener('input',e=>{
  const field=e.target.closest('[data-path]');
  if(!field||field.type==='checkbox'||field.tagName==='SELECT'||e.isComposing)return;
+ if(field.dataset.numeric==='1'){const clean=digitsOnly(field.value);if(clean!==field.value)field.value=clean;}
  const selection=inspectorSelection(),path=field.dataset.path.split('.'),model=selectedModel();if(!model)return;
  // Renaming a zone must atomically update all links, layout keys and object hints.
  if(selection.kind==='zone'&&path.length===1&&path[0]==='id')return;
@@ -578,6 +592,7 @@ function finishLiveEdit(field){
 $('inspector-body').addEventListener('change',e=>{
  const field=e.target.closest('[data-path]');if(!field)return;
  if(finishLiveEdit(field))return;
+ if(field.dataset.numeric==='1'){const clean=digitsOnly(field.value);if(clean!==field.value)field.value=clean;}
  const path=field.dataset.path.split('.'),selected=selectedModel();if(!selected)return;
  const value=field.type==='checkbox'?(field.checked?'x':''):field.value;
  let obj=selected;for(let i=0;i<path.length-1;i++){if(obj[path[i]]==null)obj[path[i]]={};obj=obj[path[i]];}
@@ -629,9 +644,7 @@ function addZone(){if(!current())return;
  });}
 function addConnection(){if(!current()?.zones.length||current().zones.length<2){toast('Для связи нужны минимум две зоны.');return;}
  store.connectMode=true;store.connectFrom=null;renderToolbar();toast('Нажмите на первую зону, затем на вторую. Или Alt + перетащите между ними.');}
-function doLayout(){commit('Расстановка зон',()=>{const map=current(),preset=store.presetLayouts?.[store.mapIndex];
-  const matches=preset&&preset.name===map.name&&preset.connections===map.connections.length&&preset.ids.join('\0')===map.zones.map(z=>z.id).join('\0');
-  map.layout=topologyLayout(map)||(matches?structuredClone(preset.positions):autoLayout(map,{preferStored:false}));map.layoutDirty=true;});fitView();}
+function doLayout(){commit('Расстановка зон',()=>{const map=current();map.layout=recommendedLayout(map,store.mapIndex);map.layoutDirty=true;});fitView();}
 function changeSpread(factor){commit(factor>1?'Раздвинуты зоны':'Сближены зоны',()=>{resizeLayout(current(),factor);current().layoutDirty=true;});fitView();}
 function doReid(sort){const warnings=[];commit('Перенумерованы зоны',()=>renumberMap(current(),{sort,warnings}));
  if(warnings.length)modal('Проверка подсказок зон',`<p>Некоторые HotA-подсказки не изменены из-за неизвестного синтаксиса или ссылок:</p><div class="issues">${warnings.slice(0,30).map(w=>`<div class="issue badge-warning">${esc(w)}</div>`).join('')}</div>`);
@@ -702,7 +715,7 @@ async function importLayout(file){try{
  commit('Позиции загружены',()=>{
   for(const [i,valid] of positions){const map=store.pack.maps[i];
     Object.assign(map.layout,valid);map.layoutDirty=true;
-    try{localStorage.setItem((store.builtinId?'h3tc-layout-v2-':'h3tc-layout-')+store.fileKey+'-'+i,JSON.stringify(map.layout));}catch{}
+    try{localStorage.setItem(layoutStorageKey(i),JSON.stringify(map.layout));}catch{}
   }
  });fitView();toast(`Позиции восстановлены: ${positions.size} карт`);
  }catch(e){toast('Layout import failed: '+e.message);}}
@@ -832,6 +845,19 @@ document.addEventListener('keydown',e=>{
 window.addEventListener('beforeunload',e=>{if(store.pack?.dirty&&store.pack.originalBytes){e.preventDefault();e.returnValue='';}});
 try{setTheme(localStorage.getItem('h3tc-theme')==='light'?'light':'dark');}catch{setTheme('dark');}
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
- window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(e=>console.warn('Service worker unavailable:',e)));
+ let reloadingForWorker=false;
+ const hadController=Boolean(navigator.serviceWorker.controller);
+ navigator.serviceWorker.addEventListener('controllerchange',()=>{
+  if(hadController&&!reloadingForWorker){reloadingForWorker=true;location.reload();}
+ });
+ window.addEventListener('load',async()=>{
+  try{
+   // Version the worker URL and bypass the HTTP cache during update checks. This
+   // prevents an installed PWA from reopening with JS/CSS from an older release.
+   const registration=await navigator.serviceWorker.register('./sw.js?v=1.5.1',{scope:'./',updateViaCache:'none'});
+   await registration.update();
+   if(registration.waiting)registration.waiting.postMessage({type:'SKIP_WAITING'});
+  }catch(e){console.warn('Service worker unavailable:',e);}
+ });
 }
 renderAll();initializeCatalog();

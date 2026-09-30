@@ -43,7 +43,7 @@ jobs:
         run: python tests/browser_v14.py
       - name: v1.4.1 pan performance, swords contrast and card regressions
         run: python tests/browser_pan_regression.py
-      - name: v1.4.2 enlarged cards, dynamic legend and native install checks
+      - name: Card, dynamic legend and native install regression checks
         run: python tests/browser_v142.py
       - name: v1.4.3 responsive menus, live editing and topology placement
         run: python tests/browser_v143.py

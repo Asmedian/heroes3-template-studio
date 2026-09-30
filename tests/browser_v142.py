@@ -56,7 +56,7 @@ async def main():
                 })''')
                 for resource in actual['mines']:
                     if resource!='airship':assert '#h3-'+resource in actual['legendIcons'],(resource,actual['legendIcons'])
-                assert actual['chestSize']=='36',actual
+                assert float(actual['chestSize'])>=40,actual
                 assert min(actual['cardFonts'])>=14,actual
                 assert actual['menu']['right']<=width+1,actual
                 assert not actual['overflow'],actual

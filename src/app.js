@@ -258,6 +258,11 @@ function danglingConnectors(map){
 // The icon symbols are shipped with the page, so diagram and PNG export stay offline.
 const GLYPH_COLORS={chest:'#cc9957',swords:'#ccd2dd'};
 const svgIcon=(name,x,y,size,color='')=>`<use class="h3-icon h3-icon-${esc(name)}" href="#h3-${esc(String(name).toLowerCase())}" x="${x}" y="${y}" width="${size}" height="${size}"/>`;
+// The source artwork has different transparent padding inside the same 40x40 slot.
+// Shift it so the visible bottoms line up at y+32, keeping one consistent gap to
+// the number below. This also fixes the low crystal/sulfur/ore/fort artwork.
+const SLOT_ICON_DY={wood:-2.5,mercury:-1,ore:-3,sulfur:-4.5,crystal:-5.5,gems:-2.5,gold:0};
+const slotIconDy=symbol=>{const key=String(symbol).toLowerCase();return key.startsWith('fort-')?-4.5:key.startsWith('village-')?0:(SLOT_ICON_DY[key]??0);};
 function smallSlot(kind,name,entry,x,y,owner='0'){
   const label=compactExact(entry.min)+entry.suffix,raw=entry.min+(entry.density?' / '+entry.density:'');
   const colored=kind==='town'&&entry.faction==='player'&&+owner>=1&&+owner<=8;
@@ -265,7 +270,7 @@ function smallSlot(kind,name,entry,x,y,owner='0'){
   const metadata=kind==='mine'?`data-resource="${esc(entry.resource)}"`:`data-faction="${esc(entry.faction)}" data-building="${esc(name)}"`;
   return `<g class="h3-slot h3-slot-${kind} ${Number(entry.min)===0?'optional':''}" ${metadata} data-count-raw="${esc(entry.min)}" data-density-raw="${esc(entry.density)}">
     <title>${esc((kind==='mine'?entry.resource:entry.faction+' '+name)+': '+raw)}</title>
-    ${svgIcon(symbol,x,y,40)}<text class="h3-slot-count ${label.length>5?'count-condensed':''}" x="${x+20}" y="${y+44}" text-anchor="middle">${esc(label)}</text></g>`;
+    ${svgIcon(symbol,x,y+slotIconDy(symbol),40)}<text class="h3-slot-count ${label.length>5?'count-condensed':''}" x="${x+20}" y="${y+44}" text-anchor="middle">${esc(label)}</text></g>`;
 }
 function canvasMarkup(map){
  const nodesById=new Map(map.zones.map(z=>[z.id.trim(),z]));
@@ -398,15 +403,23 @@ function captureCanvasPointer(pointerId){
  // let them crash unrelated click-away handlers or leave a drag half-started.
  try{$('canvas').setPointerCapture(pointerId);}catch(error){if(error.name!=='NotFoundError'&&error.name!=='InvalidStateError')throw error;}
 }
+function releaseCanvasPointer(pointerId){try{$('canvas').releasePointerCapture(pointerId);}catch{}}
+function resetTouchGesture(){
+ touchPoints.clear();pinch=null;store.drag=null;dragRect=null;
+ $('canvas').classList.remove('canvas-panning');$('drag-preview').innerHTML='';finishCanvasTransform();
+}
 function handleCanvasDown(e){if(e.button!==0&&e.button!==1)return;
  dragRect=$('canvas').getBoundingClientRect();
  const btn=e.target.closest('[data-zone-index]'),conn=e.target.closest('[data-conn-index]'),p=mousePos(e);
  if(e.pointerType==='touch'){
-  touchPoints.set(e.pointerId,p);
+  // A primary touch means the browser sees no older active contact. If our map
+  // still has one (for example after a PWA pointercancel/lost capture), it is stale.
+  if(e.isPrimary&&touchPoints.size)resetTouchGesture();
+  touchPoints.set(e.pointerId,p);captureCanvasPointer(e.pointerId);
   if(touchPoints.size===2){
    const g=pinchGeometry();pinch={startDistance:Math.max(1,g.distance),startScale:store.scale,anchor:world(g)};
    store.drag=null;$('drag-preview').innerHTML='';$('canvas').classList.add('canvas-panning');
-   e.preventDefault();captureCanvasPointer(e.pointerId);return;
+   e.preventDefault();return;
   }
   if(touchPoints.size>2){e.preventDefault();return;}
  }
@@ -446,11 +459,11 @@ function handleCanvasMove(e){
 }
 function handleCanvasUp(e){
  if(e.pointerType==='touch')touchPoints.delete(e.pointerId);
+ releaseCanvasPointer(e.pointerId);
  if(pinch){if(touchPoints.size<2){pinch=null;$('canvas').classList.remove('canvas-panning');dragRect=null;finishCanvasTransform();}store.drag=null;return;}
  const d=store.drag;if(!d){dragRect=null;return;}store.drag=null;$('drag-preview').innerHTML='';
  dragRect=null;finishCanvasTransform();$('canvas').classList.remove('canvas-panning');
  if(d.type==='zone'&&!d.moved&&e.pointerType==='touch'){$('inspector').classList.add('open');renderInspector();}
- try{$('canvas').releasePointerCapture(e.pointerId);}catch{}
  if(d.type==='zone'&&d.moved){
    const m=current();if(store.undo.at(-1)?.snapshot!==d.snapshot){store.undo.push({snapshot:d.snapshot,selection:{kind:'zone',index:d.index},tab:store.tab,label:'Перемещена зона'});}
    if(store.undo.length>50)store.undo.shift();store.redo=[];m.layoutDirty=true;store.pack.dirty=true;
@@ -465,7 +478,10 @@ function handleCanvasUp(e){
 $('canvas').addEventListener('pointerdown',handleCanvasDown);
 $('canvas').addEventListener('pointermove',handleCanvasMove);
 $('canvas').addEventListener('pointerup',handleCanvasUp);
-$('canvas').addEventListener('pointercancel',e=>{touchPoints.delete(e.pointerId);pinch=null;store.drag=null;dragRect=null;$('canvas').classList.remove('canvas-panning');$('drag-preview').innerHTML='';finishCanvasTransform();});
+$('canvas').addEventListener('pointercancel',e=>{releaseCanvasPointer(e.pointerId);resetTouchGesture();});
+$('canvas').addEventListener('lostpointercapture',e=>{if(e.pointerType==='touch'&&touchPoints.has(e.pointerId))resetTouchGesture();});
+window.addEventListener('blur',resetTouchGesture);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)resetTouchGesture();});
 $('canvas').addEventListener('wheel',e=>{e.preventDefault();let p=mousePos(e);zoomAt(Math.exp(-e.deltaY*.00125),p.x,p.y);},{passive:false});
 $('zoom-in').onclick=()=>zoomAt(1.25);$('zoom-out').onclick=()=>zoomAt(.8);$('zoom-fit').onclick=()=>fitView();
 $('canvas').addEventListener('keydown',e=>{const n=e.target.closest?.('[data-zone-index]');if(n&&(e.key==='Enter'||e.key===' ')){e.preventDefault();select('zone',+n.dataset.zoneIndex);}});
@@ -546,7 +562,7 @@ function renderInspector(){const p=store.pack,m=current(),s=inspectorSelection()
  $('inspector-body').innerHTML=kind==='zone'?zoneProps(obj,store.tab):kind==='connection'?connectionProps(obj,store.tab):kind==='pack'?packProps(p):mapProps(obj,store.tab);
  $('inspector-footer').innerHTML=kind==='zone'?`<button class="btn btn-subtle" data-inspector-action="duplicate">${icon('copy',15)} Дублировать</button><button class="btn btn-subtle danger" data-inspector-action="delete">${icon('trash',15)} Удалить</button>`:
  kind==='connection'?`<button class="btn btn-subtle danger" data-inspector-action="delete">${icon('trash',15)} Удалить связь</button>`:
- kind==='map'?`<button class="btn btn-subtle" data-inspector-action="duplicate">${icon('copy',15)} Дублировать</button><button class="btn btn-subtle danger" data-inspector-action="delete">${icon('trash',15)} Удалить карту</button>`:'';
+ kind==='map'?`<button class="btn btn-subtle" data-inspector-action="duplicate">${icon('copy',15)} Дублировать шаблон</button><button class="btn btn-subtle danger" data-inspector-action="delete">${icon('trash',15)} Удалить шаблон</button>`:'';
 }
 $('inspector-context-tabs').addEventListener('click',e=>{const button=e.target.closest('[data-inspector-view]');if(!button||button.disabled)return;store.inspectorView=button.dataset.inspectorView;store.tab=store.inspectorView==='map'?'Карта':'Основное';renderInspector();});
 $('inspector-tabs').addEventListener('click',e=>{const el=e.target.closest('[data-tab]');if(el){store.tab=el.dataset.tab;renderInspector();}});
@@ -790,7 +806,7 @@ window.addEventListener('appinstalled',()=>{store.installPrompt=null;toast(getLa
 function runAction(action){$('more-menu').classList.add('hidden');if(!current())return;
  if(action==='layout')doLayout();else if(action==='spread')changeSpread(1.17);else if(action==='compact')changeSpread(.84);
  else if(action.startsWith('reid-'))doReid(action.slice(5));
- else if(action==='duplicate-map')duplicateMap();else if(action==='remove-map')confirmAction('Удаление карты',`Удалить карту ${esc(current().name)}?`,removeMap);
+ else if(action==='duplicate-map')duplicateMap();else if(action==='remove-map')confirmAction('Удаление шаблона',`Удалить шаблон ${esc(current().name)}?`,removeMap);
  else if(action==='png')exportPNG();else if(action==='export-layout')saveLayout();else if(action==='import-layout')$('layout-input').click();
 }
 $('more-menu').addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(b)runAction(b.dataset.action);});
@@ -854,7 +870,7 @@ if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   try{
    // Version the worker URL and bypass the HTTP cache during update checks. This
    // prevents an installed PWA from reopening with JS/CSS from an older release.
-   const registration=await navigator.serviceWorker.register('./sw.js?v=1.5.1',{scope:'./',updateViaCache:'none'});
+   const registration=await navigator.serviceWorker.register('./sw.js?v=1.5.2',{scope:'./',updateViaCache:'none'});
    await registration.update();
    if(registration.waiting)registration.waiting.postMessage({type:'SKIP_WAITING'});
   }catch(e){console.warn('Service worker unavailable:',e);}

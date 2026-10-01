@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v1.5.1 regressions: canonical file layout, numeric inputs, card icon scale and UI styling."""
+"""Release regressions: canonical file layout, numeric inputs, card icon scale, UI styling and PWA freshness."""
 import asyncio, os, subprocess, tempfile
 from pathlib import Path
 from urllib.request import urlopen
@@ -72,12 +72,12 @@ async def main():
 
             # A stale cached document must never win while the network is available.
             fresh=await context.new_page();await fresh.goto(URL,wait_until='networkidle')
-            await fresh.evaluate('''async()=>{const r=await navigator.serviceWorker.ready;const c=await caches.open('h3tc-studio-v1.5.1');
+            await fresh.evaluate('''async()=>{const r=await navigator.serviceWorker.ready;const c=await caches.open('h3tc-studio-v1.5.2');
               await c.put('./index.html',new Response('<!doctype html><title>STALE 1.4.3</title><body>STALE 1.4.3</body>',{headers:{'content-type':'text/html'}}));return r.active?.state;}''')
             await fresh.reload(wait_until='networkidle')
-            assert await fresh.locator('.statusbar').get_by_text('v1.5.1').count()==1
+            assert await fresh.locator('.statusbar').get_by_text('v1.5.2').count()==1
             assert await fresh.get_by_text('STALE 1.4.3').count()==0
-            print('PASS: online reload bypasses stale PWA document cache and reopens v1.5.1.')
+            print('PASS: online reload bypasses stale PWA document cache and reopens v1.5.2.')
             await browser.close()
     finally:
         server.terminate()

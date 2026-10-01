@@ -14,7 +14,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./public/icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./public/icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./styles.css?v=1.5.1">
+  <link rel="stylesheet" href="./styles.css?v=1.5.2">
   <title>H3 Template Studio · Visual editor & converter</title>
 </head>
 <body>
@@ -1773,7 +1773,7 @@
         <div class="editor-toolbar"><div class="map-heading"><div class="eyebrow">ВИЗУАЛЬНЫЙ РЕДАКТОР <span class="toolbar-separator">/</span> <span id="toolbar-format">SOd</span></div><div class="map-title-row"><h2 id="map-title" tabindex="0" aria-describedby="map-title-tooltip">Карта не выбрана</h2><span class="map-stats" id="map-stats"></span></div></div>
           <div class="editor-actions"><button class="btn btn-small" id="add-zone-btn"><svg><use href="#i-plus"/></svg> Зона</button><button class="btn btn-small" id="add-conn-btn"><svg><use href="#i-link"/></svg> Связь</button><span class="vertical-rule"></span><button class="icon-btn" id="undo-btn" title="Отменить · Ctrl+Z"><svg><use href="#i-undo"/></svg></button><button class="icon-btn" id="redo-btn" title="Повторить · Ctrl+Y"><svg><use href="#i-redo"/></svg></button><button class="icon-btn more-btn" id="more-btn" title="Инструменты"><span>···</span></button></div>
         </div>
-        <div id="more-menu" class="more-menu hidden" role="menu"><button data-action="layout">Автоматическая расстановка</button><button data-action="spread">Раздвинуть зоны</button><button data-action="compact">Сблизить зоны</button><button data-action="reid-players">Перенумеровать · Игроки первыми</button><button data-action="reid-center">Перенумеровать · Центр первым</button><button data-action="reid-row">Перенумеровать · По порядку</button><button data-action="duplicate-map">Дублировать карту</button><button data-action="remove-map">Удалить карту</button><button data-action="png">Экспорт графа в PNG</button><button data-action="export-layout">Сохранить позиции всех карт (.h3tc-layout.json)</button><button data-action="import-layout">Загрузить позиции (.h3tc-layout.json)</button></div>
+        <div id="more-menu" class="more-menu hidden" role="menu"><button data-action="layout">Автоматическая расстановка</button><button data-action="spread">Раздвинуть зоны</button><button data-action="compact">Сблизить зоны</button><button data-action="reid-players">Перенумеровать · Игроки первыми</button><button data-action="reid-center">Перенумеровать · Центр первым</button><button data-action="reid-row">Перенумеровать · По порядку</button><button data-action="duplicate-map">Дублировать шаблон</button><button data-action="remove-map">Удалить шаблон</button><button data-action="png">Экспорт графа в PNG</button><button data-action="export-layout">Сохранить позиции всех карт (.h3tc-layout.json)</button><button data-action="import-layout">Загрузить позиции (.h3tc-layout.json)</button></div>
         <div class="canvas-wrapper" id="canvas-wrapper">
           <svg id="canvas" tabindex="0" aria-label="Интерактивная схема зон и связей" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" class="grid-dot"/></pattern></defs><rect id="canvas-background" x="0" y="0" width="100%" height="100%" fill="url(#grid)"/><g id="canvas-content"></g><g id="drag-preview"></g></svg>
           <details class="canvas-top-info" id="canvas-legend" hidden>
@@ -1785,7 +1785,7 @@
           <div class="canvas-tools"><button class="canvas-tool" id="zoom-out" title="Уменьшить"><svg><use href="#i-minus"/></svg></button><span id="zoom-value">100%</span><button class="canvas-tool" id="zoom-in" title="Увеличить"><svg><use href="#i-plus"/></svg></button><span class="tool-divider"></span><button class="canvas-tool" id="zoom-fit" title="Вместить все зоны"><svg><use href="#i-fit"/></svg></button></div>
           <div class="canvas-hint">Колёсико — масштаб · Перетаскивание фона — перемещение · Alt + перетаскивание зоны — связь</div>
         </div>
-        <div class="statusbar"><div id="status-text">Все операции выполняются локально в браузере</div><div class="status-right"><span id="dirty-indicator"></span><span id="status-zones">0 зон</span><span class="status-divider"></span><span id="status-conns">0 связей</span><span class="status-divider"></span><span>v1.5.1</span></div></div>
+        <div class="statusbar"><div id="status-text">Все операции выполняются локально в браузере</div><div class="status-right"><span id="dirty-indicator"></span><span id="status-zones">0 зон</span><span class="status-divider"></span><span id="status-conns">0 связей</span><span class="status-divider"></span><span>v1.5.2</span></div></div>
       </main>
       <aside class="inspector" id="inspector"><div class="inspector-header"><button class="icon-btn inspector-close" id="inspector-close" title="Закрыть панель свойств" aria-label="Закрыть панель свойств">×</button><div class="eyebrow">СВОЙСТВА</div><div class="inspector-context-tabs" id="inspector-context-tabs" role="tablist" aria-label="Inspector views"><button type="button" data-inspector-view="map" role="tab" aria-selected="true">Параметры карты</button></div><h2 id="inspector-title">Выберите объект</h2><p id="inspector-subtitle">Нажмите на зону, связь или карту</p></div><div id="inspector-tabs" class="inspector-tabs"></div><div id="inspector-body" class="inspector-body"><div class="inspector-empty"><div class="selection-mark">◇</div><b>Редактируйте на схеме</b><p>Выберите зону или связь, чтобы настроить параметры шаблона.</p></div></div><div id="inspector-footer" class="inspector-footer"></div></aside>
     </div>
@@ -1794,6 +1794,6 @@
   <div id="map-title-tooltip" class="map-title-tooltip" role="tooltip" hidden></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <dialog id="modal"><div class="modal-head"><h2 id="modal-title"></h2><button class="icon-btn" id="modal-close" aria-label="Закрыть">×</button></div><div id="modal-content"></div><div class="modal-buttons" id="modal-buttons"></div></dialog>
-  <script type="module" src="./src/app.js?v=1.5.1"></script>
+  <script type="module" src="./src/app.js?v=1.5.2"></script>
 </body>
 </html>

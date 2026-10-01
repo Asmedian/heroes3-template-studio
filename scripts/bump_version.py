@@ -16,5 +16,13 @@ for name in ('package.json','manifest.webmanifest'):
 sw=root/'sw.js'
 sw.write_text(re.sub(r"const VERSION='[^']+';",f"const VERSION='{version}';",sw.read_text(encoding='utf-8')),encoding='utf-8')
 html=root/'index.html'
-html.write_text(re.sub(r'(<span>v)\d+\.\d+\.\d+(</span>)',rf'\g<1>{version}\g<2>',html.read_text(encoding='utf-8')),encoding='utf-8')
-print('Synchronized package.json, manifest, sw.js and UI version:',version)
+text=html.read_text(encoding='utf-8')
+text=re.sub(r'(<span>v)\d+\.\d+\.\d+(</span>)',rf'\g<1>{version}\g<2>',text)
+text=re.sub(r'(styles\.css\?v=)\d+\.\d+\.\d+',rf'\g<1>{version}',text)
+text=re.sub(r'(src="\./src/app\.js\?v=)\d+\.\d+\.\d+(")',rf'\g<1>{version}\g<2>',text)
+html.write_text(text,encoding='utf-8')
+app=root/'src'/'app.js'
+text=app.read_text(encoding='utf-8')
+text=re.sub(r"(register\('./sw\.js\?v=)\d+\.\d+\.\d+(')",rf'\g<1>{version}\g<2>',text)
+app.write_text(text,encoding='utf-8')
+print('Synchronized package.json, manifest, sw.js, cache-busting URLs and UI version:',version)

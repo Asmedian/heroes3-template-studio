@@ -118,7 +118,8 @@ test('enlarged card artwork survives SVG/PNG export without a heavy legend rebui
   const app=file('src/app.js'),css=file('styles.css');
   assert.ok(app.includes("svgIcon('chest',6,3,43)"));
   assert.ok(app.includes("svgIcon('swords',CARD_W-7-(j+1)*30,7,30)"));
-  assert.ok(app.includes('svgIcon(symbol,x,y,40)'));
+  assert.ok(app.includes('svgIcon(symbol,x,y+slotIconDy(symbol),40)'));
+  assert.ok(app.includes('const SLOT_ICON_DY={wood:-2.5,mercury:-1,ore:-3,sulfur:-4.5,crystal:-5.5,gems:-2.5,gold:0}'));
   assert.ok(css.includes('.node-treasure{font-size:32px'));
   assert.ok(css.includes('.node .h3-slot-count{font-size:14px'));
   assert.ok(app.includes('.node-treasure{font-size:32px;font-weight:850}'));
@@ -142,7 +143,7 @@ test('current-map legend is collapsed by default and release documentation is co
 });
 
 
-test('v1.5.1 uses strict digit-only numeric controls and live sanitization',()=>{
+test('v1.5.2 uses strict digit-only numeric controls and live sanitization',()=>{
  const app=file('src/app.js');
  assert.ok(app.includes('const isNumericField=path=>'));
  assert.ok(app.includes('data-numeric="1" inputmode="numeric" pattern="[0-9]*"'));
@@ -150,11 +151,11 @@ test('v1.5.1 uses strict digit-only numeric controls and live sanitization',()=>
  assert.ok(app.includes("replace(/[^0-9]/g,''"));
 });
 
-test('v1.5.1 PWA update path bypasses stale app-shell caches',()=>{
+test('v1.5.2 PWA update path bypasses stale app-shell caches',()=>{
  const html=file('index.html'),app=file('src/app.js');
- assert.ok(html.includes('styles.css?v=1.5.1'));
- assert.ok(html.includes('src="./src/app.js?v=1.5.1"'));
- assert.ok(app.includes("register('./sw.js?v=1.5.1'"));
+ assert.ok(html.includes('styles.css?v=1.5.2'));
+ assert.ok(html.includes('src="./src/app.js?v=1.5.2"'));
+ assert.ok(app.includes("register('./sw.js?v=1.5.2'"));
  assert.ok(app.includes("updateViaCache:'none'"));
  assert.ok(app.includes('await registration.update()'));
  assert.ok(sw.includes("const mutable=/\\.(?:html|css|js|webmanifest|json)$/i"));
@@ -177,4 +178,13 @@ test('unified scrollbars and dropdown/legend chevrons are styled consistently',(
  assert.ok(css.includes('select{\n appearance:none'));
  assert.ok(css.includes('.canvas-top-info .legend-chevron{width:25px'));
  assert.ok(css.includes('.canvas-top-info[open] .legend-chevron svg{transform:rotate(180deg)}'));
+});
+
+
+test('mobile pinch state is cleared after cancelled or lost touch contacts',()=>{
+ const app=file('src/app.js');
+ assert.ok(app.includes('if(e.isPrimary&&touchPoints.size)resetTouchGesture()'));
+ assert.ok(app.includes("addEventListener('pointercancel',e=>{releaseCanvasPointer(e.pointerId);resetTouchGesture();})"));
+ assert.ok(app.includes("addEventListener('lostpointercapture'"));
+ assert.ok(app.includes("window.addEventListener('blur',resetTouchGesture)"));
 });

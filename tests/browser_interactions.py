@@ -243,6 +243,30 @@ async def run():
                 await mpage.screenshot(path=str(ARTIFACTS/'phone-pinch-zoom.png'))
                 return f'pinch-to-zoom: {before} -> {after}'
             await trial('Real two-finger mobile pinch zoom (Chrome CDP)',pinch)
+            async def stale_touch_recovery():
+                await mpage.locator('#zoom-fit').click()
+                result=await mpage.locator('#canvas').evaluate('''canvas => {
+                  const r=canvas.getBoundingClientRect(),x=r.left+70,y=r.top+Math.min(120,r.height*.25);
+                  const fire=(type,id,cx,cy,isPrimary,buttons=1)=>canvas.dispatchEvent(new PointerEvent(type,{
+                    pointerId:id,pointerType:'touch',isPrimary,bubbles:true,cancelable:true,button:0,buttons,
+                    clientX:cx,clientY:cy
+                  }));
+                  fire('pointerdown',91,x,y,true);
+                  fire('pointerdown',92,x+120,y,false);
+                  fire('pointermove',92,x+155,y,false);
+                  fire('pointercancel',92,x+155,y,false,0);
+                  const zoomAfterCancel=document.querySelector('#zoom-value').textContent;
+                  const before=document.querySelector('#canvas-content').getAttribute('transform');
+                  fire('pointerdown',93,x,y,true);
+                  fire('pointermove',93,x+45,y+32,true);
+                  fire('pointerup',93,x+45,y+32,true,0);
+                  return {zoomAfterCancel,zoomAfterSingle:document.querySelector('#zoom-value').textContent,
+                    before,after:document.querySelector('#canvas-content').getAttribute('transform')};
+                }''')
+                assert result['zoomAfterSingle']==result['zoomAfterCancel'],result
+                assert result['after']!=result['before'],result
+                return result
+            await trial('Cancelled pinch cannot leave a ghost touch before one-finger pan',stale_touch_recovery)
             async def touchdrag():
                 await mpage.locator('#zoom-fit').click()
                 await mpage.locator('#zoom-in').click()

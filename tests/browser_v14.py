@@ -33,26 +33,26 @@ async def run():
                 await page.wait_for_function('()=>document.querySelectorAll("#built-in-select option").length===60')
                 assert await page.locator('.node').count()==0
                 assert await page.locator('#inspector-context-tabs button').count()==1
-                assert 'Map properties' in await page.locator('#inspector-context-tabs').inner_text()
-                results.append('Empty start: permanent Map properties tab')
+                assert 'Template properties' in await page.locator('#inspector-context-tabs').inner_text()
+                results.append('Empty start: permanent Template properties tab')
                 await page.locator('#built-in-select').select_option('44')
                 await page.wait_for_function('()=>document.querySelectorAll(".node").length===5')
                 await page.locator('.node[data-owner="1"]').first.click(force=True)
                 ctx=page.locator('#inspector-context-tabs')
                 assert await ctx.locator('button').count()==2
-                assert 'Map properties' in await ctx.inner_text()
+                assert 'Template properties' in await ctx.inner_text()
                 assert 'Zone' in await ctx.inner_text()
                 assert 'Zone' in await page.locator('#inspector-title').inner_text()
                 await ctx.locator('button[data-inspector-view="map"]').click()
-                assert 'Map properties' in await page.locator('#inspector-title').inner_text()
+                assert 'Template properties' in await page.locator('#inspector-title').inner_text()
                 assert await page.locator('.node.selected').count()==1
                 await ctx.locator('button[data-inspector-view="selection"]').click()
                 assert 'Zone' in await page.locator('#inspector-title').inner_text()
                 await page.locator('.connection').first.click(force=True)
                 assert 'Connection' in await ctx.inner_text()
                 await ctx.locator('button[data-inspector-view="map"]').click()
-                assert 'Map properties' in await page.locator('#inspector-title').inner_text()
-                results.append('Map / Zone / Connection header tabs preserve selection and edit target')
+                assert 'Template properties' in await page.locator('#inspector-title').inner_text()
+                results.append('Template / Zone / Connection header tabs preserve selection and edit target')
                 art=await page.evaluate('''() => ({player:getComputedStyle(document.querySelector('.node[data-owner="1"] .node-border')).fill,
                 gold:getComputedStyle(document.querySelector('.node[data-owner="0"][data-richness="high"] .node-border')).fill,
                 assets:[...document.querySelectorAll('.sprite symbol[id^="h3-"]')].map(x=>x.id)})''')

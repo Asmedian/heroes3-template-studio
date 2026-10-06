@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {parseBytes,serializePack,convertPack,validatePack,SCHEMA,freshZone} from '../src/core.js';
 import {autoLayout,CARD_H,CARD_W} from '../src/layout.js';
-import {compactExact,mineEntries,townEntries,zoneAppearance,treasureScore} from '../src/visuals.js';
+import {compactExact,connectionDisplayLabel,mineEntries,townEntries,zoneAppearance,treasureScore} from '../src/visuals.js';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const catalog=JSON.parse(fs.readFileSync(path.join(root,'templates/catalog.json'),'utf8'));
 const records=[];
@@ -108,3 +108,30 @@ test('SoD -> HotA 1.7/1.8 conversions retain map/zone/link cardinality for all 5
  }
 });
 console.log('CATALOG_STATS',JSON.stringify(statistic));
+
+test('all visible Border Guard connections preserve and display both flag and value when both exist',()=>{
+ let visibleBorder=0,withValue=0,borderOnly=0;
+ for(const {pack,item} of records)for(const map of pack.maps){
+  const zoneIds=new Set(map.zones.map(zone=>String(zone.id).trim()));
+  for(const connection of map.connections){
+   const z1=String(connection.zone1??'').trim(),z2=String(connection.zone2??'').trim();
+   if(!zoneIds.has(z1)||!zoneIds.has(z2))continue;
+   const rawFlag=String(connection.border_guard??'').trim().toLowerCase();
+   if(rawFlag!=='x'&&rawFlag!=='1')continue;
+   visibleBorder++;
+   const rawValue=String(connection.value??'').trim();
+   const label=connectionDisplayLabel(connection);
+   assert.ok(label.startsWith('┃'),`${item.name}/${map.name} ${z1}-${z2}: Border Guard marker missing`);
+   if(rawValue&&rawValue!=='0'){
+    withValue++;
+    assert.ok(label.includes(compactExact(rawValue)),`${item.name}/${map.name} ${z1}-${z2}: Border Guard value missing`);
+   }else{
+    borderOnly++;
+    assert.equal(label,'┃',`${item.name}/${map.name} ${z1}-${z2}: border-only label changed`);
+   }
+  }
+ }
+ assert.equal(visibleBorder,30);
+ assert.equal(withValue,14);
+ assert.equal(borderOnly,16);
+});

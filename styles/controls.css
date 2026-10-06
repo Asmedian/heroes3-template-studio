@@ -1,0 +1,438 @@
+/* v1.4.1: composite the graph while panning instead of repainting per SVG event. */
+
+#canvas-content,#drag-preview {
+    transform-origin: 0 0;
+    transform-box: view-box;
+    will-change: transform;
+}
+
+#canvas.canvas-panning .node .node-border {
+    filter: none;
+}
+
+/* Swords must contrast with light player, silver and gold cards in dark mode. */
+
+.node .h3-icon-swords {
+    color: #263344;
+}
+
+html[data-theme="dark"] .node[data-owner="0"][data-richness="low"] .h3-icon-swords {
+    color: #e5edf7;
+}
+
+/* v1.4.2: Large readable map-card art and text, without increasing card footprints. */
+
+.node-treasure {
+    font-size: 32px;
+    font-weight: 850;
+    font-variant-numeric: tabular-nums;
+}
+
+.node-size {
+    font-size: 15px;
+    font-weight: 800;
+    opacity: 1;
+}
+
+.node-section-caption {
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.node-id-label {
+    font-size: 23px;
+    font-weight: 850;
+}
+
+.node .h3-slot-count {
+    font-size: 14px;
+    font-weight: 850;
+    paint-order: stroke;
+    stroke-width: .5px;
+}
+
+.node .h3-slot-count.count-condensed {
+    font-size: 11px;
+}
+
+.node .h3-icon-swords {
+    color: #263344;
+}
+
+html[data-theme="dark"] .node[data-owner="0"][data-richness="low"] .h3-icon-swords {
+    color: #e5edf7;
+}
+
+/* The legend is a real, interactive disclosure above the canvas, not a passive banner. */
+
+.canvas-top-info {
+    position: absolute;
+    z-index: 4;
+    top: 14px;
+    left: 14px;
+    display: block;
+    width: min(348px,calc(100% - 28px));
+    max-height: min(68vh,580px);
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--panel);
+    color: var(--text);
+    box-shadow: 0 8px 28px var(--shadow);
+    pointer-events: auto;
+    font-size: 12px;
+}
+
+.canvas-top-info[hidden] {
+    display: none!important;
+}
+
+.canvas-top-info summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-weight: 750;
+    color: var(--text);
+    background: var(--panel);
+    user-select: none;
+}
+
+.canvas-top-info summary::-webkit-details-marker {
+    display: none;
+}
+
+.canvas-top-info summary:hover {
+    background: var(--panel-2);
+}
+
+.canvas-top-info summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
+.canvas-top-info .legend-info-icon {
+    width: 16px;
+    height: 16px;
+    stroke: var(--accent);
+    stroke-width: 1.8;
+    fill: none;
+    flex: none;
+}
+
+.canvas-top-info .legend-chevron {
+    margin-left: auto;
+    display: inline-grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    line-height: 1;
+    color: var(--muted);
+    transform-origin: 50% 50%;
+    transition: transform .14s;
+}
+
+.canvas-top-info[open] .legend-chevron {
+    transform: rotate(180deg);
+}
+
+.canvas-top-info .legend-content {
+    padding: 4px 12px 12px;
+    max-height: min(calc(68vh - 43px),520px);
+    overflow: auto;
+    overscroll-behavior: contain;
+    border-top: 1px solid var(--line);
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+}
+
+.legend-section {
+    margin: 12px 0 2px;
+}
+
+.legend-section h3 {
+    font-size: 10px;
+    letter-spacing: .75px;
+    text-transform: uppercase;
+    color: var(--soft);
+    margin: 0 0 8px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--muted);
+    padding: 3px 0;
+    min-height: 29px;
+}
+
+.legend-item>span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.legend-item .legend-swatch {
+    display: inline-block;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 24px;
+    border: 1px solid rgba(80,87,104,.4);
+    border-radius: 5px;
+    box-shadow: 0 1px 3px var(--shadow);
+}
+
+.legend-item .legend-icon {
+    height: 26px;
+    width: 28px;
+    flex: none;
+    overflow: visible;
+}
+
+.legend-item .legend-conn {
+    height: 24px;
+    width: 36px;
+    flex: none;
+    overflow: visible;
+}
+
+.legend-conn line {
+    stroke: var(--muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.legend-conn.wide line {
+    stroke-width: 6;
+}
+
+.legend-conn.fictive line {
+    stroke-dasharray: 2 5;
+}
+
+.legend-conn.no-road line {
+    stroke-dasharray: 8 5;
+    stroke-width: 3;
+}
+
+.legend-conn.road-required line {
+    stroke: #8791a0;
+    stroke-width: 5;
+}
+
+.legend-conn.road-required line.overlay {
+    stroke: #fff;
+    stroke-width: 1.5;
+    stroke-dasharray: 4 5;
+}
+
+.legend-conn.teleport line {
+    stroke: var(--accent);
+    stroke-dasharray: 4 4;
+}
+
+.legend-rim {
+    display: inline-block;
+    flex: none;
+    width: 28px;
+    height: 24px;
+    border: 5px solid #8e96a4;
+    border-radius: 5px;
+}
+
+.legend-border-guard {
+    flex: none;
+    font-size: 20px;
+    color: var(--muted);
+    width: 28px;
+    text-align: center;
+}
+
+.legend-example {
+    flex: none;
+    min-width: 28px;
+    font-size: 14px;
+    font-weight: 850;
+    color: var(--text);
+    text-align: center;
+}
+
+@media (max-width:650px) {
+    .canvas-top-info {
+        top: 8px;
+        left: 8px;
+        width: min(310px,calc(100% - 16px));
+        max-height: min(60vh,470px);
+    }
+    .canvas-top-info .legend-content {
+        max-height: min(calc(60vh - 43px),425px);
+    }
+}
+
+.legend-rim.legend-selected-rim {
+    border-color: var(--accent);
+}
+
+.legend-conn.selected line {
+    stroke: var(--accent);
+    stroke-width: 3;
+}
+
+.legend-conn.dangling line {
+    stroke: var(--error);
+    stroke-dasharray: 6 5;
+}
+
+/* v1.5.1: unified controls, dropdown chevrons and scrollbars. */
+
+html[data-theme="dark"] {
+    --scroll-track: #121a27;
+    --scroll-thumb: #3a4a60;
+    --scroll-thumb-hover: #50637e;
+    --select-chevron: #93a2b8;
+}
+
+html[data-theme="light"] {
+    --scroll-track: #edf1f6;
+    --scroll-thumb: #c0cada;
+    --scroll-thumb-hover: #9eabc0;
+    --select-chevron: #66758c;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scroll-thumb) var(--scroll-track);
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--scroll-track);
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--scroll-thumb);
+    border: 2px solid var(--scroll-track);
+    border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--scroll-thumb-hover);
+}
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='m3 5 4 4 4-4' fill='none' stroke='%238b98ac' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 14px 14px;
+    padding-right: 28px!important;
+}
+
+.export-wrap select {
+    padding-right: 25px!important;
+    background-position: right 5px center;
+}
+
+.lang-select {
+    padding-right: 18px!important;
+    background-position: right 2px center;
+    background-size: 11px 11px;
+}
+
+.lang-select,.export-wrap select {
+    padding-top: 0!important;
+    padding-bottom: 0!important;
+    line-height: 1;
+    text-align: center;
+    text-align-last: center;
+}
+
+.lang-select {
+    text-indent: 7px;
+}
+
+.export-wrap select {
+    height: 35px;
+    text-indent: 7.5px;
+}
+
+.canvas-top-info .legend-chevron {
+    width: 25px;
+    height: 25px;
+    flex-basis: 25px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--button);
+    color: var(--muted);
+    transition: background var(--transition),border-color var(--transition);
+}
+
+.canvas-top-info .legend-chevron svg {
+    width: 14px;
+    height: 14px;
+    transition: transform .15s ease;
+    transform-origin: 50% 50%;
+}
+
+.canvas-top-info summary:hover .legend-chevron {
+    background: var(--button-hover);
+    border-color: var(--card-edge);
+}
+
+.canvas-top-info[open] .legend-chevron {
+    transform: none;
+}
+
+.canvas-top-info[open] .legend-chevron svg {
+    transform: rotate(180deg);
+}
+
+.field input,.field select,.field textarea,.map-search,#built-in-select,.lang-select,.export-wrap {
+    transition: border-color var(--transition),background-color var(--transition),box-shadow var(--transition);
+}
+
+.field input:hover,.field select:hover,.field textarea:hover,.map-search:hover,#built-in-select:hover,.lang-select:hover {
+    border-color: var(--card-edge);
+}
+
+.field input:focus,.field select:focus,.field textarea:focus,.map-search:focus,#built-in-select:focus,.lang-select:focus {
+    box-shadow: 0 0 0 2px color-mix(in srgb,var(--accent) 18%,transparent);
+}
+
+/* Keep compact header labels centered instead of shifting as controls narrow. */
+
+@media (max-width:650px) {
+    #language-select {
+        padding: 0!important;
+        background-image: none;
+        text-align: center;
+        text-align-last: center;
+        text-indent: 0;
+    }
+    .file-actions .export-wrap select {
+        height: 35px;
+        padding: 0 4px!important;
+        background-image: none;
+        text-align: center;
+        text-align-last: center;
+        text-indent: 0;
+    }
+    .btn {
+        line-height: 1.15;
+    }
+}
+
+.tier-heading {
+    margin: 10px 0;
+}

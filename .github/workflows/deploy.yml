@@ -51,6 +51,8 @@ jobs:
         run: python tests/browser_v150.py
       - name: canonical file layout, numeric inputs and PWA cache regressions
         run: python tests/browser_v151.py
+      - name: Template picker, external localization and connection rendering regressions
+        run: python tests/browser_v153.py
       - name: All 59 built-ins, 238 browser-rendered maps and localizations
         run: python tests/catalog_browser.py
       - name: English-language UI audit
@@ -82,7 +84,7 @@ jobs:
         run: |
           mkdir -p dist
           cp index.html styles.css manifest.webmanifest sw.js dist/
-          cp -r src public dist/
+          cp -r src public styles locales dist/
           cp -r templates dist/
           touch dist/.nojekyll
       - uses: actions/upload-pages-artifact@v3

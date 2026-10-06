@@ -107,14 +107,14 @@ async def run():
             await page.locator('#layout-input').set_input_files(str(await sidecar.path()))
             assert await page.locator('.node').count()==17
             await page.locator('#file-input').set_input_files(str(ROOT/'tests/fixtures/Duel.h3t'))
-            await page.get_by_text('30 карт').first.wait_for(timeout=10000)
+            await page.get_by_text('30 шаблонов').first.wait_for(timeout=10000)
             assert await page.locator('.node').count()==9
             await page.locator('#validate-btn').click()
             assert await page.locator('#modal').evaluate('(e)=>e.open')
             assert '420' in await page.locator('#modal-content').inner_text()
             await page.locator('#modal-close').click()
             await page.locator('#file-input').set_input_files(str(ROOT/'tests/fixtures/Jebus Outcast.h3t'))
-            await page.get_by_text('126 карт').first.wait_for(timeout=10000)
+            await page.get_by_text('126 шаблонов').first.wait_for(timeout=10000)
             assert await page.locator('.node').count()==7
             await page.locator('#map-search').fill('Outcast')
             assert await page.locator('.map-item').count()>0
@@ -143,7 +143,7 @@ async def run():
             await context.set_offline(False)
             await page.screenshot(path=str(ROOT/'tests/browser_screenshot.png'),full_page=True)
             assert not errors, '\n'.join(errors)
-            print('Browser smoke: PASS (Chromium, templates 1/30/126 maps, theme, zoom, edit, undo/redo, save, PNG, import, offline reload, manifest, service worker).')
+            print('Browser smoke: PASS (Chromium, templates 1/30/126 templates, theme, zoom, edit, undo/redo, save, PNG, import, offline reload, manifest, service worker).')
             await browser.close()
     finally:
         server.terminate()

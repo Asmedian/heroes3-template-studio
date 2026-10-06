@@ -145,7 +145,7 @@ async def run():
             async def big():
                 started=time.perf_counter()
                 await page.locator('#file-input').set_input_files(str(ROOT/'tests/fixtures/Jebus Outcast.h3t'))
-                await page.get_by_text('126 карт').first.wait_for(timeout=20000)
+                await page.get_by_text('126 шаблонов').first.wait_for(timeout=20000)
                 read_ms=round((time.perf_counter()-started)*1000)
                 assert await page.locator('.map-item').count()==126
                 timing=await page.evaluate('''()=>{
@@ -159,9 +159,9 @@ async def run():
                 }''')
                 assert await page.locator('.map-item.active').count()==1
                 assert await page.locator('.node').count()>0
-                assert timing<30000,f'126-map interaction stalled: {timing}ms'
+                assert timing<30000,f'126-template interaction stalled: {timing}ms'
                 return {'loaded_ms':read_ms,'switch_126_maps_ms':round(timing)}
-            await trial('Large Jebus: import and switch through 126 maps',big)
+            await trial('Large Jebus: import and switch through 126 templates',big)
             async def hota_conversion():
                 await page.evaluate("""() => {
                   window.__convertedFile=null;

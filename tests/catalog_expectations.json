@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.5.4",
   "count": 59,
   "templates": [
     {
@@ -11,6 +11,7 @@
           "name": "Skirmish (ban fly/DD, 2 player, 3-Aug-03, midnight design)",
           "zones": 7,
           "connections": 11,
+          "renderedConnections": 11,
           "mines": 14,
           "players": [
             "1",
@@ -21,6 +22,7 @@
           "name": "Skirmish (ban fly/DD, 2 player, 3-Aug-03, midnight design)",
           "zones": 7,
           "connections": 11,
+          "renderedConnections": 11,
           "mines": 14,
           "players": [
             "1",
@@ -38,6 +40,7 @@
           "name": "Skirmish (sc2tv tourney edition)",
           "zones": 7,
           "connections": 11,
+          "renderedConnections": 11,
           "mines": 14,
           "players": [
             "1",
@@ -55,6 +58,7 @@
           "name": "Speed_1 m - u",
           "zones": 7,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 13,
           "players": [
             "1",
@@ -76,6 +80,7 @@
           "name": "Speed_2  (для турнира)",
           "zones": 6,
           "connections": 5,
+          "renderedConnections": 5,
           "mines": 16,
           "players": [
             "1",
@@ -93,6 +98,7 @@
           "name": "Spider 1.3",
           "zones": 24,
           "connections": 40,
+          "renderedConnections": 40,
           "mines": 64,
           "players": [
             "1",
@@ -116,6 +122,7 @@
           "name": "SuperSlam (2 player, Large or XL  no under)  For powermonger players, meet by SLAMMING thru super zones. Your chances are not over until the fat lady sings! Should ban spec log along with normal random rules.",
           "zones": 6,
           "connections": 9,
+          "renderedConnections": 8,
           "mines": 28,
           "players": [
             "1",
@@ -133,6 +140,7 @@
           "name": "Triad (ban fly/DD, 3 players, 9-Jan-03, midnight design)",
           "zones": 13,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 26,
           "players": [
             "1",
@@ -144,6 +152,7 @@
           "name": "Triad (ban fly/DD, 3 players, 9-Jan-03, midnight design)",
           "zones": 13,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 26,
           "players": [
             "1",
@@ -162,6 +171,7 @@
           "name": "True Random",
           "zones": 17,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 15,
           "players": [
             "1",
@@ -172,6 +182,7 @@
           "name": "True Random",
           "zones": 17,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 15,
           "players": [
             "1",
@@ -182,6 +193,7 @@
           "name": "True Random",
           "zones": 17,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 27,
           "players": [
             "1",
@@ -199,6 +211,7 @@
           "name": "Vortex (ban fly/DD, 3-4 player, 31-May-03, midnight design)",
           "zones": 9,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 29,
           "players": [
             "1",
@@ -218,6 +231,7 @@
           "name": "[HotA] Nostalgia",
           "zones": 24,
           "connections": 32,
+          "renderedConnections": 32,
           "mines": 31,
           "players": [
             "1",
@@ -241,6 +255,7 @@
           "name": "Small Ring",
           "zones": 8,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 32,
           "players": [
             "1",
@@ -257,6 +272,7 @@
           "name": "Ring",
           "zones": 16,
           "connections": 29,
+          "renderedConnections": 29,
           "mines": 48,
           "players": [
             "1",
@@ -273,6 +289,7 @@
           "name": "Dragons",
           "zones": 33,
           "connections": 40,
+          "renderedConnections": 40,
           "mines": 31,
           "players": [
             "1",
@@ -287,6 +304,7 @@
           "name": "Gauntlet",
           "zones": 24,
           "connections": 25,
+          "renderedConnections": 25,
           "mines": 35,
           "players": [
             "1",
@@ -301,6 +319,7 @@
           "name": "Ready \nor Not",
           "zones": 10,
           "connections": 10,
+          "renderedConnections": 9,
           "mines": 32,
           "players": [
             "1",
@@ -312,6 +331,7 @@
           "name": "South \nof Hell",
           "zones": 11,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 28,
           "players": [
             "1",
@@ -323,6 +343,7 @@
           "name": "Worlds \nat War",
           "zones": 17,
           "connections": 18,
+          "renderedConnections": 18,
           "mines": 54,
           "players": [
             "1",
@@ -336,6 +357,7 @@
           "name": "Meeting \nin Muzgob",
           "zones": 17,
           "connections": 16,
+          "renderedConnections": 16,
           "mines": 62,
           "players": [
             "1",
@@ -352,6 +374,7 @@
           "name": "Newcomers",
           "zones": 14,
           "connections": 20,
+          "renderedConnections": 20,
           "mines": 77,
           "players": [
             "1",
@@ -364,6 +387,7 @@
           "name": "Dwarven Tunnels",
           "zones": 18,
           "connections": 22,
+          "renderedConnections": 22,
           "mines": 61,
           "players": [
             "1",
@@ -376,6 +400,7 @@
           "name": "2SM2a",
           "zones": 4,
           "connections": 4,
+          "renderedConnections": 4,
           "mines": 10,
           "players": [
             "1",
@@ -386,6 +411,7 @@
           "name": "2SM2b",
           "zones": 6,
           "connections": 6,
+          "renderedConnections": 6,
           "mines": 16,
           "players": [
             "1",
@@ -396,6 +422,7 @@
           "name": "2SM2b(2)",
           "zones": 6,
           "connections": 6,
+          "renderedConnections": 6,
           "mines": 18,
           "players": [
             "1",
@@ -408,6 +435,7 @@
           "name": "2SM2c",
           "zones": 6,
           "connections": 10,
+          "renderedConnections": 10,
           "mines": 16,
           "players": [
             "1",
@@ -418,6 +446,7 @@
           "name": "2SM4d",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 20,
           "players": [
             "1",
@@ -428,6 +457,7 @@
           "name": "2SM4d(2)",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 24,
           "players": [
             "1",
@@ -440,6 +470,7 @@
           "name": "2SM4d(3)",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 24,
           "players": [
             "1",
@@ -454,6 +485,7 @@
           "name": "2SM2f",
           "zones": 6,
           "connections": 5,
+          "renderedConnections": 5,
           "mines": 20,
           "players": [
             "1",
@@ -464,6 +496,7 @@
           "name": "2SM2f(2)",
           "zones": 6,
           "connections": 5,
+          "renderedConnections": 5,
           "mines": 18,
           "players": [
             "1",
@@ -476,6 +509,7 @@
           "name": "2SM2h",
           "zones": 5,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 17,
           "players": [
             "1",
@@ -486,6 +520,7 @@
           "name": "2SM2h(2)",
           "zones": 5,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 13,
           "players": [
             "1",
@@ -498,6 +533,7 @@
           "name": "2SM2i",
           "zones": 5,
           "connections": 6,
+          "renderedConnections": 6,
           "mines": 13,
           "players": [
             "1",
@@ -508,6 +544,7 @@
           "name": "2SM2i(2)",
           "zones": 5,
           "connections": 6,
+          "renderedConnections": 6,
           "mines": 13,
           "players": [
             "1",
@@ -518,6 +555,7 @@
           "name": "2SM0k",
           "zones": 8,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 14,
           "players": [
             "1",
@@ -528,6 +566,7 @@
           "name": "4SM0d",
           "zones": 9,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 25,
           "players": [
             "1",
@@ -540,6 +579,7 @@
           "name": "4SM4e",
           "zones": 12,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 32,
           "players": [
             "1",
@@ -552,6 +592,7 @@
           "name": "4SM4e(2)",
           "zones": 12,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 31,
           "players": [
             "1",
@@ -564,6 +605,7 @@
           "name": "4SM0f",
           "zones": 8,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 20,
           "players": [
             "1",
@@ -576,6 +618,7 @@
           "name": "4SM0g",
           "zones": 8,
           "connections": 11,
+          "renderedConnections": 11,
           "mines": 20,
           "players": [
             "1",
@@ -588,6 +631,7 @@
           "name": "4SM3i",
           "zones": 9,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 29,
           "players": [
             "1",
@@ -600,6 +644,7 @@
           "name": "6SM0b",
           "zones": 10,
           "connections": 13,
+          "renderedConnections": 13,
           "mines": 22,
           "players": [
             "1",
@@ -614,6 +659,7 @@
           "name": "6SM0d",
           "zones": 6,
           "connections": 7,
+          "renderedConnections": 7,
           "mines": 42,
           "players": [
             "1",
@@ -628,6 +674,7 @@
           "name": "6SM0e",
           "zones": 14,
           "connections": 20,
+          "renderedConnections": 20,
           "mines": 24,
           "players": [
             "1",
@@ -642,6 +689,7 @@
           "name": "8SM0c",
           "zones": 13,
           "connections": 20,
+          "renderedConnections": 20,
           "mines": 38,
           "players": [
             "1",
@@ -658,6 +706,7 @@
           "name": "8SM0f",
           "zones": 12,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 34,
           "players": [
             "1",
@@ -674,6 +723,7 @@
           "name": "3SM3d",
           "zones": 14,
           "connections": 18,
+          "renderedConnections": 18,
           "mines": 15,
           "players": [
             "1",
@@ -685,6 +735,7 @@
           "name": "8MM6",
           "zones": 26,
           "connections": 40,
+          "renderedConnections": 40,
           "mines": 45,
           "players": [
             "1",
@@ -701,6 +752,7 @@
           "name": "4MM2h",
           "zones": 6,
           "connections": 6,
+          "renderedConnections": 6,
           "mines": 16,
           "players": [
             "1",
@@ -713,6 +765,7 @@
           "name": "8MM0b",
           "zones": 9,
           "connections": 16,
+          "renderedConnections": 16,
           "mines": 28,
           "players": [
             "1",
@@ -729,6 +782,7 @@
           "name": "8MM0e",
           "zones": 9,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 28,
           "players": [
             "1",
@@ -745,6 +799,7 @@
           "name": "6LM10",
           "zones": 25,
           "connections": 48,
+          "renderedConnections": 48,
           "mines": 46,
           "players": [
             "1",
@@ -759,6 +814,7 @@
           "name": "6LM10",
           "zones": 25,
           "connections": 46,
+          "renderedConnections": 46,
           "mines": 48,
           "players": [
             "1",
@@ -775,6 +831,7 @@
           "name": "8XM12",
           "zones": 33,
           "connections": 68,
+          "renderedConnections": 68,
           "mines": 57,
           "players": [
             "1",
@@ -791,6 +848,7 @@
           "name": "8XM8",
           "zones": 48,
           "connections": 52,
+          "renderedConnections": 46,
           "mines": 72,
           "players": [
             "1",
@@ -807,6 +865,7 @@
           "name": "3SB0b",
           "zones": 8,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 20,
           "players": [
             "1",
@@ -818,6 +877,7 @@
           "name": "3SB0c",
           "zones": 10,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 11,
           "players": [
             "1",
@@ -829,6 +889,7 @@
           "name": "5SB0a",
           "zones": 9,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 24,
           "players": [
             "1",
@@ -842,6 +903,7 @@
           "name": "5SB0b",
           "zones": 7,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 35,
           "players": [
             "1",
@@ -855,6 +917,7 @@
           "name": "7SB0b",
           "zones": 7,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 33,
           "players": [
             "1",
@@ -870,6 +933,7 @@
           "name": "7SB0c",
           "zones": 7,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 33,
           "players": [
             "1",
@@ -885,6 +949,7 @@
           "name": "Golems Aplenty",
           "zones": 7,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 28,
           "players": [
             "1",
@@ -897,6 +962,7 @@
           "name": "Monk's Retreat",
           "zones": 9,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 51,
           "players": [
             "1",
@@ -911,6 +977,7 @@
           "name": "Rise of Phoenix",
           "zones": 14,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 60,
           "players": [
             "1",
@@ -930,6 +997,7 @@
           "name": "2SM2c(sc2tv tourney edition)",
           "zones": 6,
           "connections": 10,
+          "renderedConnections": 10,
           "mines": 14,
           "players": [
             "1",
@@ -947,6 +1015,7 @@
           "name": "2SM4d",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 20,
           "players": [
             "1",
@@ -964,6 +1033,7 @@
           "name": "2SM4d(2)",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 24,
           "players": [
             "1",
@@ -983,6 +1053,7 @@
           "name": "2SM4d(3)",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 24,
           "players": [
             "1",
@@ -1004,6 +1075,7 @@
           "name": "4SM0d",
           "zones": 9,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 25,
           "players": [
             "1",
@@ -1023,6 +1095,7 @@
           "name": "8mm/6lm mix by Russel (ver.2)",
           "zones": 28,
           "connections": 39,
+          "renderedConnections": 39,
           "mines": 28,
           "players": [
             "1",
@@ -1046,6 +1119,7 @@
           "name": "6LM10",
           "zones": 25,
           "connections": 46,
+          "renderedConnections": 46,
           "mines": 48,
           "players": [
             "1",
@@ -1069,6 +1143,7 @@
           "name": "6LM10a",
           "zones": 25,
           "connections": 47,
+          "renderedConnections": 47,
           "mines": 48,
           "players": [
             "1",
@@ -1092,6 +1167,7 @@
           "name": "8MM0b",
           "zones": 9,
           "connections": 16,
+          "renderedConnections": 16,
           "mines": 28,
           "players": [
             "1",
@@ -1115,6 +1191,7 @@
           "name": "8MM6",
           "zones": 26,
           "connections": 27,
+          "renderedConnections": 27,
           "mines": 45,
           "players": [
             "1",
@@ -1138,6 +1215,7 @@
           "name": "8MM6a",
           "zones": 26,
           "connections": 40,
+          "renderedConnections": 40,
           "mines": 44,
           "players": [
             "1",
@@ -1161,6 +1239,7 @@
           "name": "8XM12",
           "zones": 33,
           "connections": 68,
+          "renderedConnections": 68,
           "mines": 57,
           "players": [
             "1",
@@ -1184,6 +1263,7 @@
           "name": "8XM12a",
           "zones": 33,
           "connections": 56,
+          "renderedConnections": 56,
           "mines": 57,
           "players": [
             "1",
@@ -1207,6 +1287,7 @@
           "name": "Anarchy v1.01",
           "zones": 15,
           "connections": 18,
+          "renderedConnections": 18,
           "mines": 20,
           "players": [
             "1",
@@ -1217,6 +1298,7 @@
           "name": "Anarchy v1.01",
           "zones": 14,
           "connections": 28,
+          "renderedConnections": 28,
           "mines": 20,
           "players": [
             "1",
@@ -1227,6 +1309,7 @@
           "name": "Anarchy v1.01",
           "zones": 16,
           "connections": 28,
+          "renderedConnections": 28,
           "mines": 20,
           "players": [
             "1",
@@ -1237,6 +1320,7 @@
           "name": "Anarchy v1.01",
           "zones": 20,
           "connections": 33,
+          "renderedConnections": 33,
           "mines": 30,
           "players": [
             "1",
@@ -1247,6 +1331,7 @@
           "name": "Anarchy v1.01",
           "zones": 17,
           "connections": 36,
+          "renderedConnections": 36,
           "mines": 29,
           "players": [
             "1",
@@ -1257,6 +1342,7 @@
           "name": "Anarchy v1.01",
           "zones": 15,
           "connections": 20,
+          "renderedConnections": 20,
           "mines": 34,
           "players": [
             "1",
@@ -1267,6 +1353,7 @@
           "name": "Anarchy v1.01",
           "zones": 11,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 23,
           "players": [
             "1",
@@ -1277,6 +1364,7 @@
           "name": "Anarchy v1.01",
           "zones": 11,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 23,
           "players": [
             "1",
@@ -1287,6 +1375,7 @@
           "name": "Anarchy v1.01",
           "zones": 17,
           "connections": 30,
+          "renderedConnections": 30,
           "mines": 19,
           "players": [
             "1",
@@ -1297,6 +1386,7 @@
           "name": "Anarchy v1.01",
           "zones": 14,
           "connections": 23,
+          "renderedConnections": 23,
           "mines": 14,
           "players": [
             "1",
@@ -1307,6 +1397,7 @@
           "name": "Anarchy v1.01",
           "zones": 16,
           "connections": 22,
+          "renderedConnections": 22,
           "mines": 28,
           "players": [
             "1",
@@ -1317,6 +1408,7 @@
           "name": "Anarchy v1.01",
           "zones": 19,
           "connections": 30,
+          "renderedConnections": 30,
           "mines": 30,
           "players": [
             "1",
@@ -1334,6 +1426,7 @@
           "name": "Around A Marsh",
           "zones": 12,
           "connections": 28,
+          "renderedConnections": 28,
           "mines": 20,
           "players": [
             "1",
@@ -1353,6 +1446,7 @@
           "name": "Balance",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 16,
           "players": [
             "1",
@@ -1363,6 +1457,7 @@
           "name": "Balance",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 24,
           "players": [
             "1",
@@ -1373,6 +1468,7 @@
           "name": "Balance",
           "zones": 12,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 24,
           "players": [
             "1",
@@ -1390,6 +1486,7 @@
           "name": "Balance (sc2tv tourney edition)",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 16,
           "players": [
             "1",
@@ -1407,6 +1504,7 @@
           "name": "Blockbuster (ban fly/DD, 2 player, 15-Jun-03, midnight design)",
           "zones": 7,
           "connections": 11,
+          "renderedConnections": 11,
           "mines": 15,
           "players": [
             "1",
@@ -1417,6 +1515,7 @@
           "name": "Blockbuster (ban fly/DD, 2 player, 15-Jun-03, midnight design)",
           "zones": 8,
           "connections": 13,
+          "renderedConnections": 13,
           "mines": 28,
           "players": [
             "1",
@@ -1427,6 +1526,7 @@
           "name": "Blockbuster (ban fly/DD, 2 player, 15-Jun-03, midnight design)",
           "zones": 8,
           "connections": 13,
+          "renderedConnections": 13,
           "mines": 28,
           "players": [
             "1",
@@ -1444,6 +1544,7 @@
           "name": "Clash of Dragons",
           "zones": 18,
           "connections": 20,
+          "renderedConnections": 20,
           "mines": 126,
           "players": [
             "1",
@@ -1461,6 +1562,7 @@
           "name": "Coldshadow's Fantasy",
           "zones": 21,
           "connections": 22,
+          "renderedConnections": 22,
           "mines": 92,
           "players": [
             "1",
@@ -1484,6 +1586,7 @@
           "name": "Cube",
           "zones": 8,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 16,
           "players": [
             "1",
@@ -1501,6 +1604,7 @@
           "name": "Diamond",
           "zones": 16,
           "connections": 40,
+          "renderedConnections": 40,
           "mines": 30,
           "players": [
             "1",
@@ -1524,6 +1628,7 @@
           "name": "Dwarf Tunnels",
           "zones": 18,
           "connections": 22,
+          "renderedConnections": 22,
           "mines": 61,
           "players": [
             "1",
@@ -1543,6 +1648,7 @@
           "name": "EXTREME (ban fly/DD/orb inhibition/Castle-Necro-Conflux towns, 2 player, 3-Aug-03, midnight design)",
           "zones": 12,
           "connections": 18,
+          "renderedConnections": 18,
           "mines": 18,
           "players": [
             "1",
@@ -1553,6 +1659,7 @@
           "name": "EXTREME (ban fly/DD/orb inhibition/Castle-Necro-Conflux towns, 2 player, 3-Aug-03, midnight design)",
           "zones": 12,
           "connections": 18,
+          "renderedConnections": 18,
           "mines": 18,
           "players": [
             "1",
@@ -1570,6 +1677,7 @@
           "name": "EXTREME II (ban fly/DD/orb inhibition/Castle-Necro-Conflux towns, 2 player, 3-Aug-03, midnight design)",
           "zones": 10,
           "connections": 18,
+          "renderedConnections": 18,
           "mines": 14,
           "players": [
             "1",
@@ -1580,6 +1688,7 @@
           "name": "EXTREME II (ban fly/DD/orb inhibition/Castle-Necro-Conflux towns, 2 player, 3-Aug-03, midnight design)",
           "zones": 10,
           "connections": 18,
+          "renderedConnections": 18,
           "mines": 14,
           "players": [
             "1",
@@ -1597,6 +1706,7 @@
           "name": "Fear",
           "zones": 13,
           "connections": 28,
+          "renderedConnections": 28,
           "mines": 18,
           "players": [
             "1",
@@ -1614,6 +1724,7 @@
           "name": "Frozen Dragons(version Okt, 2003)",
           "zones": 16,
           "connections": 28,
+          "renderedConnections": 28,
           "mines": 30,
           "players": [
             "1",
@@ -1631,6 +1742,7 @@
           "name": "Gimlis Revenge",
           "zones": 8,
           "connections": 9,
+          "renderedConnections": 9,
           "mines": 21,
           "players": [
             "1",
@@ -1648,6 +1760,7 @@
           "name": "Guerilla",
           "zones": 28,
           "connections": 44,
+          "renderedConnections": 44,
           "mines": 16,
           "players": [
             "1",
@@ -1665,6 +1778,7 @@
           "name": "h3dm1",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 9,
           "mines": 12,
           "players": [
             "1"
@@ -1681,6 +1795,7 @@
           "name": "Headquarters",
           "zones": 9,
           "connections": 9,
+          "renderedConnections": 0,
           "mines": 63,
           "players": [
             "1",
@@ -1703,6 +1818,7 @@
           "name": "HyperCube",
           "zones": 20,
           "connections": 24,
+          "renderedConnections": 24,
           "mines": 16,
           "players": [
             "1",
@@ -1720,6 +1836,7 @@
           "name": "Jebus Cross",
           "zones": 5,
           "connections": 5,
+          "renderedConnections": 4,
           "mines": 29,
           "players": [
             "1",
@@ -1739,6 +1856,7 @@
           "name": "Long Run",
           "zones": 9,
           "connections": 9,
+          "renderedConnections": 8,
           "mines": 37,
           "players": [
             "1",
@@ -1749,6 +1867,7 @@
           "name": "Long Run",
           "zones": 9,
           "connections": 9,
+          "renderedConnections": 8,
           "mines": 37,
           "players": [
             "1",
@@ -1766,6 +1885,7 @@
           "name": "Marathon (ban fly/DD, 2 player, 31-May-03, midnight design)",
           "zones": 23,
           "connections": 39,
+          "renderedConnections": 39,
           "mines": 26,
           "players": [
             "1",
@@ -1776,6 +1896,7 @@
           "name": "Marathon (ban fly/DD, 2 player, 31-May-03, midnight design)",
           "zones": 23,
           "connections": 39,
+          "renderedConnections": 39,
           "mines": 26,
           "players": [
             "1",
@@ -1793,6 +1914,7 @@
           "name": "Small Ring",
           "zones": 8,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 32,
           "players": [
             "1",
@@ -1809,6 +1931,7 @@
           "name": "Dragons",
           "zones": 33,
           "connections": 40,
+          "renderedConnections": 40,
           "mines": 31,
           "players": [
             "1",
@@ -1823,6 +1946,7 @@
           "name": "Gauntlet",
           "zones": 24,
           "connections": 25,
+          "renderedConnections": 25,
           "mines": 35,
           "players": [
             "1",
@@ -1837,6 +1961,7 @@
           "name": "Ready",
           "zones": 0,
           "connections": 0,
+          "renderedConnections": 0,
           "mines": 0,
           "players": []
         },
@@ -1844,6 +1969,7 @@
           "name": "or Not",
           "zones": 10,
           "connections": 10,
+          "renderedConnections": 9,
           "mines": 32,
           "players": [
             "1",
@@ -1855,6 +1981,7 @@
           "name": "South",
           "zones": 0,
           "connections": 0,
+          "renderedConnections": 0,
           "mines": 0,
           "players": []
         },
@@ -1862,6 +1989,7 @@
           "name": "of Hell",
           "zones": 11,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 28,
           "players": [
             "1",
@@ -1873,6 +2001,7 @@
           "name": "Worlds",
           "zones": 0,
           "connections": 0,
+          "renderedConnections": 0,
           "mines": 0,
           "players": []
         },
@@ -1880,6 +2009,7 @@
           "name": "at War",
           "zones": 17,
           "connections": 18,
+          "renderedConnections": 18,
           "mines": 54,
           "players": [
             "1",
@@ -1893,6 +2023,7 @@
           "name": "Meeting",
           "zones": 0,
           "connections": 0,
+          "renderedConnections": 0,
           "mines": 0,
           "players": []
         },
@@ -1900,6 +2031,7 @@
           "name": "in Muzgob",
           "zones": 17,
           "connections": 16,
+          "renderedConnections": 16,
           "mines": 62,
           "players": [
             "1",
@@ -1916,6 +2048,7 @@
           "name": "Newcomers",
           "zones": 14,
           "connections": 20,
+          "renderedConnections": 20,
           "mines": 77,
           "players": [
             "1",
@@ -1928,6 +2061,7 @@
           "name": "Dwarven Tunnels",
           "zones": 18,
           "connections": 22,
+          "renderedConnections": 22,
           "mines": 61,
           "players": [
             "1",
@@ -1940,6 +2074,7 @@
           "name": "2SM2a",
           "zones": 4,
           "connections": 4,
+          "renderedConnections": 4,
           "mines": 10,
           "players": [
             "1",
@@ -1950,6 +2085,7 @@
           "name": "2SM2b",
           "zones": 6,
           "connections": 6,
+          "renderedConnections": 6,
           "mines": 16,
           "players": [
             "1",
@@ -1960,6 +2096,7 @@
           "name": "2SM2b(2)",
           "zones": 6,
           "connections": 6,
+          "renderedConnections": 6,
           "mines": 18,
           "players": [
             "1",
@@ -1972,6 +2109,7 @@
           "name": "2SM2c",
           "zones": 6,
           "connections": 10,
+          "renderedConnections": 10,
           "mines": 16,
           "players": [
             "1",
@@ -1982,6 +2120,7 @@
           "name": "2SM4d",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 20,
           "players": [
             "1",
@@ -1992,6 +2131,7 @@
           "name": "2SM4d(2)",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 24,
           "players": [
             "1",
@@ -2004,6 +2144,7 @@
           "name": "2SM4d(3)",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 24,
           "players": [
             "1",
@@ -2018,6 +2159,7 @@
           "name": "2SM2f",
           "zones": 6,
           "connections": 5,
+          "renderedConnections": 5,
           "mines": 20,
           "players": [
             "1",
@@ -2028,6 +2170,7 @@
           "name": "2SM2f(2)",
           "zones": 6,
           "connections": 5,
+          "renderedConnections": 5,
           "mines": 18,
           "players": [
             "1",
@@ -2040,6 +2183,7 @@
           "name": "2SM2h",
           "zones": 5,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 17,
           "players": [
             "1",
@@ -2050,6 +2194,7 @@
           "name": "2SM2h(2)",
           "zones": 5,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 13,
           "players": [
             "1",
@@ -2062,6 +2207,7 @@
           "name": "2SM2i",
           "zones": 5,
           "connections": 6,
+          "renderedConnections": 6,
           "mines": 13,
           "players": [
             "1",
@@ -2072,6 +2218,7 @@
           "name": "2SM2i(2)",
           "zones": 5,
           "connections": 6,
+          "renderedConnections": 6,
           "mines": 13,
           "players": [
             "1",
@@ -2082,6 +2229,7 @@
           "name": "2SM0k",
           "zones": 8,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 14,
           "players": [
             "1",
@@ -2092,6 +2240,7 @@
           "name": "4SM0d",
           "zones": 9,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 25,
           "players": [
             "1",
@@ -2104,6 +2253,7 @@
           "name": "4SM4e",
           "zones": 12,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 32,
           "players": [
             "1",
@@ -2116,6 +2266,7 @@
           "name": "4SM4e(2)",
           "zones": 12,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 31,
           "players": [
             "1",
@@ -2128,6 +2279,7 @@
           "name": "4SM0f",
           "zones": 8,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 20,
           "players": [
             "1",
@@ -2140,6 +2292,7 @@
           "name": "4SM0g",
           "zones": 8,
           "connections": 11,
+          "renderedConnections": 11,
           "mines": 20,
           "players": [
             "1",
@@ -2152,6 +2305,7 @@
           "name": "4SM3i",
           "zones": 9,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 29,
           "players": [
             "1",
@@ -2164,6 +2318,7 @@
           "name": "6SM0b",
           "zones": 10,
           "connections": 13,
+          "renderedConnections": 13,
           "mines": 22,
           "players": [
             "1",
@@ -2178,6 +2333,7 @@
           "name": "6SM0d",
           "zones": 6,
           "connections": 7,
+          "renderedConnections": 7,
           "mines": 42,
           "players": [
             "1",
@@ -2192,6 +2348,7 @@
           "name": "6SM0e",
           "zones": 14,
           "connections": 20,
+          "renderedConnections": 20,
           "mines": 24,
           "players": [
             "1",
@@ -2206,6 +2363,7 @@
           "name": "8SM0c",
           "zones": 13,
           "connections": 20,
+          "renderedConnections": 20,
           "mines": 38,
           "players": [
             "1",
@@ -2222,6 +2380,7 @@
           "name": "8SM0f",
           "zones": 12,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 34,
           "players": [
             "1",
@@ -2238,6 +2397,7 @@
           "name": "3SM3d",
           "zones": 14,
           "connections": 18,
+          "renderedConnections": 18,
           "mines": 15,
           "players": [
             "1",
@@ -2249,6 +2409,7 @@
           "name": "8MM6",
           "zones": 26,
           "connections": 40,
+          "renderedConnections": 40,
           "mines": 45,
           "players": [
             "1",
@@ -2265,6 +2426,7 @@
           "name": "4MM2h",
           "zones": 6,
           "connections": 6,
+          "renderedConnections": 6,
           "mines": 16,
           "players": [
             "1",
@@ -2277,6 +2439,7 @@
           "name": "8MM0b",
           "zones": 9,
           "connections": 16,
+          "renderedConnections": 16,
           "mines": 28,
           "players": [
             "1",
@@ -2293,6 +2456,7 @@
           "name": "8MM0e",
           "zones": 9,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 28,
           "players": [
             "1",
@@ -2309,6 +2473,7 @@
           "name": "6LM10",
           "zones": 25,
           "connections": 48,
+          "renderedConnections": 48,
           "mines": 46,
           "players": [
             "1",
@@ -2323,6 +2488,7 @@
           "name": "6LM10",
           "zones": 25,
           "connections": 46,
+          "renderedConnections": 46,
           "mines": 48,
           "players": [
             "1",
@@ -2339,6 +2505,7 @@
           "name": "8XM12",
           "zones": 33,
           "connections": 68,
+          "renderedConnections": 68,
           "mines": 57,
           "players": [
             "1",
@@ -2355,6 +2522,7 @@
           "name": "8XM8",
           "zones": 48,
           "connections": 52,
+          "renderedConnections": 46,
           "mines": 72,
           "players": [
             "1",
@@ -2371,6 +2539,7 @@
           "name": "3SB0b",
           "zones": 8,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 20,
           "players": [
             "1",
@@ -2382,6 +2551,7 @@
           "name": "3SB0c",
           "zones": 10,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 11,
           "players": [
             "1",
@@ -2393,6 +2563,7 @@
           "name": "5SB0a",
           "zones": 9,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 24,
           "players": [
             "1",
@@ -2406,6 +2577,7 @@
           "name": "5SB0b",
           "zones": 7,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 35,
           "players": [
             "1",
@@ -2419,6 +2591,7 @@
           "name": "7SB0b",
           "zones": 7,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 33,
           "players": [
             "1",
@@ -2434,6 +2607,7 @@
           "name": "7SB0c",
           "zones": 7,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 33,
           "players": [
             "1",
@@ -2449,6 +2623,7 @@
           "name": "Golems Aplenty",
           "zones": 7,
           "connections": 8,
+          "renderedConnections": 8,
           "mines": 28,
           "players": [
             "1",
@@ -2461,6 +2636,7 @@
           "name": "Monk's Retreat",
           "zones": 9,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 51,
           "players": [
             "1",
@@ -2475,6 +2651,7 @@
           "name": "Rise of Phoenix",
           "zones": 14,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 60,
           "players": [
             "1",
@@ -2494,6 +2671,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 13,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 26,
           "players": [
             "1",
@@ -2505,6 +2683,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 13,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 26,
           "players": [
             "1",
@@ -2516,6 +2695,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 9,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 29,
           "players": [
             "1",
@@ -2528,6 +2708,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 12,
           "connections": 20,
+          "renderedConnections": 20,
           "mines": 20,
           "players": [
             "1",
@@ -2540,6 +2721,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 5,
           "connections": 4,
+          "renderedConnections": 4,
           "mines": 29,
           "players": [
             "1",
@@ -2552,6 +2734,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 6,
           "connections": 9,
+          "renderedConnections": 8,
           "mines": 28,
           "players": [
             "1",
@@ -2562,6 +2745,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 13,
           "connections": 19,
+          "renderedConnections": 19,
           "mines": 15,
           "players": [
             "1",
@@ -2572,6 +2756,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 13,
           "connections": 19,
+          "renderedConnections": 19,
           "mines": 15,
           "players": [
             "1",
@@ -2582,6 +2767,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 13,
           "connections": 19,
+          "renderedConnections": 19,
           "mines": 15,
           "players": [
             "1",
@@ -2592,6 +2778,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 13,
           "connections": 19,
+          "renderedConnections": 19,
           "mines": 15,
           "players": [
             "1",
@@ -2602,6 +2789,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 12,
           "connections": 16,
+          "renderedConnections": 16,
           "mines": 18,
           "players": [
             "1",
@@ -2612,6 +2800,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 11,
           "connections": 13,
+          "renderedConnections": 13,
           "mines": 16,
           "players": [
             "1",
@@ -2622,6 +2811,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 10,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 16,
           "players": [
             "1",
@@ -2632,6 +2822,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 12,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 22,
           "players": [
             "1",
@@ -2642,6 +2833,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 8,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 15,
           "players": [
             "1",
@@ -2652,6 +2844,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 9,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 28,
           "players": [
             "1",
@@ -2662,6 +2855,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 9,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 28,
           "players": [
             "1",
@@ -2672,6 +2866,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 8,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 28,
           "players": [
             "1",
@@ -2682,6 +2877,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 8,
           "connections": 15,
+          "renderedConnections": 15,
           "mines": 28,
           "players": [
             "1",
@@ -2692,6 +2888,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 7,
           "connections": 11,
+          "renderedConnections": 11,
           "mines": 15,
           "players": [
             "1",
@@ -2702,6 +2899,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 8,
           "connections": 13,
+          "renderedConnections": 13,
           "mines": 28,
           "players": [
             "1",
@@ -2712,6 +2910,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 8,
           "connections": 13,
+          "renderedConnections": 13,
           "mines": 28,
           "players": [
             "1",
@@ -2722,6 +2921,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 9,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 25,
           "players": [
             "1",
@@ -2732,6 +2932,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 7,
           "connections": 11,
+          "renderedConnections": 11,
           "mines": 12,
           "players": [
             "1",
@@ -2742,6 +2943,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 7,
           "connections": 11,
+          "renderedConnections": 11,
           "mines": 12,
           "players": [
             "1",
@@ -2752,6 +2954,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 8,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 12,
           "players": [
             "1",
@@ -2762,6 +2965,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 8,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 12,
           "players": [
             "1",
@@ -2772,6 +2976,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 10,
           "connections": 13,
+          "renderedConnections": 13,
           "mines": 20,
           "players": [
             "1",
@@ -2782,6 +2987,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 10,
           "connections": 13,
+          "renderedConnections": 13,
           "mines": 24,
           "players": [
             "1",
@@ -2792,6 +2998,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 10,
           "connections": 13,
+          "renderedConnections": 13,
           "mines": 24,
           "players": [
             "1",
@@ -2802,6 +3009,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 17,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 15,
           "players": [
             "1",
@@ -2812,6 +3020,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 17,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 15,
           "players": [
             "1",
@@ -2822,6 +3031,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 17,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 27,
           "players": [
             "1",
@@ -2832,6 +3042,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 17,
           "connections": 16,
+          "renderedConnections": 16,
           "mines": 62,
           "players": [
             "1",
@@ -2848,6 +3059,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 23,
           "connections": 39,
+          "renderedConnections": 39,
           "mines": 26,
           "players": [
             "1",
@@ -2858,6 +3070,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 23,
           "connections": 39,
+          "renderedConnections": 39,
           "mines": 26,
           "players": [
             "1",
@@ -2868,6 +3081,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 8,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 16,
           "players": [
             "1",
@@ -2878,6 +3092,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 48,
           "connections": 52,
+          "renderedConnections": 46,
           "mines": 72,
           "players": [
             "1",
@@ -2888,6 +3103,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 16,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 4,
           "players": [
             "1",
@@ -2898,6 +3114,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 16,
           "connections": 21,
+          "renderedConnections": 21,
           "mines": 4,
           "players": [
             "1",
@@ -2908,6 +3125,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 20,
           "connections": 20,
+          "renderedConnections": 18,
           "mines": 54,
           "players": [
             "1",
@@ -2918,6 +3136,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 8,
           "connections": 10,
+          "renderedConnections": 10,
           "mines": 12,
           "players": [
             "1",
@@ -2928,6 +3147,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 8,
           "connections": 10,
+          "renderedConnections": 10,
           "mines": 12,
           "players": [
             "1",
@@ -2938,6 +3158,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 16,
           "connections": 25,
+          "renderedConnections": 25,
           "mines": 16,
           "players": [
             "1",
@@ -2948,6 +3169,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 11,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 13,
           "players": [
             "1",
@@ -2958,6 +3180,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 11,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 13,
           "players": [
             "1",
@@ -2968,6 +3191,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 18,
           "connections": 22,
+          "renderedConnections": 22,
           "mines": 61,
           "players": [
             "1",
@@ -2978,6 +3202,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 8,
           "connections": 16,
+          "renderedConnections": 16,
           "mines": 14,
           "players": [
             "1",
@@ -2988,6 +3213,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 10,
           "connections": 18,
+          "renderedConnections": 18,
           "mines": 14,
           "players": [
             "1",
@@ -2998,6 +3224,7 @@
           "name": "Midnight Mix (14-Sep-03, No fly/dd, wings, carto, grail, hillfort, necro skill/town, diplo/wk of xxx joiners, red day 1 attack, avoiding misplaced guard. Restart: no road, wood/ore mine blocked, heroes meet wk 1, start hero not lvl 1. wildandfunky@yahoo.com)",
           "zones": 8,
           "connections": 32,
+          "renderedConnections": 32,
           "mines": 22,
           "players": [
             "1",
@@ -3015,6 +3242,7 @@
           "name": "Mini-Nostalgia",
           "zones": 15,
           "connections": 14,
+          "renderedConnections": 14,
           "mines": 16,
           "players": [
             "1",
@@ -3038,6 +3266,7 @@
           "name": "mirror Diamond",
           "zones": 8,
           "connections": 23,
+          "renderedConnections": 15,
           "mines": 15,
           "players": [
             "1",
@@ -3057,6 +3286,7 @@
           "name": "mirror Skirmish (sc2tv tourney edition)",
           "zones": 7,
           "connections": 11,
+          "renderedConnections": 7,
           "mines": 7,
           "players": [
             "1"
@@ -3073,6 +3303,7 @@
           "name": "Nostalgia",
           "zones": 24,
           "connections": 32,
+          "renderedConnections": 32,
           "mines": 31,
           "players": [
             "1",
@@ -3096,6 +3327,7 @@
           "name": "Nostalgia",
           "zones": 24,
           "connections": 32,
+          "renderedConnections": 32,
           "mines": 31,
           "players": [
             "1",
@@ -3119,6 +3351,7 @@
           "name": "Oceans Eleven",
           "zones": 11,
           "connections": 13,
+          "renderedConnections": 13,
           "mines": 16,
           "players": [
             "1",
@@ -3136,6 +3369,7 @@
           "name": "Panic (ban fly/DD, 2 player, 3-Aug-03, midnight design)",
           "zones": 13,
           "connections": 18,
+          "renderedConnections": 18,
           "mines": 15,
           "players": [
             "1",
@@ -3153,6 +3387,7 @@
           "name": "Poor Jebus (made by Bjorn190, modified by Maretti and Angelito)",
           "zones": 5,
           "connections": 5,
+          "renderedConnections": 4,
           "mines": 29,
           "players": [
             "1",
@@ -3172,6 +3407,7 @@
           "name": "Reckless (2 player, 6-Jan-03, midnight design)",
           "zones": 9,
           "connections": 12,
+          "renderedConnections": 12,
           "mines": 25,
           "players": [
             "1",
@@ -3189,6 +3425,7 @@
           "name": "Roadrunner (ban fly/DD, 2 player, 31-May-03, midnight design)",
           "zones": 8,
           "connections": 17,
+          "renderedConnections": 17,
           "mines": 22,
           "players": [
             "1",
@@ -3206,6 +3443,7 @@
           "name": "Schaafworld",
           "zones": 3,
           "connections": 2,
+          "renderedConnections": 2,
           "mines": 21,
           "players": [
             "1",

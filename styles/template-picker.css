@@ -1,0 +1,127 @@
+/* v1.5.3: custom built-in template picker. Native select popups close on wheel
+   in several browsers, so the visible picker uses a scrollable in-page list. */
+
+.template-picker {
+    position: relative;
+    min-width: 0;
+}
+
+.template-picker-trigger {
+    width: 100%;
+    min-height: 39px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--panel-2);
+    color: var(--text);
+    padding: 7px 10px 7px 11px;
+    font-size: 12px;
+    text-align: left;
+}
+
+.template-picker-trigger:hover:not(:disabled),
+.template-picker.open .template-picker-trigger {
+    border-color: var(--card-edge);
+    background: var(--button-hover);
+}
+
+.template-picker-trigger:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+#built-in-trigger-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.template-picker-chevron {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+    border-right: 1.6px solid var(--select-chevron);
+    border-bottom: 1.6px solid var(--select-chevron);
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform .15s ease;
+}
+
+.template-picker.open .template-picker-chevron {
+    transform: translateY(2px) rotate(225deg);
+}
+
+.template-picker-menu {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    max-height: min(360px, 48vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--panel);
+    box-shadow: 0 16px 44px var(--shadow);
+}
+
+.template-picker-option {
+    display: block;
+    width: 100%;
+    min-height: 34px;
+    border: 0;
+    border-radius: 6px;
+    padding: 8px 9px;
+    background: transparent;
+    color: var(--text);
+    font-size: 12px;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.template-picker-option:hover,
+.template-picker-option:focus-visible {
+    background: var(--button-hover);
+    outline: 0;
+}
+
+.template-picker-option[aria-selected="true"] {
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: 700;
+}
+
+/* Use the same three-dot icon treatment on desktop and mobile. */
+
+.editor-actions .more-btn {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 6px;
+    border-color: transparent;
+    background: transparent;
+}
+
+.editor-actions .more-btn svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+    stroke: none;
+}
+
+.template-picker-native {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+}

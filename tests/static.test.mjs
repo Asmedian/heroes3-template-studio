@@ -8,9 +8,12 @@ const file=p=>fs.readFileSync(path.join(root,p),'utf8');
 const pkg=JSON.parse(file('package.json'));
 const manifest=JSON.parse(file('manifest.webmanifest'));
 const sw=file('sw.js');
+const css=()=>['styles.css','styles/base.css','styles/diagram.css','styles/controls.css','styles/template-picker.css'].map(file).join('\n');
+const flat=value=>value.replace(/\s+/g,'');
+
 test('PWA version is synchronized across package, manifest, SW and UI',()=>{
   assert.match(pkg.version,/^\d+\.\d+\.\d+$/);assert.equal(manifest.version,pkg.version);
-  assert.ok(sw.includes(`const VERSION='${pkg.version}';`));
+  assert.match(sw, new RegExp(`const\\s+VERSION\\s*=\\s*['\"]${pkg.version}['\"]\\s*;`));
   assert.ok(file('index.html').includes(`<span>v${pkg.version}</span>`));
 });
 test('PWA manifest paths are relative for GitHub Pages subdirectory',()=>{
@@ -26,7 +29,7 @@ test('service worker offline cache contains every module and its own manifest',(
     assert.ok(sw.includes(`'./src/${name}'`));
     assert.ok(fs.existsSync(path.join(root,'src',name)));
   }
-  const assets=sw.match(/const ASSETS=\[([\s\S]*?)\];/)[1];
+  const assets = sw.match(/const\s+ASSETS\s*=\s*\[([\s\S]*?)\];/)[1];
   for(const match of assets.matchAll(/'\.\/([^']*)'/g)){
     const target=match[1]||'index.html';assert.ok(fs.existsSync(path.join(root,target)),`Offline asset missing: ${target}`);
   }
@@ -36,9 +39,9 @@ test('HTML contains named install, theme, upload, canvas, zoom and export contro
   for(const id of ['install-btn','theme-btn','file-input','canvas','zoom-in','zoom-out','zoom-fit','save-btn','convert-btn','export-format','drop-hint','layout-input'])
     assert.ok(html.includes(`id="${id}"`),`Missing control ${id}`);
   assert.ok(html.includes('rel="manifest"'));assert.match(html,/src="\.\/src\/app\.js(?:\?v=[^"]+)?"/);
-  assert.ok(file('styles.css').includes('html[data-theme="dark"]'));
-  assert.ok(file('styles.css').includes('html[data-theme="light"]'));
-  assert.ok(!file('styles.css').includes('.file-actions #save-btn{display:none}')); // Save must remain on mobile.
+  assert.ok(css().includes('html[data-theme="dark"]'));
+  assert.ok(css().includes('html[data-theme="light"]'));
+  assert.ok(!flat(css()).includes('.file-actions#save-btn{display:none}')); // Save must remain on mobile.
 });
 
 test('raster install icons have declared exact PNG dimensions',()=>{
@@ -79,16 +82,16 @@ test('all sixteen player-colored roof/flag/gate icons and neutral originals are 
    assert.ok(svg.includes('roof')&&svg.includes('flags')&&svg.includes('gate'),`${building}/${owner} missing editable groups`);
   }
  }
- const css=file('styles.css');for(const color of ['#e64d4d','#7083e7','#c8ac84','#79c662','#e47f16','#a878b3','#55c0c3','#db98a7'])assert.ok(css.includes(color));
+ const allCss=css();for(const color of ['#e64d4d','#7083e7','#c8ac84','#79c662','#e47f16','#a878b3','#55c0c3','#db98a7'])assert.ok(allCss.includes(color));
 });
 test('map inspector is permanently available, phone name and dismiss logic are present',()=>{
- const html=file('index.html'),app=file('src/app.js'),css=file('styles.css');
+ const html=file('index.html'),app=file('src/app.js'),allCss=css();
  assert.ok(html.includes('id="inspector-context-tabs"'));
  assert.ok(html.includes('brand-short">H3 TS'));
  assert.ok(html.includes('id="i-menu"'));
  assert.ok(app.includes('inspectorSelection()'));
  assert.ok(app.includes("!event.target.closest('#sidebar,#sidebar-toggle')"));
- assert.ok(css.includes('grid-template-columns:minmax(0,1fr)'));
+ assert.ok(flat(allCss).includes('grid-template-columns:minmax(0,1fr)'));
 });
 test('original-software layouts are available for all 59 catalog packages offline',()=>{
  const catalog=JSON.parse(file('templates/catalog.json'));
@@ -108,23 +111,23 @@ test('native PWA install banner is not suppressed and both mobile app meta tags 
   const html=file('index.html'),app=file('src/app.js');
   assert.ok(html.includes('<meta name="mobile-web-app-capable" content="yes">'));
   assert.ok(html.includes('<meta name="apple-mobile-web-app-capable" content="yes">'));
-  const handler=app.match(/window\.addEventListener\('beforeinstallprompt',event=>\{([^}]*)\}\);/);
+  const handler=app.match(/window\.addEventListener\('beforeinstallprompt',\s*event\s*=>\s*\{([^}]*)\}\);/s);
   assert.ok(handler,'Missing native browser install handler');
   assert.ok(!handler[1].includes('preventDefault'),'Native browser install banner should not be blocked');
-  assert.ok(app.includes('await prompt.prompt()'),'The visible Install button must invoke the browser prompt');
+  assert.ok(/await\s+prompt\.prompt\(\)/.test(app),'The visible Install button must invoke the browser prompt');
 });
 
 test('enlarged card artwork survives SVG/PNG export without a heavy legend rebuild on pan',()=>{
-  const app=file('src/app.js'),css=file('styles.css');
-  assert.ok(app.includes("svgIcon('chest',6,3,43)"));
-  assert.ok(app.includes("svgIcon('swords',CARD_W-7-(j+1)*30,7,30)"));
-  assert.ok(app.includes('svgIcon(symbol,x,y+slotIconDy(symbol),40)'));
-  assert.ok(app.includes('const SLOT_ICON_DY={wood:-2.5,mercury:-1,ore:-3,sulfur:-4.5,crystal:-5.5,gems:-2.5,gold:0}'));
-  assert.ok(css.includes('.node-treasure{font-size:32px'));
-  assert.ok(css.includes('.node .h3-slot-count{font-size:14px'));
-  assert.ok(app.includes('.node-treasure{font-size:32px;font-weight:850}'));
-  assert.ok(app.includes('function renderAll(){renderSidebar();renderToolbar();renderCanvas();renderLegend();'));
-  const renderCanvas=app.match(/function renderCanvas\(\)\{([\s\S]*?)\n\}/);
+  const app=file('src/app.js'),allCss=css();
+  assert.ok(flat(app).includes("svgIcon('chest',6,3,43)"));
+  assert.ok(flat(app).includes("svgIcon('swords',CARD_W-7-(j+1)*30,7,30)"));
+  assert.ok(flat(app).includes('svgIcon(symbol,x,y+slotIconDy(symbol),40)'));
+  assert.ok(flat(app).includes('constSLOT_ICON_DY={wood:-2.5,mercury:-1,ore:-3,sulfur:-4.5,crystal:-5.5,gems:-2.5,gold:0};'));
+  assert.ok(flat(allCss).includes('.node-treasure{font-size:32px'));
+  assert.ok(flat(allCss).includes('.node.h3-slot-count{font-size:14px'));
+  assert.ok(flat(app).includes('.node-treasure{font-size:32px;font-weight:850}'));
+  assert.match(flat(app),/functionrenderAll\(\)\{renderSidebar\(\);renderToolbar\(\);renderCanvas\(\);renderLegend\(\);/);
+  const renderCanvas=app.match(/function\s+renderCanvas\(\)\s*\{([\s\S]*?)\n\}/);
   assert.ok(renderCanvas&&!renderCanvas[1].includes('renderLegend()'),'Pan/zone drag must not rebuild the legend');
 });
 
@@ -133,10 +136,10 @@ test('current-map legend is collapsed by default and release documentation is co
   assert.ok(html.includes('<details class="canvas-top-info" id="canvas-legend" hidden>'));
   assert.ok(html.includes('id="legend-summary"'));
   assert.ok(html.includes('id="legend-content"'));
-  assert.ok(app.includes('const owners=[...new Set(looks.map(a=>a.owner).filter(Boolean))]'));
-  assert.ok(app.includes('const present=new Set(zones.flatMap(mineEntries)'));
-  assert.ok(app.includes('const appearance=links.map(connectionAppearance)'));
-  assert.ok(app.includes("$('canvas-legend').open=false"));
+  assert.match(flat(app),/constowners=\[\.\.\.newSet\(looks\.map\([^)]*owner[^)]*\)\.filter\(Boolean\)\)\]/);
+  assert.ok(flat(app).includes('newSet(zones.flatMap(mineEntries)'));
+  assert.ok(flat(app).includes('constappearance=links.map(connectionAppearance)'));
+  assert.ok(flat(app).includes("$('canvas-legend').open=false"));
   for(const name of ['PROJECT_CHANGES.md','PROJECT_TESTS.md'])assert.ok(ignore.split(/\r?\n/).includes(name),name);
   for(const name of ['CHANGELOG.md','CI_FIX_RU.md','CI_TEST_REPORT.md','GITHUB_ABOUT.txt','PATCH_NOTES_RU.md','TEST_REPORT.md'])
     assert.ok(!fs.existsSync(path.join(root,name)),`Obsolete release file: ${name}`);
@@ -145,46 +148,69 @@ test('current-map legend is collapsed by default and release documentation is co
 
 test('v1.5.2 uses strict digit-only numeric controls and live sanitization',()=>{
  const app=file('src/app.js');
- assert.ok(app.includes('const isNumericField=path=>'));
- assert.ok(app.includes('data-numeric="1" inputmode="numeric" pattern="[0-9]*"'));
+ assert.match(app,/const\s+isNumericField\s*=\s*path\s*=>/);
+ assert.ok(flat(app).includes('data-numeric="1"inputmode="numeric"pattern="[0-9]*"'));
  assert.ok(app.includes("addEventListener('beforeinput'"));
- assert.ok(app.includes("replace(/[^0-9]/g,''"));
+ assert.match(app,/replace\(\/\[\^0-9\]\/g,\s*''\)/);
 });
 
 test('v1.5.2 PWA update path bypasses stale app-shell caches',()=>{
  const html=file('index.html'),app=file('src/app.js');
- assert.ok(html.includes('styles.css?v=1.5.2'));
- assert.ok(html.includes('src="./src/app.js?v=1.5.2"'));
- assert.ok(app.includes("register('./sw.js?v=1.5.2'"));
- assert.ok(app.includes("updateViaCache:'none'"));
- assert.ok(app.includes('await registration.update()'));
- assert.ok(sw.includes("const mutable=/\\.(?:html|css|js|webmanifest|json)$/i"));
- assert.ok(sw.includes("cache:'no-store'"));
- assert.ok(sw.includes("caches.match(request,{ignoreSearch:true})"));
+ assert.ok(html.includes(`styles.css?v=${pkg.version}`));
+ assert.ok(html.includes(`src="./src/app.js?v=${pkg.version}"`));
+ assert.ok(app.includes(`register('./sw.js?v=${pkg.version}'`));
+ assert.ok(flat(app).includes("updateViaCache:'none'"));
+ assert.match(app,/await\s+registration\.update\(\)/);
+ assert.ok(flat(sw).includes('constmutable=/\\.(?:html|css|js|webmanifest|json)$/i.test(relative);'));
+ assert.match(sw, /cache:\s*['"]no-store['"]/);
+ assert.match(flat(sw), /caches\.match\(request,\{ignoreSearch:true\}\)/);
 });
 
 test('opened files share canonical built-in layouts and do not reuse obsolete layout cache namespaces',()=>{
  const app=file('src/app.js');
- assert.ok(app.includes('function matchPackPresets(pack,layouts)'));
- assert.ok(app.includes('matchPackPresets(pack,await loadUpstreamLayouts())'));
+ assert.match(app,/function\s+matchPackPresets\(pack,\s*layouts\)/);
+ assert.match(flat(app),/matchPackPresets\(pack,awaitloadUpstreamLayouts\(\)\)/);
  assert.ok(app.includes('h3tc-layout-v3-'));
- assert.ok(app.includes('topologyLayout(map)||autoLayout(map,{preferStored:false})'));
+ assert.ok(flat(app).includes('topologyLayout(map)||autoLayout(map,{preferStored:false})'));
 });
 
 test('unified scrollbars and dropdown/legend chevrons are styled consistently',()=>{
- const css=file('styles.css');
- assert.ok(css.includes('*::-webkit-scrollbar-thumb'));
- assert.ok(css.includes('scrollbar-color:var(--scroll-thumb) var(--scroll-track)'));
- assert.ok(css.includes('select{\n appearance:none'));
- assert.ok(css.includes('.canvas-top-info .legend-chevron{width:25px'));
- assert.ok(css.includes('.canvas-top-info[open] .legend-chevron svg{transform:rotate(180deg)}'));
+ const allCss=css();
+ assert.ok(allCss.includes('*::-webkit-scrollbar-thumb'));
+ assert.ok(flat(allCss).includes('scrollbar-color:var(--scroll-thumb)var(--scroll-track)'));
+ assert.match(allCss,/select\s*\{[^}]*appearance:\s*none/s);
+ assert.match(allCss,/\.canvas-top-info \.legend-chevron\s*\{[^}]*width:\s*25px/s);
+ assert.match(allCss,/\.canvas-top-info\[open\] \.legend-chevron svg\s*\{[^}]*transform:\s*rotate\(180deg\)/s);
 });
 
 
 test('mobile pinch state is cleared after cancelled or lost touch contacts',()=>{
  const app=file('src/app.js');
- assert.ok(app.includes('if(e.isPrimary&&touchPoints.size)resetTouchGesture()'));
- assert.ok(app.includes("addEventListener('pointercancel',e=>{releaseCanvasPointer(e.pointerId);resetTouchGesture();})"));
+ assert.ok(flat(app).includes('if(e.isPrimary&&touchPoints.size)resetTouchGesture();'));
+ assert.match(flat(app),/addEventListener\('pointercancel',e=>\{releaseCanvasPointer\(e\.pointerId\);resetTouchGesture\(\);\}\)/);
  assert.ok(app.includes("addEventListener('lostpointercapture'"));
- assert.ok(app.includes("window.addEventListener('blur',resetTouchGesture)"));
+ assert.match(flat(app),/window\.addEventListener\('blur',resetTouchGesture\)/);
+});
+
+
+test('localization and presentation assets remain external and modular', () => {
+    const html = file('index.html');
+    const i18n = file('src/i18n.js');
+    const picker = file('src/ui/template-picker.js');
+    const en = JSON.parse(file('locales/en.json'));
+    const ru = JSON.parse(file('locales/ru.json'));
+
+    assert.ok(Object.keys(en).length > 500);
+    assert.ok(Object.keys(ru).length > 500);
+    assert.ok(i18n.includes("new URL('../locales/en.json'"));
+    assert.ok(i18n.includes("new URL('../locales/ru.json'"));
+    assert.ok(!/[А-Яа-яЁё]/.test(i18n), 'Localization module must not embed Russian UI strings.');
+    assert.ok(!html.includes('<style'));
+    assert.ok(html.includes('<link rel="stylesheet" href="./styles.css?v=1.5.4">'));
+    for (const stylesheet of ['base.css', 'diagram.css', 'controls.css', 'template-picker.css']) {
+        assert.ok(fs.existsSync(path.join(root, 'styles', stylesheet)), stylesheet);
+        assert.ok(file('styles.css').includes(`./styles/${stylesheet}`));
+    }
+    assert.ok(picker.includes("menu.addEventListener('wheel'"));
+    assert.ok(picker.includes("event.stopPropagation()"));
 });

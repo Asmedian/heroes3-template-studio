@@ -94,10 +94,12 @@ async def main():
             await page.wait_for_timeout(120)
             border_links = page.locator('.connection.conn-border')
             assert await border_links.count() == 14
-            labels = await border_links.locator('.conn-label').evaluate_all("els=>els.map(e=>e.textContent)")
-            assert len(labels) == 14 and all(label.startswith('┃ ') for label in labels), labels
-            assert labels.count('┃ 45k') == 2, labels
-            assert labels.count('┃ 3k') == 12, labels
+            icons = await border_links.locator('.conn-label-icon').count()
+            labels = await border_links.locator('.conn-label-value').evaluate_all("els=>els.map(e=>e.textContent)")
+            assert icons == 14, icons
+            assert len(labels) == 14, labels
+            assert labels.count('45k') == 2, labels
+            assert labels.count('3k') == 12, labels
 
             # Legacy malformed connection rows remain in source data for byte fidelity but never become lines on canvas.
             await page.locator('#file-input').set_input_files(str(ROOT / 'tests' / 'fixtures' / 'Duel.h3t'))

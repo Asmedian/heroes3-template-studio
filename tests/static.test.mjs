@@ -206,7 +206,7 @@ test('localization and presentation assets remain external and modular', () => {
     assert.ok(i18n.includes("new URL('../locales/ru.json'"));
     assert.ok(!/[А-Яа-яЁё]/.test(i18n), 'Localization module must not embed Russian UI strings.');
     assert.ok(!html.includes('<style'));
-    assert.ok(html.includes('<link rel="stylesheet" href="./styles.css?v=1.5.4">'));
+    assert.ok(html.includes(`<link rel="stylesheet" href="./styles.css?v=${pkg.version}">`));
     for (const stylesheet of ['base.css', 'diagram.css', 'controls.css', 'template-picker.css']) {
         assert.ok(fs.existsSync(path.join(root, 'styles', stylesheet)), stylesheet);
         assert.ok(file('styles.css').includes(`./styles/${stylesheet}`));

@@ -6,7 +6,7 @@ import { isRenderableConnection, mineEntries, zoneAppearance } from '../src/visu
 
 const catalog = JSON.parse(fs.readFileSync(new URL('../templates/catalog.json', import.meta.url)));
 const result = {
-    version: '1.5.4',
+    version: '1.5.5',
     count: catalog.count,
     templates: []
 };

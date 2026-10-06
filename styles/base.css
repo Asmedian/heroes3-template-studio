@@ -938,8 +938,22 @@ body {
     pointer-events: none;
 }
 
-.connection.selected .conn-label {
+.connection .conn-label-value {
+    text-anchor: start;
+}
+
+.connection .conn-label-icon {
+    width: 18px;
+    height: 18px;
+    fill: var(--muted);
+    color: var(--muted);
+    pointer-events: none;
+}
+
+.connection.selected .conn-label,
+.connection.selected .conn-label-icon {
     fill: var(--accent);
+    color: var(--accent);
 }
 
 .inspector {

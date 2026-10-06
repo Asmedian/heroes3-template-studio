@@ -248,10 +248,10 @@ html[data-theme="dark"] .node[data-owner="0"][data-richness="low"] .h3-icon-swor
 
 .legend-border-guard {
     flex: none;
-    font-size: 20px;
-    color: var(--muted);
     width: 28px;
-    text-align: center;
+    height: 24px;
+    color: var(--muted);
+    fill: currentColor;
 }
 
 .legend-example {

@@ -387,6 +387,36 @@ const swordCount = zone => ({ weak: 1, avg: 2, average: 2, normal: 2, strong: 3 
 // The icon symbols are shipped with the page, so diagram and PNG export stay offline.
 const GLYPH_COLORS = { chest: '#cc9957', swords: '#ccd2dd' };
 const svgIcon = (name, x, y, size, color = '') => `<use class="h3-icon h3-icon-${esc(name)}" href="#h3-${esc(String(name).toLowerCase())}" x="${x}" y="${y}" width="${size}" height="${size}"/>`;
+const BORDER_GUARD_ICON_SIZE = 18;
+function connectionLabelMetrics(connection) {
+    const visual = connectionAppearance(connection);
+    const label = connectionDisplayLabel(connection);
+    const valueText = visual.border ? label.replace(/^┃\s?/, '') : label;
+    if (!label) {
+        return { label: '', valueText: '', width: 0, border: visual.border };
+    }
+    const width = visual.border
+        ? Math.max(44, (valueText ? valueText.length * 14 + 44 : 38))
+        : Math.max(44, valueText.length * 14 + 20);
+    return { label, valueText, width, border: visual.border };
+}
+function renderConnectionLabel(path, connection, visual) {
+    const metrics = connectionLabelMetrics(connection);
+    if (!metrics.label) {
+        return '';
+    }
+    const rect = `<rect class="conn-label-bg" x="${path.x - metrics.width / 2}" y="${path.y - 18}" width="${metrics.width}" height="36" rx="8"/>`;
+    if (!metrics.border) {
+        return `${rect}<text class="conn-label" x="${path.x}" y="${path.y}">${esc(metrics.valueText)}</text>`;
+    }
+    if (!metrics.valueText) {
+        return `${rect}<use class="conn-label-icon" href="#h3-keymaster-tent" x="${path.x - BORDER_GUARD_ICON_SIZE / 2}" y="${path.y - BORDER_GUARD_ICON_SIZE / 2}" width="${BORDER_GUARD_ICON_SIZE}" height="${BORDER_GUARD_ICON_SIZE}"/>`;
+    }
+    const left = path.x - metrics.width / 2;
+    const iconX = left + 10;
+    const textX = iconX + BORDER_GUARD_ICON_SIZE + 6;
+    return `${rect}<use class="conn-label-icon" href="#h3-keymaster-tent" x="${iconX}" y="${path.y - BORDER_GUARD_ICON_SIZE / 2}" width="${BORDER_GUARD_ICON_SIZE}" height="${BORDER_GUARD_ICON_SIZE}"/><text class="conn-label conn-label-value" x="${textX}" y="${path.y}">${esc(metrics.valueText)}</text>`;
+}
 // The source artwork has different transparent padding inside the same 40x40 slot.
 // Shift it so the visible bottoms line up at y+32, keeping one consistent gap to
 // the number below. This also fixes the low crystal/sulfur/ore/fort artwork.
@@ -409,18 +439,18 @@ function canvasMarkup(map) {
         .filter(({ connection }) => isRenderableConnection(connection, zoneIds))
         .map(({ index }) => index);
     const geometry = connectionGeometry(map.connections, map.layout, { width: CARD_W, height: CARD_H,
-        labelWidths: map.connections.map(c => { const label = connectionDisplayLabel(c); return label ? Math.max(44, label.length * 14 + 20) : 0; }) });
+        labelWidths: map.connections.map(c => connectionLabelMetrics(c).width) });
     const edges = visibleIndexes.map(i => {
         const c = map.connections[i], visual = connectionAppearance(c), path = geometry[i];
         if (!path)
             return '';
         const className = `connection ${store.selected.kind === 'connection' && store.selected.index === i ? 'selected' : ''} ${visual.wide ? 'conn-wide' : ''} ${visual.fictive ? 'conn-fictive' : ''} ${visual.roadRequired ? 'conn-road-required' : ''} ${visual.roadForbidden ? 'conn-roadless' : ''} ${visual.border ? 'conn-border' : ''} ${visual.type === 'teleport' ? 'conn-teleport' : ''}`;
-        const raw = strVal(c.value).trim(), label = connectionDisplayLabel(c), textW = Math.max(44, label.length * 14 + 20);
+        const raw = strVal(c.value).trim();
         const aria = message('connection_aria', c.zone1, c.zone2, raw || '0');
         const details = message('connection_title', c.zone1, c.zone2, raw || '0', '', '', '');
         return `<g class="${className}" data-conn-index="${i}" data-parallel-count="${path.total || 1}" data-lane="${path.lane ?? 0}" data-value-raw="${esc(raw)}" aria-label="${esc(aria)}"><title>${esc(details)}</title>
     <path class="conn-line" d="${path.d}"/>${visual.roadRequired ? `<path class="conn-road-overlay" d="${path.d}"/>` : ''}<path class="conn-hit" d="${path.d}"/>
-    ${label ? `<rect class="conn-label-bg" x="${path.x - textW / 2}" y="${path.y - 18}" width="${textW}" height="36" rx="8"/><text class="conn-label" x="${path.x}" y="${path.y}">${esc(label)}</text>` : ''}</g>`;
+    ${renderConnectionLabel(path, c, visual)}</g>`;
     }).join('');
     const zones = map.zones.map((z, i) => {
         const p = map.layout[z.id] ?? { x: 110 + i * 240, y: 120 }, appearance = zoneAppearance(z), selected = store.selected.kind === 'zone' && store.selected.index === i;
@@ -456,6 +486,7 @@ const legendSwatch = color => `<span class="legend-swatch" style="background:${c
 const legendItem = (symbol, description) => `<div class="legend-item">${symbol}<span>${esc(description)}</span></div>`;
 const legendSection = (name, items) => items.length ? `<section class="legend-section"><h3>${esc(name)}</h3>${items.join('')}</section>` : '';
 const legendLine = (cls = '') => `<svg class="legend-conn ${cls}" viewBox="0 0 36 24" aria-hidden="true"><line x1="2" y1="12" x2="34" y2="12"/>${cls === 'road-required' ? '<line class="overlay" x1="2" y1="12" x2="34" y2="12"/>' : ''}</svg>`;
+const legendBorderGuardIcon = () => `<svg class="legend-border-guard" viewBox="0 0 64 64" aria-hidden="true"><use href="#h3-keymaster-tent" width="64" height="64"/></svg>`;
 const legendValue = value => `<span class="legend-example">${esc(value)}</span>`;
 function renderLegend() {
     const panel = $('canvas-legend');
@@ -580,7 +611,7 @@ function renderLegend() {
             connectionRows.push(legendItem(legendLine('teleport'), translateText('Teleport/monolith connection')));
         }
         if (appearance.some(item => item.border)) {
-            connectionRows.push(legendItem('<span class="legend-border-guard">┃</span>', translateText('Border Guard connection')));
+            connectionRows.push(legendItem(legendBorderGuardIcon(), translateText('Border Guard connection')));
         }
         if (store.selected.kind === 'connection') {
             const selectedLink = map.connections[store.selected.index];
@@ -1318,7 +1349,7 @@ function svgStyles() {
   .node-border{stroke:${v('card-edge')};stroke-width:1.7}.node .node-junction-rim{stroke:#707780;stroke-width:10;fill:none}.node text{font-family:Arial,sans-serif;fill:${v('zone-text')};font-weight:700}
   .node-treasure{font-size:32px;font-weight:850}.node-size{font-size:15px}.node-id-label{font-size:23px}.h3-slot-count{font-size:14px;font-weight:850}.h3-slot-count.count-condensed{font-size:11px}.node-section-caption{font-size:14px}.node-cpu,.node-placement{font-size:12px;font-weight:800}
   .conn-line{fill:none;stroke:${v('soft')};stroke-width:2}.conn-hit{display:none}.conn-wide .conn-line{stroke-width:6}.conn-fictive .conn-line{stroke-dasharray:2 9}.conn-roadless .conn-line{stroke-dasharray:11 7}.conn-road-overlay{fill:none;stroke:white;stroke-width:1;stroke-dasharray:5 6}.conn-teleport .conn-line{stroke:${v('accent')};stroke-dasharray:6 4}.dangling .conn-line{stroke:${v('error')};stroke-dasharray:6 5}
-  .conn-label-bg{fill:${v('conn-label-bg')};stroke:${v('line')}}.conn-label{fill:${v('conn-label')};font:750 24px Arial;text-anchor:middle;dominant-baseline:middle}`;
+  .conn-label-bg{fill:${v('conn-label-bg')};stroke:${v('line')}}.conn-label{fill:${v('conn-label')};font:750 24px Arial;text-anchor:middle;dominant-baseline:middle}.conn-label-value{text-anchor:start}.conn-label-icon{fill:${v('conn-label')};color:${v('conn-label')}}`;
 }
 async function exportPNG() {
     if (!current()?.zones.length)
@@ -1572,7 +1603,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         try {
             // External locale modules can finish after the window load event. Register
             // immediately when that happened instead of waiting for an event that has passed.
-            const registration = await navigator.serviceWorker.register('./sw.js?v=1.5.4', { scope: './', updateViaCache: 'none' });
+            const registration = await navigator.serviceWorker.register('./sw.js?v=1.5.5', { scope: './', updateViaCache: 'none' });
             await registration.update();
             if (registration.waiting) {
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' });

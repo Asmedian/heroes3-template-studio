@@ -1,5 +1,5 @@
 /* Offline service worker. Keep VERSION in sync with package.json and manifest. */
-const VERSION = '1.6.0';
+const VERSION = '1.6.1';
 const CACHE = `h3tc-studio-v${VERSION}`;
 const ASSETS = [
     './',
@@ -16,6 +16,7 @@ const ASSETS = [
     './src/core.js',
     './src/layout.js',
     './src/layout-motifs.js',
+    './src/layout-spectral.js',
     './src/geometry.js',
     './src/sidecar.js',
     './src/schema-data.js',

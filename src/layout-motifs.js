@@ -80,6 +80,141 @@ export function radialHubLayout(map, g) {
     return norm(coords);
 }
 /**
+ * Core-and-shell layout for sparse templates with a small biconnected-like
+ * center and several simple chains leading outward. Peeling the graph to its
+ * 2-core makes this independent of source zone numbering and works especially
+ * well for the common "central treasure area + outer starts" topology.
+ */
+export function coreShellLayout(map, g) {
+    const n = g.ids.length;
+    if (n < 9 || n > 42 || !connected(g))
+        return null;
+    const degree = new Map(g.ids.map(id => [id, g.adjacency.get(id).size]));
+    const removed = new Set(), queue = g.ids.filter(id => degree.get(id) < 2).sort(cmp);
+    for (let k = 0; k < queue.length; k++) {
+        const id = queue[k];
+        if (removed.has(id))
+            continue;
+        removed.add(id);
+        for (const next of g.adjacency.get(id)) {
+            if (removed.has(next))
+                continue;
+            degree.set(next, degree.get(next) - 1);
+            if (degree.get(next) < 2)
+                queue.push(next);
+        }
+    }
+    const core = g.ids.filter(id => !removed.has(id));
+    if (core.length < 4 || core.length > 11 || removed.size < 4 || core.length > Math.ceil(n * .62))
+        return null;
+    const coreSet = new Set(core), coreDegree = id => [...g.adjacency.get(id)].filter(x => coreSet.has(x)).length;
+    const center = core.slice().sort((a, b) => coreDegree(b) - coreDegree(a) || cmp(a, b))[0];
+    if (coreDegree(center) !== core.length - 1)
+        return null;
+    const rim = core.filter(id => id !== center), rimSet = new Set(rim);
+    if (rim.some(id => [...g.adjacency.get(id)].filter(x => rimSet.has(x)).length > 2))
+        return null;
+
+    // External components must be unbranched paths attached to exactly one core
+    // vertex. This conservative check prevents the motif from flattening an
+    // unrelated topology merely because it happens to have a dense center.
+    const outside = new Set(g.ids.filter(id => !coreSet.has(id))), seen = new Set(), branches = new Map(core.map(id => [id, []]));
+    for (const seed of [...outside].sort(cmp)) {
+        if (seen.has(seed))
+            continue;
+        const component = [], pending = [seed], attachments = new Set();
+        seen.add(seed);
+        for (let k = 0; k < pending.length; k++) {
+            const id = pending[k];
+            component.push(id);
+            for (const next of g.adjacency.get(id)) {
+                if (coreSet.has(next))
+                    attachments.add(next);
+                else if (outside.has(next) && !seen.has(next)) {
+                    seen.add(next);
+                    pending.push(next);
+                }
+            }
+        }
+        if (attachments.size !== 1 || component.some(id => [...g.adjacency.get(id)].filter(x => outside.has(x)).length > 2))
+            return null;
+        const anchor = [...attachments][0];
+        // The center is kept visually clear; shells radiate from rim vertices.
+        if (anchor === center)
+            return null;
+        const first = component.filter(id => g.adjacency.get(id).has(anchor));
+        if (first.length !== 1)
+            return null;
+        const order = [], local = new Set(component);
+        let previous = anchor, current = first[0];
+        while (current) {
+            order.push(current);
+            const next = [...g.adjacency.get(current)].filter(id => local.has(id) && id !== previous);
+            if (next.length > 1)
+                return null;
+            previous = current;
+            current = next[0];
+        }
+        if (order.length !== component.length)
+            return null;
+        branches.get(anchor).push(order);
+    }
+    if ([...branches.values()].flat().reduce((sum, path) => sum + path.length, 0) !== removed.size)
+        return null;
+
+    // Keep edges between rim vertices local on the circle by walking each path
+    // component consecutively. Components are then ordered deterministically by
+    // topology-derived branch load, with IDs used only as a final tie breaker.
+    const rimSeen = new Set(), rimGroups = [];
+    for (const seed of rim.slice().sort(cmp)) {
+        if (rimSeen.has(seed))
+            continue;
+        const component = [], pending = [seed];
+        rimSeen.add(seed);
+        for (let k = 0; k < pending.length; k++) {
+            const id = pending[k];
+            component.push(id);
+            for (const next of g.adjacency.get(id))
+                if (rimSet.has(next) && !rimSeen.has(next)) {
+                    rimSeen.add(next);
+                    pending.push(next);
+                }
+        }
+        const endpoints = component.filter(id => [...g.adjacency.get(id)].filter(x => rimSet.has(x)).length <= 1).sort(cmp);
+        let current = endpoints[0] ?? component.slice().sort(cmp)[0], previous = null;
+        const order = [];
+        while (current && !order.includes(current)) {
+            order.push(current);
+            const next = [...g.adjacency.get(current)].filter(id => rimSet.has(id) && id !== previous && component.includes(id)).sort(cmp);
+            previous = current;
+            current = next.find(id => !order.includes(id));
+        }
+        if (order.length !== component.length)
+            return null;
+        rimGroups.push(order);
+    }
+    const load = group => group.reduce((sum, id) => sum + branches.get(id).length, 0);
+    rimGroups.sort((a, b) => load(b) - load(a) || b.length - a.length || cmp(a[0], b[0]));
+    const ring = rimGroups.flat(), coords = { [center]: { x: 0, y: 0 } };
+    const radius = Math.max(3.2, ring.length / 1.45);
+    ring.forEach((id, i) => {
+        const angle = -Math.PI / 2 + 2 * Math.PI * i / ring.length;
+        coords[id] = { x: radius * Math.cos(angle), y: radius * Math.sin(angle) };
+        const arms = branches.get(id).slice().sort((a, b) => b.length - a.length || cmp(a[0], b[0]));
+        const fan = Math.min(.62, .24 + arms.length * .1);
+        arms.forEach((path, j) => {
+            const offset = arms.length === 1 ? 0 : (j - (arms.length - 1) / 2) * fan / Math.max(1, arms.length - 1);
+            const theta = angle + offset;
+            path.forEach((node, depth) => {
+                const r = radius + (depth + 1) * 2.75;
+                coords[node] = { x: r * Math.cos(theta), y: r * Math.sin(theta) };
+            });
+        });
+    });
+    return Object.keys(coords).length === n ? norm(coords) : null;
+}
+
+/**
  * Symmetric two-hub compositions: the template diagrams show common
  * left / right clusters linked via one or more connections. A pair is accepted
  * only when most other vertices are leaves or short paths attached to a hub.
@@ -189,7 +324,7 @@ export function motifLayout(map, g) {
         return null;
     // Reject an aesthetically tempting motif when it introduces intersections.
     // Dense/nonplanar templates keep the established general-purpose fallback.
-    for (const strategy of [cycleLayout, radialHubLayout, twinHubLayout, terminalLayersLayout]) {
+    for (const strategy of [cycleLayout, radialHubLayout, coreShellLayout, twinHubLayout, terminalLayersLayout]) {
         const proposed = strategy(map, g);
         if (proposed && straightCrossings(g, proposed) === 0)
             return proposed;

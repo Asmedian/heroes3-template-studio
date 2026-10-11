@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseBytes } from '../src/core.js';
-import { topologyLayout, autoLayout, compactLayout, edgeCrossings, CARD_W, CARD_H } from '../src/layout.js';
+import { topologyLayout, autoLayout, compactLayout, edgeCrossings, layoutMetrics, CARD_W, CARD_H } from '../src/layout.js';
 const input = name => parseBytes(new Uint8Array(fs.readFileSync(new URL(name, import.meta.url))));
 const noCollision = points => {
     const pts = Object.values(points);
@@ -74,4 +74,49 @@ test('layout compaction preserves topology while enforcing a practical base card
     assert.ok(compact.b.x - compact.a.x >= CARD_W + 68);
     assert.ok(compact.c.x - compact.b.x >= CARD_W + 68);
     assert.ok(compact.c.x - compact.a.x < original.c.x - original.a.x);
+});
+
+
+test('reference templates use compact topology-driven layouts with minimal line obstruction', () => {
+    const cases = [
+        ['../templates/27-balance.txt', 'Balance', 1],
+        ['../templates/29-blockbuster.txt', 'Blockbuster', 0],
+        ['../templates/31-coldshadow-fantasy.txt', "Coldshadow's Fantasy", 0],
+        ['../templates/37-fear.txt', 'Fear', 0]
+    ];
+    for (const [file, name, maxIntrusions] of cases) {
+        const map = input(file).maps[0], points = autoLayout(map, { preferStored: false }), metrics = layoutMetrics(map, points);
+        assert.ok(map.name.includes(name));
+        noCollision(points);
+        assert.equal(metrics.crossings, 0, `${name}: avoidable edge crossing`);
+        assert.ok(metrics.intrusions <= maxIntrusions, `${name}: connection passes behind too many unrelated cards`);
+    }
+    const coldshadow = input('../templates/31-coldshadow-fantasy.txt').maps[0];
+    const metrics = layoutMetrics(coldshadow, autoLayout(coldshadow, { preferStored: false }));
+    assert.ok(metrics.width < 2400 && metrics.height < 2400, 'Coldshadow shell should stay compact.');
+});
+
+test('non-sequential zone IDs do not control topology placement quality', () => {
+    const map = structuredClone(input('../templates/31-coldshadow-fantasy.txt').maps[0]);
+    const replacements = ['401', '17', '950', '62', '333', '4', '711', '28', '806', '53', '290', '15', '640', '91', '502', '39', '870', '76', '444', '8', '999'];
+    const remap = new Map(map.zones.map((zone, index) => [String(zone.id), replacements[index]]));
+    for (const zone of map.zones)
+        zone.id = remap.get(String(zone.id));
+    for (const connection of map.connections) {
+        connection.zone1 = remap.get(String(connection.zone1)) ?? connection.zone1;
+        connection.zone2 = remap.get(String(connection.zone2)) ?? connection.zone2;
+    }
+    const points = autoLayout(map, { preferStored: false }), metrics = layoutMetrics(map, points);
+    noCollision(points);
+    assert.equal(metrics.crossings, 0);
+    assert.equal(metrics.intrusions, 0);
+});
+
+test('disconnected template components are laid out separately instead of crossing each other', () => {
+    const map = input('../templates/47-match-terrain.txt').maps.find(item => item.name === '8XM8');
+    assert.ok(map);
+    const points = autoLayout(map, { preferStored: false }), metrics = layoutMetrics(map, points);
+    noCollision(points);
+    assert.equal(metrics.crossings, 0);
+    assert.ok(metrics.intrusions <= 1);
 });

@@ -1,5 +1,5 @@
 import { SCHEMA, FORMATS, parseBytes, parseText, serializePack, convertPack, freshPack, freshZone, freshConnection, validatePack, renumberMap, remapHintRefsDetailed } from './core.js';
-import { autoLayout, topologyLayout, compactLayout, resizeLayout, saveImagePositions, separate, CARD_W, CARD_H } from './layout.js';
+import { autoLayout, betterLayout, compactLayout, resizeLayout, saveImagePositions, separate, CARD_W, CARD_H } from './layout.js';
 import { connectionGeometry, connectionBundles } from './geometry.js';
 import { createSidecar, readSidecar } from './sidecar.js';
 import { compactExact, treasureScore, zoneAppearance, townEntries, mineEntries, connectionAppearance, connectionDisplayLabel, isRenderableConnection } from './visuals.js';
@@ -174,7 +174,16 @@ function redo() {
 }
 const layoutStorageKey = index => `h3tc-layout-v3-${store.fileKey}-${index}`;
 function presetMatches(map, preset) { return Boolean(preset && preset.name === map.name && preset.connections === map.connections.length && preset.ids.join('\0') === map.zones.map(z => String(z.id)).join('\0')); }
-function recommendedLayout(map, index) { const visible = displayMap(map), preset = store.presetLayouts?.[index]; return presetMatches(map, preset) && visible.zones.length === map.zones.length && visible.connections.length === map.connections.length ? compactLayout(structuredClone(preset.positions), { gap: 68 }) : (topologyLayout(visible) || autoLayout(visible, { preferStored: false })); }
+function recommendedLayout(map, index) {
+    const visible = displayMap(map), generated = autoLayout(visible, { preferStored: false }), preset = store.presetLayouts?.[index];
+    if (!presetMatches(map, preset) || visible.zones.length !== map.zones.length || visible.connections.length !== map.connections.length)
+        return generated;
+    // Original-software coordinates remain a useful candidate, but they no longer
+    // override a cleaner topology-derived drawing. Prefer crossings first, then
+    // links passing behind cards, then compactness/edge-length consistency.
+    const original = compactLayout(structuredClone(preset.positions), { gap: 68 });
+    return betterLayout(visible, generated, original);
+}
 function persistLayout() {
     const map = current();
     if (!map || !store.fileKey)
@@ -1807,7 +1816,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         try {
             // External locale modules can finish after the window load event. Register
             // immediately when that happened instead of waiting for an event that has passed.
-            const registration = await navigator.serviceWorker.register('./sw.js?v=1.6.0', { scope: './', updateViaCache: 'none' });
+            const registration = await navigator.serviceWorker.register('./sw.js?v=1.6.1', { scope: './', updateViaCache: 'none' });
             await registration.update();
             if (registration.waiting) {
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' });

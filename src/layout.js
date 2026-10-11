@@ -1,4 +1,5 @@
 import { motifLayout } from './layout-motifs.js';
+import { spectralCandidates } from './layout-spectral.js';
 /** Pure canvas layout and geometry. Positions are top-left browser-space points. */
 export const CARD_W = 228, CARD_H = 220;
 const isStart = z => [z.human_start, z.computer_start].some(v => String(v).trim().toLowerCase() === 'x');
@@ -42,6 +43,199 @@ export function edgeCrossings(edges, points) {
                 count++;
         }
     return count;
+}
+
+function median(values) {
+    if (!values.length)
+        return 0;
+    const sorted = values.slice().sort((a, b) => a - b), middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+function segmentIntersectsRect(a, b, center, halfW, halfH) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    let low = 0, high = 1;
+    for (const [p, q] of [[-dx, a.x - (center.x - halfW)], [dx, center.x + halfW - a.x], [-dy, a.y - (center.y - halfH)], [dy, center.y + halfH - a.y]]) {
+        if (Math.abs(p) < 1e-9) {
+            if (q < 0)
+                return false;
+            continue;
+        }
+        const r = q / p;
+        if (p < 0) {
+            if (r > high)
+                return false;
+            low = Math.max(low, r);
+        }
+        else {
+            if (r < low)
+                return false;
+            high = Math.min(high, r);
+        }
+    }
+    return low <= high;
+}
+export function layoutMetrics(map, positions) {
+    const graph = topologyGraph(map);
+    if (!graph || graph.ids.some(id => !positions?.[id]))
+        return { crossings: Infinity, intrusions: Infinity, soft: Infinity };
+    const crossings = edgeCrossings(graph.edges, positions);
+    const centers = Object.fromEntries(graph.ids.map(id => [id, { x: positions[id].x + CARD_W / 2, y: positions[id].y + CARD_H / 2 }]));
+    let intrusions = 0;
+    for (const [a, b] of graph.edges) {
+        for (const id of graph.ids) {
+            if (id === a || id === b)
+                continue;
+            if (segmentIntersectsRect(centers[a], centers[b], centers[id], CARD_W / 2 + 9, CARD_H / 2 + 9))
+                intrusions++;
+        }
+    }
+    const xs = graph.ids.map(id => positions[id].x), ys = graph.ids.map(id => positions[id].y);
+    const width = Math.max(...xs) - Math.min(...xs) + CARD_W, height = Math.max(...ys) - Math.min(...ys) + CARD_H;
+    const aspect = Math.max(width / Math.max(1, height), height / Math.max(1, width));
+    const lengths = graph.edges.map(([a, b]) => Math.hypot(positions[a].x - positions[b].x, positions[a].y - positions[b].y));
+    const average = lengths.length ? lengths.reduce((sum, value) => sum + value, 0) / lengths.length : 0;
+    const variance = lengths.length ? lengths.reduce((sum, value) => sum + (value - average) ** 2, 0) / lengths.length : 0;
+    const coefficient = average > 1e-7 ? Math.sqrt(variance) / average : 0;
+    const middle = median(lengths), longest = lengths.length ? Math.max(...lengths) : 0;
+    const longRatio = middle > 1e-7 ? longest / middle : 1;
+    const areaPerZone = width * height / Math.max(1, graph.ids.length);
+    const soft = areaPerZone * (1 + .42 * (aspect - 1) ** 2 + .88 * coefficient + .18 * Math.max(0, longRatio - 1) ** 2);
+    return { crossings, intrusions, soft, width, height, average, coefficient };
+}
+export function betterLayout(map, a, b) {
+    if (!a)
+        return b;
+    if (!b)
+        return a;
+    const ma = layoutMetrics(map, a), mb = layoutMetrics(map, b);
+    const ka = [ma.crossings, ma.intrusions, ma.soft], kb = [mb.crossings, mb.intrusions, mb.soft];
+    for (let i = 0; i < ka.length; i++) {
+        if (Math.abs(ka[i] - kb[i]) > 1e-7)
+            return ka[i] < kb[i] ? a : b;
+    }
+    return a;
+}
+function refineObstructions(map, positions, { passes = 2 } = {}) {
+    if (!positions || map.zones.length > 30)
+        return positions;
+    let best = structuredClone(positions), metrics = layoutMetrics(map, best);
+    if (!metrics.intrusions)
+        return best;
+    const ids = map.zones.map(zone => String(zone.id));
+    const directions = Array.from({ length: 8 }, (_, i) => i * Math.PI / 4);
+    for (let pass = 0; pass < passes && metrics.intrusions; pass++) {
+        let changed = false;
+        for (const id of ids) {
+            let local = best, localMetrics = metrics;
+            for (const step of [72, 132]) {
+                for (const angle of directions) {
+                    const trial = structuredClone(best);
+                    trial[id].x += Math.cos(angle) * step;
+                    trial[id].y += Math.sin(angle) * step;
+                    const separated = separate(trial, 68), next = layoutMetrics(map, separated);
+                    const currentKey = [localMetrics.crossings, localMetrics.intrusions, localMetrics.soft];
+                    const nextKey = [next.crossings, next.intrusions, next.soft];
+                    let wins = false;
+                    for (let i = 0; i < currentKey.length; i++) {
+                        if (Math.abs(currentKey[i] - nextKey[i]) < 1e-7)
+                            continue;
+                        wins = nextKey[i] < currentKey[i];
+                        break;
+                    }
+                    if (wins) {
+                        local = separated;
+                        localMetrics = next;
+                    }
+                }
+            }
+            if (local !== best) {
+                best = local;
+                metrics = localMetrics;
+                changed = true;
+            }
+        }
+        if (!changed)
+            break;
+    }
+    return best;
+}
+function scaledCandidate(raw, graph, angle, target) {
+    const cosine = Math.cos(angle), sine = Math.sin(angle), rotated = {};
+    for (const id of graph.ids) {
+        const point = raw[id];
+        rotated[id] = { x: point.x * cosine - point.y * sine, y: point.x * sine + point.y * cosine };
+    }
+    const edgeLengths = graph.edges.map(([a, b]) => Math.hypot(rotated[a].x - rotated[b].x, rotated[a].y - rotated[b].y));
+    const base = median(edgeLengths) || 1, scale = target / base;
+    const placed = Object.fromEntries(graph.ids.map(id => [id, { x: rotated[id].x * scale, y: rotated[id].y * scale }]));
+    return separate(placed, 68);
+}
+function disconnectedLayout(map, graph) {
+    const unseen = new Set(graph.ids), components = [];
+    while (unseen.size) {
+        const first = [...unseen].sort(zoneIdOrder)[0], queue = [first], ids = new Set([first]);
+        unseen.delete(first);
+        for (let k = 0; k < queue.length; k++) {
+            for (const next of graph.adjacency.get(queue[k])) {
+                if (!ids.has(next)) {
+                    ids.add(next);
+                    unseen.delete(next);
+                    queue.push(next);
+                }
+            }
+        }
+        components.push(ids);
+    }
+    if (components.length < 2)
+        return null;
+    const pieces = components.map(ids => {
+        const sub = {
+            ...map,
+            zones: map.zones.filter(zone => ids.has(String(zone.id))),
+            connections: map.connections.filter(connection => ids.has(String(connection.zone1).trim()) && ids.has(String(connection.zone2).trim()))
+        };
+        const positions = autoLayout(sub, { preferStored: false });
+        const keys = Object.keys(positions), minX = Math.min(...keys.map(id => positions[id].x)), minY = Math.min(...keys.map(id => positions[id].y));
+        const maxX = Math.max(...keys.map(id => positions[id].x + CARD_W)), maxY = Math.max(...keys.map(id => positions[id].y + CARD_H));
+        for (const id of keys) {
+            positions[id].x -= minX;
+            positions[id].y -= minY;
+        }
+        return { ids, positions, width: maxX - minX, height: maxY - minY };
+    });
+    pieces.sort((a, b) => b.height * b.width - a.height * a.width || b.ids.size - a.ids.size || zoneIdOrder([...a.ids][0], [...b.ids][0]));
+    const gap = 180, totalArea = pieces.reduce((sum, piece) => sum + (piece.width + gap) * (piece.height + gap), 0), targetWidth = Math.max(900, Math.sqrt(totalArea) * 1.18);
+    let x = 110, y = 110, rowHeight = 0;
+    const combined = {};
+    for (const piece of pieces) {
+        if (x > 110 && x + piece.width > targetWidth) {
+            x = 110;
+            y += rowHeight + gap;
+            rowHeight = 0;
+        }
+        for (const [id, point] of Object.entries(piece.positions))
+            combined[id] = { x: Math.round(point.x + x), y: Math.round(point.y + y) };
+        x += piece.width + gap;
+        rowHeight = Math.max(rowHeight, piece.height);
+    }
+    return combined;
+}
+
+function spectralLayout(map, graph) {
+    const candidates = spectralCandidates(graph);
+    if (!candidates.length)
+        return null;
+    let best = null;
+    for (const raw of candidates) {
+        for (const angle of [0, Math.PI / 6, Math.PI / 4]) {
+            for (const target of [350, 430, 520]) {
+                const placed = scaledCandidate(raw, graph, angle, target);
+                best = betterLayout(map, best, placed);
+            }
+        }
+    }
+    best = refineCrossings(map, best, { passes: 3 });
+    return refineObstructions(map, best, { passes: 2 });
 }
 function normalizeTopology(points, pad = 78) {
     const ids = Object.keys(points), res = {};
@@ -280,6 +474,10 @@ export function autoLayout(map, { preferStored = true } = {}) {
     const topology = topologyLayout(map);
     if (topology)
         return topology;
+    const graph = topologyGraph(map), disconnected = graph ? disconnectedLayout(map, graph) : null;
+    if (disconnected)
+        return disconnected;
+    const spectral = graph ? spectralLayout(map, graph) : null;
     const outer = zones.filter(isStart), inner = zones.filter(z => !isStart(z));
     const centerOrder = [...inner].sort((a, b) => Number(isCenter(b)) - Number(isCenter(a)) || Number(a.id) - Number(b.id));
     let circleOuter = Math.max(670, (outer.length || n) * 164), circleInner = Math.max(270, inner.length * 95);
@@ -317,7 +515,8 @@ export function autoLayout(map, { preferStored = true } = {}) {
             positions[z.id].y += Math.max(-24, Math.min(24, d.y)) * cool;
         }
     }
-    return compactLayout(refineCrossings(map, separate(positions, 155)), { gap: 68 });
+    const force = compactLayout(refineCrossings(map, separate(positions, 155)), { gap: 68 });
+    return betterLayout(map, spectral, force);
 }
 export function separate(positions, pad = 110) {
     let p = structuredClone(positions);

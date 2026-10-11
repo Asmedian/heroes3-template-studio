@@ -188,7 +188,9 @@ test('opened files share canonical built-in layouts and do not reuse obsolete la
     assert.match(app, /function\s+matchPackPresets\(pack,\s*layouts\)/);
     assert.match(flat(app), /matchPackPresets\(pack,awaitloadUpstreamLayouts\(\)\)/);
     assert.ok(app.includes('h3tc-layout-v3-'));
-    assert.ok(flat(app).includes('topologyLayout(visible)||autoLayout(visible,{preferStored:false})'));
+    assert.ok(flat(app).includes('generated=autoLayout(visible,{preferStored:false})'));
+    assert.ok(flat(app).includes('betterLayout(visible,generated,original)'));
+    assert.ok(file('sw.js').includes("'./src/layout-spectral.js'"));
 });
 
 test('v1.6.0 template errors are surfaced in the status bar and invalid data is excluded from the diagram', () => {

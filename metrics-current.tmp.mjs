@@ -1,0 +1,4 @@
+import fs from 'node:fs'; import {parseBytes} from './src/core.js'; import {autoLayout,layoutMetrics} from './src/layout.js';
+const cat=JSON.parse(fs.readFileSync('./templates/catalog.json')); const rows=[];
+for(const item of cat.templates){const pack=parseBytes(new Uint8Array(fs.readFileSync('./templates/'+item.file))); for(let index=0; index<pack.maps.length; index++){const map=pack.maps[index];if(!map.zones.length)continue;const p=autoLayout(map,{preferStored:false});const met=layoutMetrics(map,p);rows.push({file:item.file,index,name:map.name,n:map.zones.length,...met});}}
+fs.writeFileSync('/mnt/data/metrics-wideob.json',JSON.stringify(rows));console.log(JSON.stringify({maps:rows.length,crossings:rows.reduce((a,r)=>a+r.crossings,0),intrusions:rows.reduce((a,r)=>a+r.intrusions,0),zeroCross:rows.filter(r=>r.crossings===0).length,zeroBoth:rows.filter(r=>r.crossings===0&&r.intrusions===0).length,soft:rows.reduce((a,r)=>a+r.soft,0)}));

@@ -185,3 +185,62 @@ export function spectralCandidates(graph) {
     }
     return candidates;
 }
+
+
+/**
+ * Classical multidimensional-scaling candidates from all-pairs graph distances.
+ *
+ * Laplacian eigenvectors are excellent for separating many irregular graphs,
+ * but symmetric ladders/grids are often represented more faithfully by their
+ * shortest-path metric. Classical MDS converts that metric into Euclidean
+ * coordinates without using template names, source IDs, or stored positions.
+ * A single scale is deliberately preserved between axes so wide/tall authored
+ * structures do not get forced into a square.
+ */
+export function distanceCandidates(graph) {
+    const n = graph.ids.length;
+    if (n < 5 || n > 52 || !connected(graph))
+        return [];
+    const index = new Map(graph.ids.map((id, i) => [id, i]));
+    const distance = Array.from({ length: n }, () => Array(n).fill(Infinity));
+    for (let i = 0; i < n; i++) {
+        distance[i][i] = 0;
+        const queue = [graph.ids[i]];
+        for (let k = 0; k < queue.length; k++) {
+            const current = queue[k], currentIndex = index.get(current);
+            for (const next of graph.adjacency.get(current)) {
+                const nextIndex = index.get(next);
+                if (distance[i][nextIndex] !== Infinity)
+                    continue;
+                distance[i][nextIndex] = distance[i][currentIndex] + 1;
+                queue.push(next);
+            }
+        }
+        if (distance[i].some(value => !Number.isFinite(value)))
+            return [];
+    }
+
+    const rowMean = Array(n).fill(0), totalMean = distance.flat().reduce((sum, value) => sum + value * value, 0) / (n * n);
+    for (let i = 0; i < n; i++)
+        rowMean[i] = distance[i].reduce((sum, value) => sum + value * value, 0) / n;
+    const gram = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) =>
+        -.5 * (distance[i][j] ** 2 - rowMean[i] - rowMean[j] + totalMean)));
+    const eigen = jacobiEigen(gram);
+    const usable = eigen.values.map((value, i) => ({ value, vector: eigen.vectors[i] }))
+        .filter(item => item.value > 1e-7)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, Math.min(5, n - 1));
+    if (usable.length < 2)
+        return [];
+
+    const candidates = [];
+    const pairs = [[0, 1]];
+    for (const [a, b] of pairs) {
+        const sx = Math.sqrt(usable[a].value), sy = Math.sqrt(usable[b].value), raw = {};
+        graph.ids.forEach((id, i) => {
+            raw[id] = { x: usable[a].vector[i] * sx, y: usable[b].vector[i] * sy };
+        });
+        candidates.push(raw);
+    }
+    return candidates;
+}

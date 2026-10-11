@@ -304,6 +304,554 @@ export function terminalLayersLayout(map, g) {
     layers.forEach((row, i) => row.forEach((id, j) => { coords[id] = { x: i * 3.15, y: (j - (row.length - 1) / 2) * 2.6 }; }));
     return norm(coords);
 }
+
+
+/**
+ * Candidate layouts derived from chordless four-cycles.
+ *
+ * Many RMG templates are built around a diamond-like planar skeleton. For a
+ * four-cycle (top/right/bottom/left), differences of graph distances to
+ * opposite corners provide stable, topology-only coordinates. Vertices that
+ * land on the same grid point are spread along the local tangent according to
+ * their neighbours, which preserves the natural symmetry without relying on
+ * zone-number order.
+ *
+ * The caller still validates crossings/obstructions and compares this against
+ * all other generic layouts, so a non-facial four-cycle cannot make a layout
+ * worse merely because it exists in the graph.
+ */
+export function quadrilateralFaceLayouts(map, g) {
+    const n = g.ids.length;
+    if (n < 7 || n > 32 || !connected(g) || g.edges.length < n)
+        return [];
+
+    const ids = g.ids.slice().sort(cmp), rank = new Map(ids.map((id, i) => [id, i]));
+    const keyOf = cycle => {
+        const variants = [];
+        for (const seq of [cycle, cycle.slice().reverse()])
+            for (let i = 0; i < 4; i++) {
+                const rotated = seq.slice(i).concat(seq.slice(0, i));
+                variants.push(rotated);
+            }
+        variants.sort((a, b) => {
+            for (let i = 0; i < 4; i++) {
+                const d = rank.get(a[i]) - rank.get(b[i]);
+                if (d)
+                    return d;
+            }
+            return 0;
+        });
+        return variants[0].join('\u0001');
+    };
+    const connectedWithout = removed => {
+        const left = ids.filter(id => !removed.has(id));
+        if (left.length <= 1)
+            return true;
+        const seen = new Set([left[0]]), queue = [left[0]];
+        for (let k = 0; k < queue.length; k++)
+            for (const next of g.adjacency.get(queue[k]))
+                if (!removed.has(next) && !seen.has(next)) {
+                    seen.add(next);
+                    queue.push(next);
+                }
+        return seen.size === left.length;
+    };
+
+    // In an induced quadrilateral, opposite vertices are non-adjacent and have
+    // the other two cycle vertices as common neighbours.
+    const found = new Map();
+    for (let i = 0; i < ids.length; i++)
+        for (let j = i + 1; j < ids.length; j++) {
+            const a = ids[i], c = ids[j];
+            if (g.adjacency.get(a).has(c))
+                continue;
+            const common = [...g.adjacency.get(a)].filter(id => g.adjacency.get(c).has(id)).sort(cmp);
+            for (let p = 0; p < common.length; p++)
+                for (let q = p + 1; q < common.length; q++) {
+                    const b = common[p], d = common[q];
+                    if (g.adjacency.get(b).has(d))
+                        continue; // chord b-d: not an induced four-cycle
+                    const cycle = [a, b, c, d], key = keyOf(cycle);
+                    if (!found.has(key))
+                        found.set(key, { cycle, nonSeparating: connectedWithout(new Set(cycle)) });
+                }
+        }
+    if (!found.size)
+        return [];
+
+    // Facial cycles in a 3-connected planar graph are non-separating. Try
+    // those first, but retain the rest as validated fallbacks for graphs with
+    // articulation points and other common RMG structures.
+    const idSpan = cycle => {
+        const values = cycle.map(Number);
+        return values.every(Number.isFinite) ? Math.max(...values) - Math.min(...values) : Infinity;
+    };
+    const cycles = [...found.values()].sort((a, b) => Number(b.nonSeparating) - Number(a.nonSeparating)
+        || b.cycle.reduce((s, id) => s + g.adjacency.get(id).size, 0) - a.cycle.reduce((s, id) => s + g.adjacency.get(id).size, 0)
+        // IDs are intentionally only a final tie-break. When topology is truly
+        // symmetric, a compact source-number run usually preserves the author's
+        // visual grouping without making numbering part of the graph model.
+        || idSpan(a.cycle) - idSpan(b.cycle)
+        || cmp(a.cycle[0], b.cycle[0])).slice(0, 28);
+    const candidates = [];
+    for (const { cycle } of cycles) {
+        const orientations = Array.from({ length: 4 }, (_, rotation) => cycle.slice(rotation).concat(cycle.slice(0, rotation)));
+        const numeric = cycle.map(Number);
+        if (numeric.every(Number.isFinite)) {
+            const highest = Math.max(...numeric);
+            orientations.sort((a, b) => {
+                const topA = Number(a[0]) === highest ? 0 : 1, topB = Number(b[0]) === highest ? 0 : 1;
+                if (topA !== topB)
+                    return topA - topB;
+                const sideA = Number(a[1]) <= Number(a[3]) ? 0 : 1, sideB = Number(b[1]) <= Number(b[3]) ? 0 : 1;
+                return sideA - sideB;
+            });
+        }
+        for (const ordered of orientations) {
+            const [top, right, bottom, left] = ordered;
+            const dt = bfs(g, top), dr = bfs(g, right), db = bfs(g, bottom), dl = bfs(g, left);
+            if (ids.some(id => !dt.has(id) || !dr.has(id) || !db.has(id) || !dl.has(id)))
+                continue;
+            const coarse = {};
+            for (const id of ids)
+                coarse[id] = { x: dl.get(id) - dr.get(id), y: dt.get(id) - db.get(id) };
+
+            // The cycle itself is the outside diamond. Distance coordinates can
+            // coincide with inner vertices, so push only these four corners one
+            // lattice step outward before spreading ties.
+            const xs = ids.map(id => coarse[id].x), ys = ids.map(id => coarse[id].y);
+            coarse[top] = { x: coarse[top].x, y: Math.min(...ys) - 1 };
+            coarse[bottom] = { x: coarse[bottom].x, y: Math.max(...ys) + 1 };
+            coarse[right] = { x: Math.max(...xs) + 1, y: coarse[right].y };
+            coarse[left] = { x: Math.min(...xs) - 1, y: coarse[left].y };
+
+            const groups = new Map();
+            for (const id of ids) {
+                if ([top, right, bottom, left].includes(id))
+                    continue;
+                // Group by the original distance lattice; cycle vertices were
+                // deliberately moved outward above.
+                const x = dl.get(id) - dr.get(id), y = dt.get(id) - db.get(id), key = `${x},${y}`;
+                if (!groups.has(key))
+                    groups.set(key, []);
+                groups.get(key).push(id);
+            }
+            const baseX = 360, baseY = 450, tieGap = 300, coords = {};
+            const zoneById = new Map(map.zones.map(zone => [String(zone.id), zone]));
+            for (const id of ids)
+                coords[id] = { x: coarse[id].x * baseX, y: coarse[id].y * baseY };
+
+            for (const group of groups.values()) {
+                if (group.length < 2)
+                    continue;
+                const sample = group[0], originalX = dl.get(sample) - dr.get(sample), originalY = dt.get(sample) - db.get(sample);
+                const side = Math.abs(originalX) >= Math.abs(originalY) && originalX !== 0;
+                const score = id => {
+                    const neighbors = [...g.adjacency.get(id)];
+                    if (!neighbors.length)
+                        return 0;
+                    const axis = side ? 'y' : 'x';
+                    return neighbors.reduce((sum, other) => {
+                        const x = dl.get(other) - dr.get(other), y = dt.get(other) - db.get(other);
+                        return sum + (axis === 'y' ? y : x);
+                    }, 0) / neighbors.length;
+                };
+                group.sort((a, b) => score(a) - score(b)
+                    || g.adjacency.get(a).size - g.adjacency.get(b).size
+                    || cmp(a, b));
+                const hasStart = group.some(id => START(zoneById.get(id)));
+                group.forEach((id, i) => {
+                    const offset = (i - (group.length - 1) / 2) * tieGap;
+                    if (side) {
+                        coords[id].y += offset;
+                        // In common mirrored start structures the player zone is
+                        // the middle shell between the outer face and the two
+                        // inner branches. Pull the non-start members slightly
+                        // inward so these four edges do not form a bow-tie.
+                        if (hasStart && !START(zoneById.get(id)))
+                            coords[id].x -= Math.sign(originalX) * 120;
+                    }
+                    else {
+                        coords[id].x += offset;
+                        if (hasStart && !START(zoneById.get(id)))
+                            coords[id].y -= Math.sign(originalY) * 120;
+                    }
+                });
+            }
+            const positioned = norm(coords, 228, 220, 68);
+
+            // A zero-crossing quadrilateral also gives us a valid planar face.
+            // A barycentric embedding places every inner vertex inside that
+            // face using graph topology alone; light row quantization then
+            // exposes the repeated layers common in symmetric RMG templates.
+            const harmonic = {
+                [top]: { x: 0, y: -1 },
+                [right]: { x: 1, y: 0 },
+                [bottom]: { x: 0, y: 1 },
+                [left]: { x: -1, y: 0 }
+            };
+            const boundary = new Set([top, right, bottom, left]);
+            for (const id of ids)
+                if (!boundary.has(id))
+                    harmonic[id] = { x: 0, y: 0 };
+            for (let iter = 0; iter < 600; iter++) {
+                let delta = 0;
+                const next = {};
+                for (const id of ids) {
+                    if (boundary.has(id)) {
+                        next[id] = harmonic[id];
+                        continue;
+                    }
+                    const neighbors = [...g.adjacency.get(id)];
+                    const x = neighbors.reduce((sum, other) => sum + harmonic[other].x, 0) / neighbors.length;
+                    const y = neighbors.reduce((sum, other) => sum + harmonic[other].y, 0) / neighbors.length;
+                    delta = Math.max(delta, Math.hypot(x - harmonic[id].x, y - harmonic[id].y));
+                    next[id] = { x, y };
+                }
+                Object.assign(harmonic, next);
+                if (delta < 1e-8)
+                    break;
+            }
+            const levels = [];
+            for (const id of ids) {
+                const value = Math.abs(harmonic[id].y);
+                if (value < 1e-5)
+                    continue;
+                if (!levels.some(level => Math.abs(level - value) < .018))
+                    levels.push(value);
+            }
+            levels.sort((a, b) => a - b);
+            const layered = levels.length <= Math.max(6, Math.ceil(n / 4));
+            const harmonicCoords = {};
+            for (const id of ids) {
+                const point = harmonic[id];
+                let ax = Math.abs(point.x);
+                if (START(zoneById.get(id)) && ax > 1e-5 && ax < .995)
+                    ax = Math.min(.96, ax + .15);
+                let y = point.y;
+                if (layered && Math.abs(y) >= 1e-5) {
+                    let index = 0, bestDistance = Infinity;
+                    for (let i = 0; i < levels.length; i++) {
+                        const distance = Math.abs(levels[i] - Math.abs(y));
+                        if (distance < bestDistance) {
+                            bestDistance = distance;
+                            index = i;
+                        }
+                    }
+                    y = Math.sign(y) * (index + 1) / levels.length;
+                }
+                harmonicCoords[id] = {
+                    x: Math.sign(point.x) * ax ** 2.2,
+                    y
+                };
+            }
+            const harmonicPositioned = norm(harmonicCoords, 228, 220, 68);
+            // Prefer the harmonic form when it is valid: it preserves the same
+            // planar face but tends to reveal the graph's natural rows.
+            if (harmonicPositioned && straightCrossings(g, harmonicPositioned) === 0)
+                candidates.push(harmonicPositioned);
+            if (positioned && straightCrossings(g, positioned) === 0)
+                candidates.push(positioned);
+        }
+    }
+    return candidates;
+}
+
+/**
+ * Generic planar candidates from short chordless cycles.
+ *
+ * Removing one edge and finding alternate shortest paths exposes many facial
+ * cycles without requiring a full planarity implementation. Each cycle is
+ * then used as the fixed convex boundary of a barycentric embedding. Invalid
+ * faces simply produce crossings and are discarded by the final validation.
+ */
+export function polygonFaceLayouts(map, g) {
+    const n = g.ids.length;
+    if (n < 6 || n > 30 || !connected(g) || g.edges.length < n - 1 || g.edges.length > 54)
+        return [];
+    const ids = g.ids.slice().sort(cmp), zoneById = new Map(map.zones.map(zone => [String(zone.id), zone]));
+    const edgeKey = (a, b) => cmp(a, b) < 0 ? `${a}\u0001${b}` : `${b}\u0001${a}`;
+    const canonicalCycle = cycle => {
+        const variants = [];
+        for (const seq of [cycle, cycle.slice().reverse()])
+            for (let i = 0; i < cycle.length; i++)
+                variants.push(seq.slice(i).concat(seq.slice(0, i)));
+        variants.sort((a, b) => {
+            for (let i = 0; i < a.length; i++) {
+                const d = cmp(a[i], b[i]);
+                if (d)
+                    return d;
+            }
+            return 0;
+        });
+        return variants[0].join('\u0001');
+    };
+    const chordless = cycle => {
+        for (let i = 0; i < cycle.length; i++)
+            for (let j = i + 1; j < cycle.length; j++) {
+                const adjacent = j === i + 1 || (i === 0 && j === cycle.length - 1);
+                if (!adjacent && g.adjacency.get(cycle[i]).has(cycle[j]))
+                    return false;
+            }
+        return true;
+    };
+    const connectedWithout = removed => {
+        const left = ids.filter(id => !removed.has(id));
+        if (left.length <= 1)
+            return true;
+        const seen = new Set([left[0]]), queue = [left[0]];
+        for (let k = 0; k < queue.length; k++)
+            for (const next of g.adjacency.get(queue[k]))
+                if (!removed.has(next) && !seen.has(next)) {
+                    seen.add(next);
+                    queue.push(next);
+                }
+        return seen.size === left.length;
+    };
+    const found = new Map();
+    for (const [source, target] of g.edges) {
+        const blocked = edgeKey(source, target), distance = new Map([[source, 0]]), queue = [source];
+        for (let k = 0; k < queue.length; k++) {
+            const current = queue[k], nextDistance = distance.get(current) + 1;
+            if (nextDistance > 9)
+                continue;
+            for (const next of [...g.adjacency.get(current)].sort(cmp)) {
+                if (edgeKey(current, next) === blocked || distance.has(next))
+                    continue;
+                distance.set(next, nextDistance);
+                queue.push(next);
+            }
+        }
+        const length = distance.get(target);
+        if (!Number.isFinite(length) || length < 2 || length > 9)
+            continue;
+        const paths = [], reverse = [target];
+        const collect = current => {
+            if (paths.length >= 4)
+                return;
+            if (current === source) {
+                paths.push(reverse.slice().reverse());
+                return;
+            }
+            const previous = [...g.adjacency.get(current)].filter(next => distance.get(next) === distance.get(current) - 1 && edgeKey(current, next) !== blocked).sort(cmp);
+            for (const next of previous) {
+                reverse.push(next);
+                collect(next);
+                reverse.pop();
+                if (paths.length >= 4)
+                    break;
+            }
+        };
+        collect(target);
+        for (const cycle of paths) {
+            if (cycle.length < 3 || cycle.length > 10 || !chordless(cycle))
+                continue;
+            const key = canonicalCycle(cycle);
+            if (!found.has(key))
+                found.set(key, {
+                    cycle,
+                    nonSeparating: connectedWithout(new Set(cycle)),
+                    starts: cycle.filter(id => START(zoneById.get(id))).length
+                });
+        }
+    }
+    const cycles = [...found.values()].sort((a, b) => Number(b.nonSeparating) - Number(a.nonSeparating)
+        || b.starts - a.starts
+        || b.cycle.length - a.cycle.length
+        || b.cycle.reduce((sum, id) => sum + g.adjacency.get(id).size, 0) - a.cycle.reduce((sum, id) => sum + g.adjacency.get(id).size, 0)
+        || canonicalCycle(a.cycle).localeCompare(canonicalCycle(b.cycle))).slice(0, 36);
+    const candidates = [];
+    for (const { cycle } of cycles) {
+        const boundary = new Set(cycle), points = {};
+        cycle.forEach((id, i) => {
+            const angle = -Math.PI / 2 + i * Math.PI * 2 / cycle.length;
+            points[id] = { x: Math.cos(angle), y: Math.sin(angle) };
+        });
+        for (const id of ids)
+            if (!boundary.has(id))
+                points[id] = { x: 0, y: 0 };
+        for (let iter = 0; iter < 700; iter++) {
+            let delta = 0;
+            const next = {};
+            for (const id of ids) {
+                if (boundary.has(id)) {
+                    next[id] = points[id];
+                    continue;
+                }
+                const neighbors = [...g.adjacency.get(id)];
+                const x = neighbors.reduce((sum, other) => sum + points[other].x, 0) / neighbors.length;
+                const y = neighbors.reduce((sum, other) => sum + points[other].y, 0) / neighbors.length;
+                delta = Math.max(delta, Math.hypot(x - points[id].x, y - points[id].y));
+                next[id] = { x, y };
+            }
+            Object.assign(points, next);
+            if (delta < 1e-8)
+                break;
+        }
+        const positioned = norm(points, 228, 220, 68);
+        if (positioned && straightCrossings(g, positioned) === 0)
+            candidates.push(positioned);
+        if (candidates.length >= 12)
+            break;
+    }
+    return candidates;
+}
+
+
+/**
+ * Recover a small outer-planar ring hidden behind degree-one/tree branches.
+ * This targets authored layouts where a cyclic core forms the visible frame
+ * and starts/support zones hang outside it. The perimeter is proven purely
+ * from topology with a bounded Hamiltonian search.
+ */
+export function coreRingLayouts(map, g) {
+    const n = g.ids.length;
+    if (n < 8 || n > 30 || !connected(g))
+        return [];
+    const degree = new Map(g.ids.map(id => [id, g.adjacency.get(id).size]));
+    const removed = new Set(), queue = g.ids.filter(id => degree.get(id) < 2).sort(cmp);
+    for (let i = 0; i < queue.length; i++) {
+        const id = queue[i];
+        if (removed.has(id))
+            continue;
+        removed.add(id);
+        for (const next of g.adjacency.get(id)) {
+            if (removed.has(next))
+                continue;
+            degree.set(next, degree.get(next) - 1);
+            if (degree.get(next) < 2)
+                queue.push(next);
+        }
+    }
+    const coreIds = g.ids.filter(id => !removed.has(id));
+    if (coreIds.length < 6 || coreIds.length > 14 || coreIds.length === n)
+        return [];
+    const coreSet = new Set(coreIds), coreAdjacency = new Map(coreIds.map(id => [id, new Set()])), coreEdges = [];
+    for (const [a, b] of g.edges) {
+        if (!coreSet.has(a) || !coreSet.has(b))
+            continue;
+        coreAdjacency.get(a).add(b);
+        coreAdjacency.get(b).add(a);
+        coreEdges.push([a, b]);
+    }
+    const coreGraph = { ids: coreIds, adjacency: coreAdjacency, edges: coreEdges };
+    if (!connected(coreGraph))
+        return [];
+
+    // Every peeled component must be a tree attached to exactly one core hub.
+    const outside = new Set(g.ids.filter(id => removed.has(id))), seen = new Set(), branches = [];
+    for (const seed of [...outside].sort(cmp)) {
+        if (seen.has(seed))
+            continue;
+        const ids = [], pending = [seed], attachments = new Set();
+        seen.add(seed);
+        for (let i = 0; i < pending.length; i++) {
+            const id = pending[i];
+            ids.push(id);
+            for (const next of g.adjacency.get(id)) {
+                if (coreSet.has(next))
+                    attachments.add(next);
+                else if (outside.has(next) && !seen.has(next)) {
+                    seen.add(next);
+                    pending.push(next);
+                }
+            }
+        }
+        const local = new Set(ids), edgeCount = g.edges.filter(([a, b]) => local.has(a) && local.has(b)).length;
+        if (attachments.size !== 1 || edgeCount !== ids.length - 1)
+            return [];
+        branches.push({ ids: ids.slice().sort(cmp), anchor: [...attachments][0] });
+    }
+    if (!branches.length)
+        return [];
+
+    // Bounded Hamiltonian perimeter search on the small 2-core.
+    const start = coreIds.slice().sort((a, b) => coreAdjacency.get(a).size - coreAdjacency.get(b).size || cmp(a, b))[0];
+    const path = [start], used = new Set([start]);
+    let perimeter = null, visits = 0;
+    const search = current => {
+        if (perimeter || ++visits > 60000)
+            return;
+        if (path.length === coreIds.length) {
+            if (coreAdjacency.get(current).has(start))
+                perimeter = path.slice();
+            return;
+        }
+        const next = [...coreAdjacency.get(current)].filter(id => !used.has(id)).sort((a, b) => {
+            const free = id => [...coreAdjacency.get(id)].filter(other => !used.has(other) || other === start).length;
+            return free(a) - free(b) || coreAdjacency.get(a).size - coreAdjacency.get(b).size || cmp(a, b);
+        });
+        for (const id of next) {
+            used.add(id);
+            path.push(id);
+            search(id);
+            path.pop();
+            used.delete(id);
+            if (perimeter)
+                break;
+        }
+    };
+    search(start);
+    if (!perimeter)
+        return [];
+
+    const raw = {};
+    perimeter.forEach((id, index) => {
+        const angle = -Math.PI / 2 + index * 2 * Math.PI / perimeter.length;
+        const d = coreAdjacency.get(id).size;
+        const radius = d <= 2 ? 1.16 : d === 3 ? .88 : .76;
+        raw[id] = { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
+    });
+    let core = norm(raw, 228, 220, 68);
+    if (!core || straightCrossings(coreGraph, core))
+        return [];
+
+    const cx = coreIds.reduce((sum, id) => sum + core[id].x, 0) / coreIds.length;
+    const cy = coreIds.reduce((sum, id) => sum + core[id].y, 0) / coreIds.length;
+    const coords = structuredClone(core), byAnchor = new Map();
+    for (const branch of branches) {
+        if (!byAnchor.has(branch.anchor))
+            byAnchor.set(branch.anchor, []);
+        byAnchor.get(branch.anchor).push(branch);
+    }
+    for (const [anchor, groups] of byAnchor) {
+        const anchorPoint = core[anchor];
+        let outward = Math.atan2(anchorPoint.y - cy, anchorPoint.x - cx);
+        if (!Number.isFinite(outward))
+            outward = 0;
+        groups.sort((a, b) => b.ids.length - a.ids.length || cmp(a.ids[0], b.ids[0]));
+        groups.forEach((branch, groupIndex) => {
+            const local = new Set(branch.ids), parent = new Map(), children = new Map(branch.ids.map(id => [id, []]));
+            const roots = branch.ids.filter(id => g.adjacency.get(id).has(anchor)).sort(cmp), pending = roots.slice();
+            for (const root of roots)
+                parent.set(root, anchor);
+            for (let i = 0; i < pending.length; i++) {
+                const id = pending[i];
+                for (const next of [...g.adjacency.get(id)].filter(next => local.has(next) && next !== parent.get(id)).sort(cmp)) {
+                    if (parent.has(next))
+                        continue;
+                    parent.set(next, id);
+                    children.get(id).push(next);
+                    pending.push(next);
+                }
+            }
+            if (parent.size !== branch.ids.length)
+                return;
+            const groupOffset = (groupIndex - (groups.length - 1) / 2) * .42;
+            const place = (id, angle, depth = 1) => {
+                const par = parent.get(id), origin = par === anchor ? anchorPoint : coords[par];
+                const step = 390;
+                coords[id] = { x: origin.x + Math.cos(angle) * step, y: origin.y + Math.sin(angle) * step };
+                const list = children.get(id);
+                list.forEach((child, index) => place(child, angle + (index - (list.length - 1) / 2) * .34, depth + 1));
+            };
+            roots.forEach((root, index) => place(root, outward + groupOffset + (index - (roots.length - 1) / 2) * .38));
+        });
+    }
+    const positioned = norm(coords, 228, 220, 68);
+    return positioned && straightCrossings(g, positioned) === 0 ? [positioned] : [];
+}
+
 /** Return the first strongly identified generic motif, not a template-specific preset. */
 function straightCrossings(g, points) {
     const orient = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);

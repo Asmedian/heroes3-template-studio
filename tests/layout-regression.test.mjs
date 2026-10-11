@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { parseBytes } from '../src/core.js';
-import { autoLayout, edgeCrossings, CARD_W, CARD_H } from '../src/layout.js';
+import { autoLayout, edgeCrossings, layoutMetrics, CARD_W, CARD_H } from '../src/layout.js';
 import { connectionGeometry, connectionBundles } from '../src/geometry.js';
 const catalog = JSON.parse(fs.readFileSync(new URL('../templates/catalog.json', import.meta.url)));
 test('all 59 supplied templates render collision-free and keep all multi-edge rows distinct', () => {
-    let maps = 0, zones = 0, connections = 0, multiBundles = 0, maxParallel = 0, crossings = 0;
+    let maps = 0, zones = 0, connections = 0, multiBundles = 0, maxParallel = 0, crossings = 0, intrusions = 0;
     for (const item of catalog.templates) {
         const path = new URL('../templates/' + item.file, import.meta.url);
         const pack = parseBytes(new Uint8Array(fs.readFileSync(path)));
@@ -38,11 +38,13 @@ test('all 59 supplied templates render collision-free and keep all multi-edge ro
             const graphEdges = [...new Set(map.connections.filter(c => c.zone1 !== c.zone2 && allIds.has(c.zone1) && allIds.has(c.zone2))
                 .map(c => JSON.stringify([c.zone1, c.zone2].sort())))].map(s => JSON.parse(s));
             crossings += edgeCrossings(graphEdges, layout);
+            intrusions += layoutMetrics(map, layout).intrusions;
         }
     }
     assert.equal(maps, 238);
     assert.equal(zones, 2996);
     assert.equal(connections, 4285);
     assert.ok(multiBundles >= 350 && maxParallel >= 4);
-    assert.ok(crossings <= 2500, `Unexpected rise in total graph crossings: ${crossings}`);
+    assert.ok(crossings <= 150, `Unexpected rise in total graph crossings: ${crossings}`);
+    assert.ok(intrusions <= 180, `Unexpected rise in connection/card obstruction: ${intrusions}`);
 });

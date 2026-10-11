@@ -1,5 +1,5 @@
-import { motifLayout } from './layout-motifs.js';
-import { spectralCandidates } from './layout-spectral.js';
+import { motifLayout, quadrilateralFaceLayouts, polygonFaceLayouts, coreRingLayouts } from './layout-motifs.js';
+import { spectralCandidates, distanceCandidates } from './layout-spectral.js';
 /** Pure canvas layout and geometry. Positions are top-left browser-space points. */
 export const CARD_W = 228, CARD_H = 220;
 const isStart = z => [z.human_start, z.computer_start].some(v => String(v).trim().toLowerCase() === 'x');
@@ -297,14 +297,190 @@ function hypercubeLayout(map, graph) {
         }
     }
     else {
-        const gray = [0, 1, 3, 2, 6, 7, 5, 4], cycle = new Map(gray.map((v, i) => [v, i]));
+        // Q3 is planar: draw it as two nested squares instead of an octagon.
+        // Corresponding corners are joined radially, so all twelve cube edges
+        // remain visible without avoidable intersections.
+        const square = new Map([[0, [-1, -1]], [1, [1, -1]], [3, [1, 1]], [2, [-1, 1]]]);
         for (const [id, mask] of masks) {
-            const angle = -Math.PI / 2 + cycle.get(mask) * Math.PI / 4;
-            positions[id] = { x: 4.5 * Math.cos(angle), y: 4.5 * Math.sin(angle) };
+            const inside = (mask & 4) !== 0, [x, y] = square.get(mask & 3), radius = inside ? 1.75 : 4.4;
+            positions[id] = { x: x * radius, y: y * radius };
         }
     }
     return compactLayout(normalizeTopology(positions, 72), { gap: 68 });
 }
+
+/**
+ * Detect a topology reflection around a fixed path and build a compact,
+ * mirror-symmetric candidate.  This covers a common template shape: two
+ * equivalent player sides attached to a neutral/treasure spine.  Source zone
+ * IDs are used only to make the search deterministic; the reflection itself
+ * is proven from graph adjacency.
+ */
+function reflectionPathLayout(map, graph) {
+    const n = graph?.ids.length ?? 0;
+    if (n < 8 || n > 16)
+        return null;
+    const starts = map.zones.filter(isStart).map(z => String(z.id)).filter(id => graph.adjacency.has(id)).sort(zoneIdOrder);
+    if (starts.length !== 2 || graph.adjacency.get(starts[0]).size !== graph.adjacency.get(starts[1]).size)
+        return null;
+    const [rootA, rootB] = starts;
+    const distances = root => {
+        const result = new Map([[root, 0]]), queue = [root];
+        for (let i = 0; i < queue.length; i++) {
+            const id = queue[i];
+            for (const next of graph.adjacency.get(id))
+                if (!result.has(next)) {
+                    result.set(next, result.get(id) + 1);
+                    queue.push(next);
+                }
+        }
+        return result;
+    };
+    const da = distances(rootA), db = distances(rootB);
+    if (da.size !== n || db.size !== n)
+        return null;
+    const startSet = new Set(starts);
+    const compatible = (u, v) => graph.adjacency.get(u).size === graph.adjacency.get(v).size
+        && da.get(u) === db.get(v) && db.get(u) === da.get(v)
+        && startSet.has(u) === startSet.has(v);
+    const candidates = new Map(graph.ids.map(id => [id, graph.ids.filter(other => compatible(id, other)).sort(zoneIdOrder)]));
+    const mapping = new Map([[rootA, rootB], [rootB, rootA]]), used = new Set([rootA, rootB]);
+    const consistentPair = (u, v) => {
+        if (!compatible(u, v) || used.has(v) && mapping.get(u) !== v)
+            return false;
+        if (u !== v && (used.has(u) || used.has(v)))
+            return mapping.get(u) === v && mapping.get(v) === u;
+        for (const [x, mx] of mapping) {
+            if (graph.adjacency.get(u).has(x) !== graph.adjacency.get(v).has(mx))
+                return false;
+            if (graph.adjacency.get(v).has(x) !== graph.adjacency.get(u).has(mx))
+                return false;
+        }
+        return true;
+    };
+    const search = () => {
+        if (mapping.size === n)
+            return true;
+        let id = null, options = null;
+        for (const candidateId of graph.ids.filter(item => !mapping.has(item)).sort(zoneIdOrder)) {
+            const possible = candidates.get(candidateId).filter(other => !used.has(other) && !mapping.has(other) && consistentPair(candidateId, other));
+            if (!options || possible.length < options.length) {
+                id = candidateId;
+                options = possible;
+            }
+        }
+        if (!id || !options?.length)
+            return false;
+        // Prefer fixed points when topology permits them; this exposes the
+        // neutral spine instead of arbitrarily pairing every vertex.
+        options.sort((a, b) => Number(b === id) - Number(a === id) || zoneIdOrder(a, b));
+        for (const other of options) {
+            if (!consistentPair(id, other))
+                continue;
+            const entries = other === id ? [[id, id]] : [[id, other], [other, id]];
+            let valid = true;
+            for (const [a, b] of entries)
+                if (!compatible(a, b)) {
+                    valid = false;
+                    break;
+                }
+            if (!valid)
+                continue;
+            for (const [a, b] of entries) {
+                mapping.set(a, b);
+                used.add(a);
+                used.add(b);
+            }
+            if (search())
+                return true;
+            for (const [a] of entries) {
+                mapping.delete(a);
+                used.delete(a);
+            }
+        }
+        return false;
+    };
+    if (!search())
+        return null;
+    // Validate the completed map as an actual graph automorphism.
+    for (const [a, b] of graph.edges)
+        if (!graph.adjacency.get(mapping.get(a)).has(mapping.get(b)))
+            return null;
+    const fixed = graph.ids.filter(id => mapping.get(id) === id);
+    if (fixed.length < 3 || fixed.length > 6)
+        return null;
+    const fixedSet = new Set(fixed), fixedDegree = id => [...graph.adjacency.get(id)].filter(next => fixedSet.has(next)).length;
+    const fixedEdges = graph.edges.filter(([a, b]) => fixedSet.has(a) && fixedSet.has(b));
+    if (fixedEdges.length !== fixed.length - 1 || fixed.some(id => fixedDegree(id) > 2))
+        return null;
+    const endpoints = fixed.filter(id => fixedDegree(id) === 1).sort(zoneIdOrder);
+    if (endpoints.length !== 2)
+        return null;
+    const path = [endpoints[0]];
+    while (path.length < fixed.length) {
+        const previous = path.at(-2), current = path.at(-1);
+        const next = [...graph.adjacency.get(current)].filter(id => fixedSet.has(id) && id !== previous && !path.includes(id)).sort(zoneIdOrder)[0];
+        if (!next)
+            return null;
+        path.push(next);
+    }
+    const pairOrbits = [], orbitOf = new Map(path.map((id, i) => [id, `f${i}`]));
+    for (const id of graph.ids.slice().sort(zoneIdOrder)) {
+        const other = mapping.get(id);
+        if (id === other || orbitOf.has(id))
+            continue;
+        const pair = [id, other].sort(zoneIdOrder);
+        if (pair[0] !== id)
+            continue;
+        const key = `p${pairOrbits.length}`;
+        pairOrbits.push({ key, pair });
+        orbitOf.set(pair[0], key);
+        orbitOf.set(pair[1], key);
+    }
+    if (pairOrbits.length < 2 || pairOrbits.length > path.length || fixed.length + pairOrbits.length * 2 !== n)
+        return null;
+    const quotientNeighbors = new Map([...path.map((id, i) => [`f${i}`, new Set()]), ...pairOrbits.map(o => [o.key, new Set()])]);
+    for (const [a, b] of graph.edges) {
+        const oa = orbitOf.get(a), ob = orbitOf.get(b);
+        if (oa && ob && oa !== ob) {
+            quotientNeighbors.get(oa).add(ob);
+            quotientNeighbors.get(ob).add(oa);
+        }
+    }
+    const rowAssignments = [];
+    const chooseRows = (prefix, available) => {
+        if (prefix.length === pairOrbits.length) {
+            rowAssignments.push(prefix.slice());
+            return;
+        }
+        for (const row of available)
+            chooseRows([...prefix, row], available.filter(value => value !== row));
+    };
+    chooseRows([], path.map((_, i) => i));
+    let best = null;
+    for (const rows of rowAssignments) {
+        const centers = {};
+        path.forEach((id, row) => { centers[id] = { x: 0, y: row * 320 }; });
+        for (let i = 0; i < pairOrbits.length; i++) {
+            const { key, pair } = pairOrbits[i], row = rows[i], degree = quotientNeighbors.get(key).size;
+            const endpointBonus = row === 0 || row === path.length - 1 ? 180 : 0;
+            const x = 320 + Math.max(0, degree - 2) * 80 + endpointBonus;
+            const y = row * 320 + (row > 0 && row < path.length - 1 && degree === 2 ? (row < (path.length - 1) / 2 ? 32 : -32) : 0);
+            // Keep the member topologically closer to rootA on the left.  In
+            // a perfect tie IDs only choose the orientation, never geometry.
+            const [u, v] = pair;
+            const left = da.get(u) < da.get(v) ? u : da.get(v) < da.get(u) ? v : (zoneIdOrder(u, v) <= 0 ? u : v);
+            const right = left === u ? v : u;
+            centers[left] = { x: -x, y };
+            centers[right] = { x, y };
+        }
+        const minX = Math.min(...Object.values(centers).map(p => p.x)), minY = Math.min(...Object.values(centers).map(p => p.y));
+        const candidate = Object.fromEntries(Object.entries(centers).map(([id, p]) => [id, { x: p.x - minX + 120, y: p.y - minY + 120 }]));
+        best = betterLayout(map, best, candidate);
+    }
+    return best;
+}
+
 function symmetricFourStarts(map, graph) {
     if (graph.ids.length < 8 || graph.ids.length > 42)
         return null;
@@ -394,6 +570,497 @@ export function compactLayout(positions, { gap = 68, minScale = .38 } = {}) {
         }
     return separate(p, gap);
 }
+
+function crossedEdgeGroups(graph, positions) {
+    const orient = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    const groups = [];
+    for (let i = 0; i < graph.edges.length; i++)
+        for (let j = i + 1; j < graph.edges.length; j++) {
+            const [a, b] = graph.edges[i], [c, d] = graph.edges[j];
+            if (new Set([a, b, c, d]).size !== 4)
+                continue;
+            const p = positions[a], q = positions[b], r = positions[c], t = positions[d];
+            if (!p || !q || !r || !t)
+                continue;
+            const u = orient(p, q, r), v = orient(p, q, t), w = orient(r, t, p), x = orient(r, t, q);
+            if (u * v < -1e-7 && w * x < -1e-7)
+                groups.push([a, b, c, d]);
+        }
+    return groups;
+}
+function refineCrossingGeometry(map, positions, { passes = 3 } = {}) {
+    const graph = topologyGraph(map), n = map.zones.length;
+    if (!graph || n < 5 || n > 34)
+        return positions;
+    let best = structuredClone(positions), metrics = layoutMetrics(map, best);
+    if (!metrics.crossings)
+        return best;
+    const compare = (a, b) => a.crossings - b.crossings || a.intrusions - b.intrusions || a.soft - b.soft;
+    const directions = Array.from({ length: 12 }, (_, i) => i * Math.PI / 6);
+    for (let pass = 0; pass < passes && metrics.crossings; pass++) {
+        const groups = crossedEdgeGroups(graph, best);
+        const affected = [...new Set(groups.flat())];
+        if (!affected.length)
+            break;
+        const cx = graph.ids.reduce((sum, id) => sum + best[id].x, 0) / graph.ids.length;
+        const cy = graph.ids.reduce((sum, id) => sum + best[id].y, 0) / graph.ids.length;
+        let changed = false;
+        affected.sort((a, b) => graph.adjacency.get(b).size - graph.adjacency.get(a).size || zoneIdOrder(a, b));
+        for (const id of affected) {
+            let local = best, localMetrics = metrics;
+            const radial = Math.atan2(best[id].y - cy, best[id].x - cx);
+            const angles = [radial, radial + Math.PI, ...directions];
+            for (const step of [58, 96, 148, 220])
+                for (const angle of angles) {
+                    const trial = structuredClone(best);
+                    trial[id].x += Math.cos(angle) * step;
+                    trial[id].y += Math.sin(angle) * step;
+                    if (compactCardOverlaps(trial, id, 68))
+                        continue;
+                    const next = layoutMetrics(map, trial);
+                    if (compare(next, localMetrics) < -1e-7) {
+                        local = trial;
+                        localMetrics = next;
+                    }
+                }
+            if (local !== best) {
+                best = local;
+                metrics = localMetrics;
+                changed = true;
+            }
+        }
+        if (!changed)
+            break;
+    }
+    return normalizeLayoutOrigin(best);
+}
+
+
+/**
+ * Wider deterministic rescue for the small minority of dense layouts where
+ * local crossing moves get trapped in a geometric minimum. It only runs after
+ * all normal motif/spectral/force candidates have been compared, and accepts
+ * moves lexicographically by crossings, card obstructions, then compactness.
+ */
+function wideCrossingRescue(map, positions, { passes = 3 } = {}) {
+    const graph = topologyGraph(map), n = map.zones.length;
+    if (!graph || n < 6 || n > 28 || graph.edges.length > 50)
+        return positions;
+    let best = structuredClone(positions), metrics = layoutMetrics(map, best);
+    if (!metrics.crossings)
+        return best;
+    const compare = (a, b) => a.crossings - b.crossings || a.intrusions - b.intrusions || a.soft - b.soft;
+    for (let pass = 0; pass < passes && metrics.crossings; pass++) {
+        const groups = crossedEdgeGroups(graph, best);
+        const affected = [...new Set(groups.flat())]
+            .sort((a, b) => graph.adjacency.get(b).size - graph.adjacency.get(a).size || zoneIdOrder(a, b));
+        if (!affected.length)
+            break;
+        const xs = graph.ids.map(id => best[id].x), ys = graph.ids.map(id => best[id].y);
+        const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+        const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+        let changed = false;
+        for (const id of affected) {
+            const neighbors = [...graph.adjacency.get(id)];
+            const nx = neighbors.reduce((sum, other) => sum + best[other].x, 0) / Math.max(1, neighbors.length);
+            const ny = neighbors.reduce((sum, other) => sum + best[other].y, 0) / Math.max(1, neighbors.length);
+            const candidates = [];
+            for (const [bx, by] of [[nx, ny], [cx, cy]])
+                for (const radius of [340, 560, 820])
+                    for (let i = 0; i < 8; i++) {
+                        const angle = i * Math.PI / 4;
+                        candidates.push({ x: bx + Math.cos(angle) * radius, y: by + Math.sin(angle) * radius });
+                    }
+            for (let i = 0; i < 7; i++) {
+                const t = i / 6;
+                candidates.push(
+                    { x: minX + (maxX - minX) * t, y: minY - 360 },
+                    { x: minX + (maxX - minX) * t, y: maxY + 360 },
+                    { x: minX - 360, y: minY + (maxY - minY) * t },
+                    { x: maxX + 360, y: minY + (maxY - minY) * t }
+                );
+            }
+            let localPoint = null, localMetrics = metrics;
+            for (const point of candidates) {
+                const trial = structuredClone(best);
+                trial[id] = point;
+                if (compactCardOverlaps(trial, id, 68))
+                    continue;
+                const next = layoutMetrics(map, trial);
+                if (compare(next, localMetrics) < -1e-7) {
+                    localPoint = point;
+                    localMetrics = next;
+                }
+            }
+            if (localPoint) {
+                best[id] = localPoint;
+                metrics = localMetrics;
+                changed = true;
+            }
+        }
+        if (!changed)
+            break;
+    }
+    return normalizeLayoutOrigin(best);
+}
+
+/** Final line/card cleanup without running global separation after every probe. */
+function targetedObstructionRescue(map, positions, { passes = 4, steps = [52, 84, 128, 192, 280] } = {}) {
+    const graph = topologyGraph(map), n = map.zones.length;
+    if (!graph || n < 4 || n > 34)
+        return positions;
+    let best = structuredClone(positions), metrics = layoutMetrics(map, best);
+    if (!metrics.intrusions)
+        return best;
+    const compare = (a, b) => a.crossings - b.crossings || a.intrusions - b.intrusions || a.soft - b.soft;
+    const directions = Array.from({ length: 8 }, (_, i) => i * Math.PI / 4);
+    for (let pass = 0; pass < passes && metrics.intrusions; pass++) {
+        const triples = compactObstructions(map, best, graph);
+        const affected = [...new Set(triples.flatMap(([a, b, blocked]) => [blocked, a, b]))]
+            .sort((a, b) => graph.adjacency.get(b).size - graph.adjacency.get(a).size || zoneIdOrder(a, b));
+        if (!affected.length)
+            break;
+        const cx = graph.ids.reduce((sum, id) => sum + best[id].x, 0) / graph.ids.length;
+        const cy = graph.ids.reduce((sum, id) => sum + best[id].y, 0) / graph.ids.length;
+        let changed = false;
+        for (const id of affected) {
+            let localPoint = null, localMetrics = metrics;
+            const angles = [Math.atan2(best[id].y - cy, best[id].x - cx), ...directions];
+            for (const [a, b, blocked] of triples) {
+                if (id !== a && id !== b && id !== blocked)
+                    continue;
+                const dx = best[b].x - best[a].x, dy = best[b].y - best[a].y;
+                if (Math.abs(dx) + Math.abs(dy) > 1e-7) {
+                    angles.push(Math.atan2(dx, -dy), Math.atan2(-dx, dy));
+                }
+            }
+            for (const step of steps)
+                for (const angle of angles) {
+                    const point = { x: best[id].x + Math.cos(angle) * step, y: best[id].y + Math.sin(angle) * step };
+                    const trial = structuredClone(best);
+                    trial[id] = point;
+                    if (compactCardOverlaps(trial, id, 68))
+                        continue;
+                    const next = layoutMetrics(map, trial);
+                    if (compare(next, localMetrics) < -1e-7) {
+                        localPoint = point;
+                        localMetrics = next;
+                    }
+                }
+            if (localPoint) {
+                best[id] = localPoint;
+                metrics = localMetrics;
+                changed = true;
+            }
+        }
+        if (!changed)
+            break;
+    }
+    return normalizeLayoutOrigin(best);
+}
+
+
+
+function groupedObstructionRescue(map, positions, { passes = 2 } = {}) {
+    const graph = topologyGraph(map), n = map.zones.length;
+    if (!graph || n < 6 || n > 40)
+        return positions;
+    let best = structuredClone(positions), metrics = layoutMetrics(map, best);
+    const compare = (a, b) => a.crossings - b.crossings || a.intrusions - b.intrusions || a.soft - b.soft;
+    const overlapsOutside = (trial, moved) => {
+        const movedSet = new Set(moved);
+        for (const id of moved)
+            for (const [otherId, other] of Object.entries(trial)) {
+                if (id === otherId || movedSet.has(otherId))
+                    continue;
+                const point = trial[id];
+                if (Math.abs(point.x - other.x) < CARD_W + 68 && Math.abs(point.y - other.y) < CARD_H + 68)
+                    return true;
+            }
+        return false;
+    };
+    for (let pass = 0; pass < passes && metrics.intrusions; pass++) {
+        const grouped = new Map();
+        for (const [a, b, blocked] of compactObstructions(map, best, graph)) {
+            const key = zoneIdOrder(a, b) <= 0 ? `${a}\u0001${b}` : `${b}\u0001${a}`;
+            if (!grouped.has(key))
+                grouped.set(key, { a, b, blocked: new Set() });
+            grouped.get(key).blocked.add(blocked);
+        }
+        const lanes = [...grouped.values()].filter(lane => lane.blocked.size >= 2)
+            .sort((a, b) => b.blocked.size - a.blocked.size || zoneIdOrder(a.a, b.a));
+        let changed = false;
+        const cx = graph.ids.reduce((sum, id) => sum + best[id].x, 0) / graph.ids.length;
+        const cy = graph.ids.reduce((sum, id) => sum + best[id].y, 0) / graph.ids.length;
+        for (const lane of lanes) {
+            const moved = [...lane.blocked], pa = best[lane.a], pb = best[lane.b];
+            const dx = pb.x - pa.x, dy = pb.y - pa.y, length = Math.hypot(dx, dy);
+            if (length < 1e-7)
+                continue;
+            const nx = -dy / length, ny = dx / length;
+            const mx = moved.reduce((sum, id) => sum + best[id].x, 0) / moved.length;
+            const my = moved.reduce((sum, id) => sum + best[id].y, 0) / moved.length;
+            const towardCenter = (cx - mx) * nx + (cy - my) * ny >= 0 ? 1 : -1;
+            const signs = [towardCenter, -towardCenter];
+            let local = best, localMetrics = metrics;
+            for (const step of [96, 148, 220, 310, 420, 560, 720])
+                for (const sign of signs) {
+                    const trial = structuredClone(best);
+                    for (const id of moved) {
+                        trial[id].x += nx * step * sign;
+                        trial[id].y += ny * step * sign;
+                    }
+                    if (overlapsOutside(trial, moved))
+                        continue;
+                    const next = layoutMetrics(map, trial);
+                    if (compare(next, localMetrics) < -1e-7) {
+                        local = trial;
+                        localMetrics = next;
+                    }
+                }
+            if (local !== best) {
+                best = local;
+                metrics = localMetrics;
+                changed = true;
+            }
+        }
+        if (!changed)
+            break;
+    }
+    return normalizeLayoutOrigin(best);
+}
+
+function compactObstructions(map, positions, graph) {
+    const centers = Object.fromEntries(graph.ids.map(id => [id, {
+        x: positions[id].x + CARD_W / 2,
+        y: positions[id].y + CARD_H / 2
+    }]));
+    const result = [];
+    for (const [a, b] of graph.edges)
+        for (const id of graph.ids) {
+            if (id === a || id === b)
+                continue;
+            if (segmentIntersectsRect(centers[a], centers[b], centers[id], CARD_W / 2 + 9, CARD_H / 2 + 9))
+                result.push([a, b, id]);
+        }
+    return result;
+}
+function compactCardOverlaps(positions, id, gap = 68) {
+    const point = positions[id];
+    for (const [otherId, other] of Object.entries(positions)) {
+        if (otherId === id)
+            continue;
+        if (Math.abs(point.x - other.x) < CARD_W + gap && Math.abs(point.y - other.y) < CARD_H + gap)
+            return true;
+    }
+    return false;
+}
+function normalizeLayoutOrigin(positions, pad = 110) {
+    const ids = Object.keys(positions ?? {});
+    if (!ids.length)
+        return structuredClone(positions ?? {});
+    const result = structuredClone(positions);
+    const minX = Math.min(...ids.map(id => result[id].x)), minY = Math.min(...ids.map(id => result[id].y));
+    for (const id of ids) {
+        result[id].x -= minX - pad;
+        result[id].y -= minY - pad;
+    }
+    return result;
+}
+function scaleLayoutAroundCenter(positions, factor) {
+    const ids = Object.keys(positions ?? {}), result = structuredClone(positions ?? {});
+    if (!ids.length)
+        return result;
+    const cx = ids.reduce((sum, id) => sum + result[id].x, 0) / ids.length;
+    const cy = ids.reduce((sum, id) => sum + result[id].y, 0) / ids.length;
+    for (const id of ids) {
+        result[id].x = cx + (result[id].x - cx) * factor;
+        result[id].y = cy + (result[id].y - cy) * factor;
+    }
+    return result;
+}
+function refineCompressedCandidate(map, positions, graph, { passes = 4 } = {}) {
+    let best = structuredClone(positions), metrics = layoutMetrics(map, best);
+    const compare = (a, b) => {
+        const ka = [a.crossings, a.intrusions, a.soft], kb = [b.crossings, b.intrusions, b.soft];
+        for (let i = 0; i < ka.length; i++) {
+            if (Math.abs(ka[i] - kb[i]) > 1e-7)
+                return ka[i] - kb[i];
+        }
+        return 0;
+    };
+    for (let pass = 0; pass < passes && metrics.intrusions; pass++) {
+        const triples = compactObstructions(map, best, graph);
+        const affected = [...new Set(triples.flatMap(([a, b, id]) => [id, a, b]))];
+        if (!affected.length)
+            break;
+        const cx = graph.ids.reduce((sum, id) => sum + best[id].x, 0) / graph.ids.length;
+        const cy = graph.ids.reduce((sum, id) => sum + best[id].y, 0) / graph.ids.length;
+        let changed = false;
+        for (const id of affected) {
+            let local = best, localMetrics = metrics;
+            const angles = [];
+            for (const [a, b, blocked] of triples) {
+                if (id !== a && id !== b && id !== blocked)
+                    continue;
+                const dx = best[b].x - best[a].x, dy = best[b].y - best[a].y;
+                if (Math.abs(dx) + Math.abs(dy) > 1e-7) {
+                    angles.push(Math.atan2(dx, -dy));
+                    angles.push(Math.atan2(-dx, dy));
+                }
+            }
+            angles.push(Math.atan2(best[id].y - cy, best[id].x - cx));
+            for (let i = 0; i < 8; i++)
+                angles.push(i * Math.PI / 4);
+            for (const step of [44, 72, 108])
+                for (const angle of angles) {
+                    const trial = structuredClone(best);
+                    trial[id].x += Math.cos(angle) * step;
+                    trial[id].y += Math.sin(angle) * step;
+                    if (compactCardOverlaps(trial, id, 68))
+                        continue;
+                    const next = layoutMetrics(map, trial);
+                    if (compare(next, localMetrics) < 0) {
+                        local = trial;
+                        localMetrics = next;
+                    }
+                }
+            if (local !== best) {
+                best = local;
+                metrics = localMetrics;
+                changed = true;
+            }
+        }
+        if (!changed)
+            break;
+    }
+    return normalizeLayoutOrigin(best);
+}
+function polishDenseClearLayout(map, positions, graph, { passes = 5 } = {}) {
+    const n = graph?.ids.length ?? 0;
+    // This second-stage polish is intentionally narrow. It targets compact,
+    // connection-dense maps where a clear drawing already exists and therefore
+    // must never trade readability for a marginally smaller footprint.
+    if (!graph || n < 10 || n > 14 || graph.edges.length < n + 6)
+        return positions;
+    let best = structuredClone(positions), metrics = layoutMetrics(map, best);
+    if (metrics.crossings || metrics.intrusions)
+        return positions;
+    const order = graph.ids.slice().sort((a, b) => graph.adjacency.get(b).size - graph.adjacency.get(a).size || zoneIdOrder(a, b));
+    for (let pass = 0; pass < passes; pass++) {
+        const cx = graph.ids.reduce((sum, id) => sum + best[id].x, 0) / n;
+        const cy = graph.ids.reduce((sum, id) => sum + best[id].y, 0) / n;
+        let changed = false;
+        for (const id of order) {
+            const point = best[id], neighbors = [...graph.adjacency.get(id)];
+            const nx = neighbors.reduce((sum, other) => sum + best[other].x, 0) / Math.max(1, neighbors.length);
+            const ny = neighbors.reduce((sum, other) => sum + best[other].y, 0) / Math.max(1, neighbors.length);
+            const average = neighbors.reduce((sum, other) => sum + Math.hypot(best[other].x - point.x, best[other].y - point.y), 0) / Math.max(1, neighbors.length);
+            const candidates = [];
+            for (const [tx, ty] of [[nx, ny], [cx, cy]])
+                for (const t of [.12, .22, .35, .5, .68])
+                    candidates.push({ x: point.x + (tx - point.x) * t, y: point.y + (ty - point.y) * t });
+            for (const step of [Math.min(900, average * .35), Math.min(600, average * .2), 180, 96, 52])
+                for (let i = 0; i < 12; i++) {
+                    const angle = i * Math.PI / 6;
+                    candidates.push({ x: point.x + Math.cos(angle) * step, y: point.y + Math.sin(angle) * step });
+                }
+            let localPoint = null, localMetrics = metrics;
+            for (const candidate of candidates) {
+                const trial = structuredClone(best);
+                trial[id] = candidate;
+                if (compactCardOverlaps(trial, id, 68))
+                    continue;
+                const next = layoutMetrics(map, trial);
+                if (!next.crossings && !next.intrusions && next.soft < localMetrics.soft - 1e-7) {
+                    localPoint = candidate;
+                    localMetrics = next;
+                }
+            }
+            if (localPoint) {
+                best[id] = localPoint;
+                metrics = localMetrics;
+                changed = true;
+            }
+        }
+        if (!changed)
+            break;
+    }
+    return normalizeLayoutOrigin(best);
+}
+
+
+function polishClearLayoutRings(map, positions, graph, { passes = 4 } = {}) {
+    const n = graph?.ids.length ?? 0;
+    if (!graph || n < 10 || n > 14 || graph.edges.length < n + 6)
+        return positions;
+    let best = structuredClone(positions), metrics = layoutMetrics(map, best);
+    if (metrics.crossings || metrics.intrusions)
+        return positions;
+    const order = graph.ids.slice().sort((a, b) => graph.adjacency.get(b).size - graph.adjacency.get(a).size || zoneIdOrder(a, b));
+    for (let pass = 0; pass < passes; pass++) {
+        let changed = false;
+        for (const id of order) {
+            const point = best[id], neighbors = [...graph.adjacency.get(id)];
+            const nx = neighbors.reduce((sum, other) => sum + best[other].x, 0) / Math.max(1, neighbors.length);
+            const ny = neighbors.reduce((sum, other) => sum + best[other].y, 0) / Math.max(1, neighbors.length);
+            let localPoint = null, localMetrics = metrics;
+            const candidates = [];
+            for (const radius of [120, 200, 300])
+                for (let i = 0; i < 16; i++) {
+                    const angle = i * Math.PI / 8;
+                    candidates.push({ x: nx + Math.cos(angle) * radius, y: ny + Math.sin(angle) * radius });
+                }
+            for (const step of [32, 52, 80, 120, 180])
+                for (let i = 0; i < 16; i++) {
+                    const angle = i * Math.PI / 8;
+                    candidates.push({ x: point.x + Math.cos(angle) * step, y: point.y + Math.sin(angle) * step });
+                }
+            for (const candidate of candidates) {
+                const trial = structuredClone(best);
+                trial[id] = candidate;
+                if (compactCardOverlaps(trial, id, 68))
+                    continue;
+                const next = layoutMetrics(map, trial);
+                if (!next.crossings && !next.intrusions && next.soft < localMetrics.soft - 1e-7) {
+                    localPoint = candidate;
+                    localMetrics = next;
+                }
+            }
+            if (localPoint) {
+                best[id] = localPoint;
+                metrics = localMetrics;
+                changed = true;
+            }
+        }
+        if (!changed)
+            break;
+    }
+    return normalizeLayoutOrigin(best);
+}
+
+function compactClearLayoutCandidate(map, positions) {
+    const graph = topologyGraph(map), base = layoutMetrics(map, positions), n = map.zones.length;
+    if (!graph || n < 5 || n > 20 || base.crossings || base.intrusions)
+        return positions;
+    // Small graphs can tolerate a stronger first compression because the
+    // obstruction repair has few vertices to move. Larger layered drawings
+    // (notably 15-20-zone planar templates) use a conservative contraction so
+    // their established rows/faces remain intact.
+    const factor = n <= 14 ? .82 : .94;
+    const compressed = separate(scaleLayoutAroundCenter(positions, factor), 68);
+    const refined = refineCompressedCandidate(map, compressed, graph, { passes: n <= 14 ? 4 : 3 });
+    const metrics = layoutMetrics(map, refined);
+    let winner = positions;
+    const requiredGain = n <= 14 ? .82 : .96;
+    if (!metrics.crossings && !metrics.intrusions && metrics.soft < base.soft * requiredGain)
+        winner = refined;
+    if (n > 14)
+        return winner;
+    const polished = polishDenseClearLayout(map, winner, graph);
+    return polishClearLayoutRings(map, polished, graph);
+}
+
 /** Small deterministic crossing-reduction pass for layouts without a strong motif.
  * Swapping coordinates preserves the no-overlap guarantee and does not change
  * start-zone roles or any template data. Capped for large templates.
@@ -438,6 +1105,128 @@ export function refineCrossings(map, positions, { passes = 2 } = {}) {
     }
     return p;
 }
+
+/**
+ * Pull a valid drawing toward the graph-distance embedding without sacrificing
+ * hard readability. The MDS target captures symmetric grids/ladders extremely
+ * well, while the existing motif/rescue pipeline is better at guaranteeing a
+ * crossing-free drawing. This late polish combines both: moves are accepted
+ * only when crossings and card obstructions do not get worse.
+ */
+function distanceGuidedPolish(map, graph, positions, { passes = 3 } = {}) {
+    const n = graph?.ids.length ?? 0;
+    if (!positions || n < 8 || n > 40)
+        return positions;
+    const raw = distanceCandidates(graph)[0];
+    if (!raw)
+        return positions;
+    const ids = graph.ids, baseMetrics = layoutMetrics(map, positions);
+    if (!Number.isFinite(baseMetrics.soft) || baseMetrics.crossings > 1)
+        return positions;
+
+    const currentMean = {
+        x: ids.reduce((sum, id) => sum + positions[id].x, 0) / n,
+        y: ids.reduce((sum, id) => sum + positions[id].y, 0) / n
+    };
+    const rawMean = {
+        x: ids.reduce((sum, id) => sum + raw[id].x, 0) / n,
+        y: ids.reduce((sum, id) => sum + raw[id].y, 0) / n
+    };
+    const alignedTarget = reflect => {
+        let dot = 0, cross = 0, denom = 0;
+        for (const id of ids) {
+            const rx = raw[id].x - rawMean.x;
+            const ry = (raw[id].y - rawMean.y) * reflect;
+            const px = positions[id].x - currentMean.x;
+            const py = positions[id].y - currentMean.y;
+            dot += rx * px + ry * py;
+            cross += rx * py - ry * px;
+            denom += rx * rx + ry * ry;
+        }
+        const magnitude = Math.hypot(dot, cross);
+        if (magnitude < 1e-9 || denom < 1e-9)
+            return null;
+        const cosine = dot / magnitude, sine = cross / magnitude, scale = magnitude / denom;
+        const target = {}, error = ids.reduce((sum, id) => {
+            const rx = raw[id].x - rawMean.x;
+            const ry = (raw[id].y - rawMean.y) * reflect;
+            const x = currentMean.x + scale * (rx * cosine - ry * sine);
+            const y = currentMean.y + scale * (rx * sine + ry * cosine);
+            target[id] = { x, y };
+            return sum + (x - positions[id].x) ** 2 + (y - positions[id].y) ** 2;
+        }, 0);
+        return { target, error };
+    };
+    const normal = alignedTarget(1), mirrored = alignedTarget(-1);
+    const target = (!mirrored || normal?.error <= mirrored.error ? normal : mirrored)?.target;
+    if (!target)
+        return positions;
+
+    const targetError = layout => ids.reduce((sum, id) => sum
+        + (layout[id].x - target[id].x) ** 2 + (layout[id].y - target[id].y) ** 2, 0);
+    const acceptable = (next, previous, previousError, nextError) => {
+        if (next.crossings > previous.crossings || next.intrusions > previous.intrusions)
+            return false;
+        if (next.crossings < previous.crossings || next.intrusions < previous.intrusions)
+            return true;
+        if (nextError >= previousError - 1e-7)
+            return false;
+        // Do not buy a prettier topology silhouette with an excessive footprint.
+        return next.soft <= previous.soft + 1e-7 && next.soft <= baseMetrics.soft + 1e-7;
+    };
+
+    let best = structuredClone(positions), metrics = layoutMetrics(map, best), error = targetError(best);
+    // First try coherent interpolation. It preserves symmetry better than a
+    // sequence of independent node moves when the planar drawing has room.
+    for (const fraction of [.12, .2, .3, .42, .56, .7]) {
+        const trial = structuredClone(best);
+        for (const id of ids) {
+            trial[id].x += (target[id].x - trial[id].x) * fraction;
+            trial[id].y += (target[id].y - trial[id].y) * fraction;
+        }
+        const separated = separate(trial, 68), next = layoutMetrics(map, separated), nextError = targetError(separated);
+        if (acceptable(next, metrics, error, nextError)) {
+            best = separated;
+            metrics = next;
+            error = nextError;
+        }
+    }
+
+    for (let pass = 0; pass < passes; pass++) {
+        let changed = false;
+        const order = ids.slice().sort((a, b) => {
+            const da = (best[a].x - target[a].x) ** 2 + (best[a].y - target[a].y) ** 2;
+            const db = (best[b].x - target[b].x) ** 2 + (best[b].y - target[b].y) ** 2;
+            return db - da || graph.adjacency.get(a).size - graph.adjacency.get(b).size || zoneIdOrder(a, b);
+        });
+        for (const id of order) {
+            let local = best, localMetrics = metrics, localError = error;
+            for (const fraction of [.16, .28, .42, .58]) {
+                const trial = structuredClone(best);
+                trial[id].x += (target[id].x - trial[id].x) * fraction;
+                trial[id].y += (target[id].y - trial[id].y) * fraction;
+                if (compactCardOverlaps(trial, id, 68))
+                    continue;
+                const next = layoutMetrics(map, trial), nextError = targetError(trial);
+                if (acceptable(next, localMetrics, localError, nextError)) {
+                    local = trial;
+                    localMetrics = next;
+                    localError = nextError;
+                }
+            }
+            if (local !== best) {
+                best = local;
+                metrics = localMetrics;
+                error = localError;
+                changed = true;
+            }
+        }
+        if (!changed)
+            break;
+    }
+    return normalizeLayoutOrigin(best);
+}
+
 export function autoLayout(map, { preferStored = true } = {}) {
     const zones = map.zones, n = zones.length;
     if (!n)
@@ -471,12 +1260,86 @@ export function autoLayout(map, { preferStored = true } = {}) {
             }
         return compactLayout(separate(positions, 82), { gap: 68 });
     }
-    const topology = topologyLayout(map);
-    if (topology)
-        return topology;
-    const graph = topologyGraph(map), disconnected = graph ? disconnectedLayout(map, graph) : null;
+    const graph = topologyGraph(map);
+    const reflection = graph ? reflectionPathLayout(map, graph) : null;
+    let coreRing = null;
+    if (graph) {
+        const candidates = coreRingLayouts(map, graph);
+        for (const candidate of candidates) {
+            const xs = Object.values(candidate).map(point => point.x), ys = Object.values(candidate).map(point => point.y);
+            const span = Math.max(Math.max(...xs) - Math.min(...xs) + CARD_W, Math.max(...ys) - Math.min(...ys) + CARD_H);
+            const target = Math.max(1500, Math.sqrt(n) * 520);
+            const prepared = span > target * 1.18
+                ? separate(scaleLayoutAroundCenter(candidate, target / span), 68)
+                : candidate;
+            if (layoutMetrics(map, prepared).crossings)
+                continue;
+            coreRing = betterLayout(map, coreRing, refineObstructions(map, prepared, { passes: 3 }));
+        }
+    }
+    let topology = topologyLayout(map);
+    if (topology) {
+        // Keep the dedicated hypercube view intact. Q4 is inherently
+        // non-planar, and its two-ring layout communicates the structure much
+        // better than a slightly lower crossing count from an asymmetric
+        // generic refinement.
+        const k = graph ? Math.round(Math.log2(graph.ids.length)) : 0;
+        const hypercube = graph && k >= 3 && k <= 4 && 2 ** k === graph.ids.length
+            && graph.edges.length === graph.ids.length * k / 2
+            && graph.ids.every(id => graph.adjacency.get(id).size === k);
+        if (hypercube)
+            return topology;
+        let metrics = layoutMetrics(map, topology);
+        if (metrics.crossings === 0 && metrics.intrusions === 0)
+            return compactClearLayoutCandidate(map, betterLayout(map, coreRing, betterLayout(map, topology, reflection)));
+        topology = refineObstructions(map, topology, { passes: 4 });
+    }
+    const disconnected = graph ? disconnectedLayout(map, graph) : null;
     if (disconnected)
         return disconnected;
+    let quadrilateral = null;
+    if (graph) {
+        const candidates = quadrilateralFaceLayouts(map, graph);
+        if (candidates.length) {
+            const score = candidate => {
+                const metrics = layoutMetrics(map, candidate);
+                return [metrics.crossings, metrics.intrusions, metrics.soft];
+            };
+            const ranked = candidates.slice().sort((a, b) => {
+                const aa = score(a), bb = score(b);
+                for (let i = 0; i < aa.length; i++)
+                    if (Math.abs(aa[i] - bb[i]) > 1e-7)
+                        return aa[i] - bb[i];
+                return 0;
+            }).slice(0, 6);
+            const preferred = candidates.slice(0, 2), shortlist = [...new Set([...preferred, ...ranked])];
+            let preferredBest = null, globalBest = null;
+            for (const candidate of shortlist) {
+                const refined = refineObstructions(map, candidate, { passes: 4 });
+                globalBest = betterLayout(map, globalBest, refined);
+                if (preferred.includes(candidate))
+                    preferredBest = betterLayout(map, preferredBest, refined);
+            }
+            if (preferredBest && globalBest) {
+                const preferredMetrics = layoutMetrics(map, preferredBest), globalMetrics = layoutMetrics(map, globalBest);
+                const bothClear = preferredMetrics.crossings === 0 && preferredMetrics.intrusions === 0
+                    && globalMetrics.crossings === 0 && globalMetrics.intrusions === 0;
+                quadrilateral = bothClear && preferredMetrics.soft <= globalMetrics.soft * 1.25 ? preferredBest : globalBest;
+            }
+            else
+                quadrilateral = globalBest ?? preferredBest;
+        }
+    }
+    let polygon = null;
+    if (graph && (!quadrilateral || layoutMetrics(map, quadrilateral).crossings > 0 || layoutMetrics(map, quadrilateral).intrusions > 12)) {
+        const candidates = polygonFaceLayouts(map, graph).sort((a, b) => {
+            const aa = layoutMetrics(map, a), bb = layoutMetrics(map, b);
+            return aa.intrusions - bb.intrusions || aa.soft - bb.soft;
+        }).slice(0, 6);
+        for (const candidate of candidates)
+            polygon = betterLayout(map, polygon, refineObstructions(map, candidate, { passes: 4 }));
+    }
+    quadrilateral = betterLayout(map, quadrilateral, polygon);
     const spectral = graph ? spectralLayout(map, graph) : null;
     const outer = zones.filter(isStart), inner = zones.filter(z => !isStart(z));
     const centerOrder = [...inner].sort((a, b) => Number(isCenter(b)) - Number(isCenter(a)) || Number(a.id) - Number(b.id));
@@ -516,7 +1379,32 @@ export function autoLayout(map, { preferStored = true } = {}) {
         }
     }
     const force = compactLayout(refineCrossings(map, separate(positions, 155)), { gap: 68 });
-    return betterLayout(map, spectral, force);
+    const generic = betterLayout(map, spectral, force);
+    if (quadrilateral) {
+        const quadMetrics = layoutMetrics(map, quadrilateral), genericMetrics = layoutMetrics(map, generic);
+        // A planar face candidate is useful only when it remains readable. A
+        // zero-crossing drawing with dozens of lines running behind unrelated
+        // cards is worse than a compact fallback with a couple of crossings.
+        if (quadMetrics.intrusions > Math.max(12, genericMetrics.intrusions * 2 + 4)
+            || quadMetrics.soft > genericMetrics.soft * 12)
+            quadrilateral = null;
+    }
+    let winner = betterLayout(map, coreRing, betterLayout(map, reflection, betterLayout(map, topology, betterLayout(map, quadrilateral, generic))));
+    winner = refineCrossingGeometry(map, winner, { passes: 6 });
+    if (layoutMetrics(map, winner).crossings)
+        winner = wideCrossingRescue(map, winner, { passes: 3 });
+    winner = refineObstructions(map, winner, { passes: 3 });
+    if (layoutMetrics(map, winner).intrusions)
+        winner = targetedObstructionRescue(map, winner, { passes: 4 });
+    if (layoutMetrics(map, winner).intrusions)
+        winner = targetedObstructionRescue(map, winner, { passes: 2, steps: [390, 520] });
+    if (layoutMetrics(map, winner).intrusions)
+        winner = groupedObstructionRescue(map, winner, { passes: 2 });
+    const compactWinner = compactClearLayoutCandidate(map, winner);
+    if (!graph)
+        return compactWinner;
+    const polished = compactClearLayoutCandidate(map, distanceGuidedPolish(map, graph, winner, { passes: 3 }));
+    return betterLayout(map, compactWinner, polished);
 }
 export function separate(positions, pad = 110) {
     let p = structuredClone(positions);

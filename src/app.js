@@ -1816,7 +1816,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         try {
             // External locale modules can finish after the window load event. Register
             // immediately when that happened instead of waiting for an event that has passed.
-            const registration = await navigator.serviceWorker.register('./sw.js?v=1.6.1', { scope: './', updateViaCache: 'none' });
+            const registration = await navigator.serviceWorker.register('./sw.js?v=1.6.4', { scope: './', updateViaCache: 'none' });
             await registration.update();
             if (registration.waiting) {
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' });

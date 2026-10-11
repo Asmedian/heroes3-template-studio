@@ -112,6 +112,53 @@ test('non-sequential zone IDs do not control topology placement quality', () => 
     assert.equal(metrics.intrusions, 0);
 });
 
+
+
+test('Anarchy v1.01 dense planar graph follows the layered diamond without line obstruction', () => {
+    const map = input('../templates/25-anarchy-v1-01.txt').maps[4];
+    assert.equal(map.zones.length, 17);
+    assert.equal(map.connections.length, 36);
+    const points = autoLayout(map, { preferStored: false }), metrics = layoutMetrics(map, points);
+    noCollision(points);
+    assert.equal(metrics.crossings, 0);
+    assert.equal(metrics.intrusions, 0);
+    assert.ok(points['10'].y < points['5'].y && points['10'].y < points['6'].y);
+    assert.ok(points['9'].y > points['12'].y && points['9'].y > points['13'].y);
+    assert.ok(points['8'].x < points['2'].x && points['2'].x < points['11'].x);
+    assert.ok(points['11'].x < points['1'].x && points['1'].x < points['7'].x);
+    assert.ok(points['5'].y < points['11'].y && points['12'].y > points['11'].y);
+
+    // Numeric source IDs are only a deterministic tie-breaker; sparse or
+    // shuffled IDs must not reduce the geometric quality of the result.
+    const shuffled = structuredClone(map);
+    const replacements = ['401', '17', '950', '62', '333', '4', '711', '28', '806', '53', '290', '15', '640', '91', '502', '39', '870'];
+    const remap = new Map(shuffled.zones.map((zone, index) => [String(zone.id), replacements[index]]));
+    for (const zone of shuffled.zones)
+        zone.id = remap.get(String(zone.id));
+    for (const connection of shuffled.connections) {
+        connection.zone1 = remap.get(String(connection.zone1)) ?? connection.zone1;
+        connection.zone2 = remap.get(String(connection.zone2)) ?? connection.zone2;
+    }
+    const shuffledMetrics = layoutMetrics(shuffled, autoLayout(shuffled, { preferStored: false }));
+    assert.equal(shuffledMetrics.crossings, 0);
+    assert.equal(shuffledMetrics.intrusions, 0);
+});
+
+test('complex Balance variant and planar Q3 cube avoid both crossings and card obstruction', () => {
+    const balance = input('../templates/27-balance.txt').maps[2];
+    const balancePoints = autoLayout(balance, { preferStored: false }), balanceMetrics = layoutMetrics(balance, balancePoints);
+    noCollision(balancePoints);
+    assert.equal(balanceMetrics.crossings, 0);
+    assert.equal(balanceMetrics.intrusions, 0);
+    assert.ok(balanceMetrics.width < 1500 && balanceMetrics.height < 1400, 'Symmetric Balance layout should stay compact.');
+
+    const cube = input('../templates/32-cube.txt').maps[0];
+    const cubePoints = autoLayout(cube, { preferStored: false }), cubeMetrics = layoutMetrics(cube, cubePoints);
+    noCollision(cubePoints);
+    assert.equal(cubeMetrics.crossings, 0);
+    assert.equal(cubeMetrics.intrusions, 0);
+});
+
 test('disconnected template components are laid out separately instead of crossing each other', () => {
     const map = input('../templates/47-match-terrain.txt').maps.find(item => item.name === '8XM8');
     assert.ok(map);
@@ -119,4 +166,24 @@ test('disconnected template components are laid out separately instead of crossi
     noCollision(points);
     assert.equal(metrics.crossings, 0);
     assert.ok(metrics.intrusions <= 1);
+});
+
+test('ideal-layout reference families keep the improved topology and regularity', () => {
+    const sm4e = input('../templates/11-original.txt').maps.find(map => map.name === '4SM4e');
+    const sm4eMetrics = layoutMetrics(sm4e, autoLayout(sm4e, { preferStored: false }));
+    assert.equal(sm4eMetrics.crossings, 0);
+    assert.equal(sm4eMetrics.intrusions, 0);
+    assert.ok(sm4eMetrics.soft < 160000, '4SM4e ring should stay compact and balanced.');
+
+    const lm10a = input('../templates/19-6lm10a.txt').maps[0];
+    const lm10aMetrics = layoutMetrics(lm10a, autoLayout(lm10a, { preferStored: false }));
+    assert.equal(lm10aMetrics.crossings, 0);
+    assert.equal(lm10aMetrics.intrusions, 0, '6LM10a should not route a connection behind an unrelated zone.');
+
+    const xm12a = input('../templates/24-8xm12a.txt').maps[0];
+    const xm12aMetrics = layoutMetrics(xm12a, autoLayout(xm12a, { preferStored: false }));
+    assert.equal(xm12aMetrics.crossings, 0);
+    assert.equal(xm12aMetrics.intrusions, 0);
+    assert.ok(xm12aMetrics.coefficient < 0.25, '8XM12a should retain its regular grid-like edge lengths.');
+    assert.ok(xm12aMetrics.soft < 400000, '8XM12a should stay substantially cleaner than the 1.6.3 layout.');
 });

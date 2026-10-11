@@ -49,6 +49,21 @@ test('HTML contains named install, theme, upload, canvas, zoom and export contro
     assert.ok(css().includes('html[data-theme="light"]'));
     assert.ok(!flat(css()).includes('.file-actions#save-btn{display:none}')); // Save must remain on mobile.
 });
+test('format priority, template-pack terminology and Tools icon stay canonical', () => {
+    const html = file('index.html'), app = file('src/app.js'), controls = file('styles/controls.css');
+    const exportOptions = [...html.matchAll(/<option value="(sod|hota17|hota18)">/g)].slice(0, 3).map(match => match[1]);
+    assert.deepEqual(exportOptions, ['sod', 'hota17', 'hota18']);
+    const dialog = app.match(/id="new-pack-format"[^`]+/);
+    assert.ok(dialog, 'Missing new template pack format selector.');
+    assert.ok(dialog[0].indexOf('value="sod"') < dialog[0].indexOf('value="hota17"'));
+    assert.ok(dialog[0].indexOf('value="hota17"') < dialog[0].indexOf('value="hota18"'));
+    assert.ok(app.includes('Open SoD .txt or HotA 1.7/1.8 .h3t using Open or drag a file onto the canvas.'));
+    assert.ok(html.includes('CURRENT TEMPLATE PACK'));
+    assert.ok(html.includes('Template pack settings'));
+    assert.ok(html.includes('New template pack'));
+    assert.match(html, /id="more-btn"[\s\S]*?<use href="#i-menu"\/>/);
+    assert.match(controls, /\.lang-select:hover:not\(:disabled\)\s*\{[^}]*background-color:\s*var\(--button-hover\)/s);
+});
 test('raster install icons have declared exact PNG dimensions', () => {
     for (const size of [192, 512]) {
         const buf = fs.readFileSync(path.join(root, `public/icons/icon-${size}.png`));
@@ -173,8 +188,45 @@ test('opened files share canonical built-in layouts and do not reuse obsolete la
     assert.match(app, /function\s+matchPackPresets\(pack,\s*layouts\)/);
     assert.match(flat(app), /matchPackPresets\(pack,awaitloadUpstreamLayouts\(\)\)/);
     assert.ok(app.includes('h3tc-layout-v3-'));
-    assert.ok(flat(app).includes('topologyLayout(map)||autoLayout(map,{preferStored:false})'));
+    assert.ok(flat(app).includes('topologyLayout(visible)||autoLayout(visible,{preferStored:false})'));
 });
+
+test('v1.6.0 template errors are surfaced in the status bar and invalid data is excluded from the diagram', () => {
+    const html = file('index.html'), app = file('src/app.js'), styles = file('styles/base.css');
+    assert.ok(html.includes('id="status-errors"'));
+    assert.ok(app.includes('function showTemplateErrors()'));
+    assert.ok(app.includes('templateErrors(map)'));
+    assert.ok(app.includes('validZoneIds(map)'));
+    assert.ok(app.includes('isRenderableConnection(connection, zoneIds)'));
+    assert.ok(app.includes("$('status-errors').addEventListener('click', showTemplateErrors)"));
+    assert.ok(styles.includes('.status-error-btn.has-errors'));
+});
+test('English and Russian locale JSON files have exact key parity and no Map/Maps UI terminology', () => {
+    const en = JSON.parse(file('locales/en.json'));
+    const ru = JSON.parse(file('locales/ru.json'));
+    assert.deepEqual(Object.keys(en).sort(), Object.keys(ru).sort());
+    assert.deepEqual(Object.keys(en.__patterns || {}).sort(), Object.keys(ru.__patterns || {}).sort());
+    const source = [file('src/app.js'), file('src/i18n.js'), file('src/ui/template-picker.js')].join('\n');
+    for (const match of source.matchAll(/translateText\(\s*(['\"])(.*?)\1\s*\)/gs)) {
+        assert.ok(Object.hasOwn(en, match[2]), `Missing English locale entry: ${match[2]}`);
+        assert.ok(Object.hasOwn(ru, match[2]), `Missing Russian locale entry: ${match[2]}`);
+    }
+    const flattenStrings = value => value && typeof value === 'object'
+        ? Object.values(value).flatMap(flattenStrings)
+        : typeof value === 'string' ? [value] : [];
+    const enValues = flattenStrings(en);
+    const ruValues = flattenStrings(ru);
+    assert.equal(Object.keys(en).filter(key => /\bmaps?\b/i.test(key)).length, 0, 'Obsolete Map/Maps localization keys must be removed.');
+    assert.equal(Object.keys(ru).filter(key => /\bmaps?\b/i.test(key)).length, 0, 'Obsolete Map/Maps localization keys must be removed.');
+    assert.equal(enValues.filter(value => /\bmaps?\b/i.test(value)).length, 0, 'Visible English localization must use Template/Templates.');
+    assert.equal(ruValues.filter(value => /\bкарт(?:а|ы|у|е|ой|ами|ах)?\b/iu.test(value)).length, 0, 'Visible Russian localization must use шаблон/шаблоны.');
+});
+test('visible HTML terminology uses Template rather than Map labels', () => {
+    const html = file('index.html');
+    assert.doesNotMatch(html, />\s*Maps?\s*</i);
+    assert.doesNotMatch(html, /(?:aria-label|title|placeholder)="[^"]*\bmaps?\b[^"]*"/i);
+});
+
 test('unified scrollbars and dropdown/legend chevrons are styled consistently', () => {
     const allCss = css();
     assert.ok(allCss.includes('*::-webkit-scrollbar-thumb'));

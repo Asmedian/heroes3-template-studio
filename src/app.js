@@ -16,16 +16,82 @@ const store = {
     fileKey: '', loaded: false, loadToken: 0, builtinId: null, presetLayouts: null
 };
 const current = () => store.pack?.maps[store.mapIndex];
-const renderableConnectionCount = map => {
-    if (!map) {
-        return 0;
+const validZoneIds = map => {
+    const counts = new Map();
+    for (const zone of map?.zones ?? []) {
+        const id = String(zone.id ?? '').trim();
+        counts.set(id, (counts.get(id) ?? 0) + 1);
     }
-    const zoneIds = new Set(map.zones.map(zone => String(zone.id ?? '').trim()));
+    return new Set([...counts].filter(([id, count]) => /^[1-9]\d*$/.test(id) && count === 1).map(([id]) => id));
+};
+const renderableZoneCount = map => validZoneIds(map).size;
+const renderableConnectionCount = map => {
+    if (!map)
+        return 0;
+    const zoneIds = validZoneIds(map);
     return map.connections.filter(connection => isRenderableConnection(connection, zoneIds)).length;
+};
+const displayMap = map => {
+    const zoneIds = validZoneIds(map);
+    return {
+        ...map,
+        zones: map.zones.filter(zone => zoneIds.has(String(zone.id ?? '').trim())),
+        connections: map.connections.filter(connection => isRenderableConnection(connection, zoneIds))
+    };
+};
+const templateErrors = map => {
+    if (!store.pack || !map)
+        return [];
+    const source_issues = (store.pack.source_issues ?? [])
+        .filter(issue => issue.map === store.mapIndex)
+        .map(issue => ({ ...issue, map: 0 }));
+    const probe = { ...store.pack, maps: [map], source_issues };
+    return validatePack(probe).filter(issue => issue.level === 'error');
 };
 const templatePicker = createTemplatePicker({ onSelect: loadBuiltin });
 function toast(message) { $('toast').textContent = message; $('toast').classList.add('visible'); clearTimeout(store.toastTimer); store.toastTimer = setTimeout(() => $('toast').classList.remove('visible'), 3500); }
 function status(s) { $('status-text').textContent = s; }
+function issueReasonText(reason) {
+    const field = translateText(reason.field === 'zone1' ? 'Zone 1' : 'Zone 2');
+    if (reason.code === 'missing_endpoint')
+        return message('issue_reason_missing_endpoint', field);
+    if (reason.code === 'invalid_endpoint')
+        return message('issue_reason_invalid_endpoint', field, reason.value);
+    if (reason.code === 'unknown_zone')
+        return message('issue_reason_unknown_zone', field, reason.value);
+    return message('issue_reason_ambiguous_zone', field, reason.value);
+}
+function localizedIssueText(issue, includeTemplate = false) {
+    let text;
+    if (issue.code === 'invalid_zone_id')
+        text = message('issue_invalid_zone_id', issue.args?.zone, issue.args?.id || translateText('(empty)'));
+    else if (issue.code === 'duplicate_zone_id')
+        text = message('issue_duplicate_zone_id', issue.args?.id, issue.args?.count);
+    else if (issue.code === 'orphan_zone_data')
+        text = message('issue_orphan_zone_data', issue.args?.line, issue.args?.count);
+    else if (issue.code === 'invalid_connection') {
+        const reasons = (issue.reasons ?? []).map(issueReasonText).join('; ');
+        text = message('issue_invalid_connection', issue.args?.index, issue.args?.zone1 || '∅', issue.args?.zone2 || '∅', reasons);
+    }
+    else if (issue.code === 'truncated_row')
+        text = message('issue_truncated_row', issue.args?.line, issue.args?.actual, issue.args?.expected);
+    else if (issue.code === 'extra_columns')
+        text = message('issue_extra_columns', issue.args?.line, issue.args?.expected);
+    else if (issue.code === 'no_terrain')
+        text = message('issue_no_terrain', issue.args?.id);
+    else if (issue.code === 'no_monsters')
+        text = message('issue_no_monsters', issue.args?.id);
+    else
+        text = translateText(issue.text || 'Unknown template error.');
+    if (!includeTemplate)
+        return text;
+    const template = store.pack?.maps?.[issue.map]?.name ?? '';
+    return message('issue_template_prefix', template, text);
+}
+function issueMarkup(issue, includeTemplate = false) {
+    const fields = (issue.fields ?? []).map(field => `<li><strong>${esc(translateText(field.label))}</strong>: <code>${esc(field.value)}</code></li>`).join('');
+    return `<div class="issue ${issue.level === 'error' ? 'error' : 'badge-warning'}"><div>${esc(localizedIssueText(issue, includeTemplate))}</div>${fields ? `<ul class="issue-fields">${fields}</ul>` : ''}</div>`;
+}
 function modal(title, body, actions = [{ label: 'Close' }]) {
     $('modal-title').textContent = title;
     $('modal-content').innerHTML = body;
@@ -108,7 +174,7 @@ function redo() {
 }
 const layoutStorageKey = index => `h3tc-layout-v3-${store.fileKey}-${index}`;
 function presetMatches(map, preset) { return Boolean(preset && preset.name === map.name && preset.connections === map.connections.length && preset.ids.join('\0') === map.zones.map(z => String(z.id)).join('\0')); }
-function recommendedLayout(map, index) { const preset = store.presetLayouts?.[index]; return presetMatches(map, preset) ? compactLayout(structuredClone(preset.positions), { gap: 68 }) : (topologyLayout(map) || autoLayout(map, { preferStored: false })); }
+function recommendedLayout(map, index) { const visible = displayMap(map), preset = store.presetLayouts?.[index]; return presetMatches(map, preset) && visible.zones.length === map.zones.length && visible.connections.length === map.connections.length ? compactLayout(structuredClone(preset.positions), { gap: 68 }) : (topologyLayout(visible) || autoLayout(visible, { preferStored: false })); }
 function persistLayout() {
     const map = current();
     if (!map || !store.fileKey)
@@ -122,7 +188,7 @@ function restoreLayout(index) {
     const map = store.pack.maps[index];
     if (!map)
         return;
-    const ids = new Set(map.zones.map(z => String(z.id))), generated = recommendedLayout(map, index);
+    const ids = validZoneIds(map), generated = recommendedLayout(map, index);
     let restored = {};
     // v3 deliberately does not import the old automatic cache namespace. It prevents
     // obsolete 1.4/1.5 layouts from overriding the newer topology engine after update.
@@ -294,7 +360,7 @@ function renderAll() { renderSidebar(); renderToolbar(); renderCanvas(); renderL
 function renderSidebar() {
     const pack = store.pack;
     const hasPack = Boolean(pack);
-    $('package-name').textContent = pack?.metadata?.name || pack?.filename || translateText('No pack loaded');
+    $('package-name').textContent = pack?.metadata?.name || pack?.filename || translateText('No template pack loaded');
     $('current-format').textContent = pack ? upper(pack.format) : '—';
     $('map-count').textContent = message('template_count', pack?.maps.length || 0);
     $('add-map-btn').hidden = !hasPack;
@@ -302,7 +368,7 @@ function renderSidebar() {
     $('validate-btn').disabled = !hasPack;
     $('map-search').disabled = !hasPack;
     const filter = $('map-search').value.toLocaleLowerCase();
-    $('map-list').innerHTML = pack?.maps.map((m, i) => m.name.toLocaleLowerCase().includes(filter) ? `<button type="button" class="map-item ${i === store.mapIndex ? 'active' : ''}" data-map-index="${i}" title="${esc(m.name)}"><span class="map-number">${i + 1}</span><span class="map-text"><strong>${esc(m.name || 'Untitled')}</strong><small>${message('template_stats', m.zones.length, renderableConnectionCount(m))}</small></span></button>` : '').join('') || '<div class="field-note empty-list-note">' + esc(translateText(hasPack ? 'No templates found.' : 'Create or open a pack to begin.')) + '</div>';
+    $('map-list').innerHTML = pack?.maps.map((m, i) => m.name.toLocaleLowerCase().includes(filter) ? `<button type="button" class="map-item ${i === store.mapIndex ? 'active' : ''}" data-map-index="${i}" title="${esc(m.name)}"><span class="map-number">${i + 1}</span><span class="map-text"><strong>${esc(m.name || 'Untitled')}</strong><small>${message('template_stats', renderableZoneCount(m), renderableConnectionCount(m))}</small></span></button>` : '').join('') || '<div class="field-note empty-list-note">' + esc(translateText(hasPack ? 'No templates found.' : 'Create or open a template pack to begin.')) + '</div>';
 }
 $('map-list').addEventListener('click', e => {
     const btn = e.target.closest('[data-map-index]');
@@ -316,7 +382,7 @@ function renderToolbar() {
     $('map-title').textContent = map?.name || translateText('No template selected');
     $('map-title').setAttribute('aria-label', $('map-title').textContent);
     hideMapTitle();
-    $('map-stats').textContent = map ? message('template_stats', map.zones.length, renderableConnectionCount(map)) : '';
+    $('map-stats').textContent = map ? message('template_stats', renderableZoneCount(map), renderableConnectionCount(map)) : '';
     $('export-format').disabled = !store.pack;
     for (const id of ['add-zone-btn', 'add-conn-btn', 'undo-btn', 'redo-btn', 'save-btn', 'convert-btn', 'more-btn'])
         $(id).disabled = !store.pack || (id === 'undo-btn' && !store.undo.length) || (id === 'redo-btn' && !store.redo.length) || (['add-zone-btn', 'add-conn-btn', 'more-btn'].includes(id) && !map);
@@ -344,15 +410,32 @@ $('map-title').addEventListener('focus', showMapTitle);
 $('map-title').addEventListener('blur', hideMapTitle);
 window.addEventListener('resize', hideMapTitle);
 function renderStatus() {
-    const map = current();
-    $('status-zones').textContent = message('count_zones', map?.zones.length || 0);
+    const map = current(), errors = templateErrors(map);
+    $('status-zones').textContent = message('count_zones', renderableZoneCount(map));
     $('status-conns').textContent = message('count_connections', renderableConnectionCount(map));
+    const errorButton = $('status-errors');
+    errorButton.textContent = message('error_count', errors.length);
+    errorButton.classList.toggle('has-errors', errors.length > 0);
+    errorButton.disabled = !map;
+    errorButton.setAttribute('aria-label', message('error_button_aria', errors.length));
+    errorButton.title = errors.length ? translateText('Open template errors') : translateText('No template errors');
     $('dirty-indicator').textContent = translateText(store.pack?.dirty ? '● Modified' : '✓ Saved');
     $('dirty-indicator').style.color = store.pack?.dirty ? 'var(--treasure)' : 'var(--soft)';
     $('zoom-value').textContent = Math.round(store.scale * 100) + '%';
 }
+function showTemplateErrors() {
+    const map = current(), errors = templateErrors(map);
+    if (!map)
+        return;
+    const body = errors.length
+        ? `<p>${esc(translateText('Invalid template data is not shown on the diagram. Fix the source template values listed below; H3 Template Studio does not repair them automatically.'))}</p><div class="issues template-error-list">${errors.map(issue => issueMarkup(issue)).join('')}</div>`
+        : `<p>${esc(translateText('No template errors found.'))}</p>`;
+    modal(message('template_errors_title', map.name), body, [{ label: translateText('Close') }]);
+}
+$('status-errors').addEventListener('click', showTemplateErrors);
 function bounds(map = current()) {
-    const p = Object.values(map?.layout ?? {});
+    const ids = validZoneIds(map);
+    const p = [...ids].map(id => map?.layout?.[id]).filter(point => Number.isFinite(point?.x) && Number.isFinite(point?.y));
     if (!p.length)
         return { x: 0, y: 0, w: 620, h: 430 };
     const minX = Math.min(...p.map(v => v.x)) - 145, minY = Math.min(...p.map(v => v.y)) - 70, maxX = Math.max(...p.map(v => v.x + CARD_W)) + 145, maxY = Math.max(...p.map(v => v.y + CARD_H)) + 70;
@@ -472,8 +555,8 @@ function smallSlot(kind, name, entry, x, y, owner = '0') {
     ${svgIcon(symbol, x, y + slotIconDy(symbol), 40)}<text class="h3-slot-count ${label.length > 5 ? 'count-condensed' : ''}" x="${x + 20}" y="${y + 44}" text-anchor="middle">${esc(label)}</text></g>`;
 }
 function canvasMarkup(map) {
-    const nodesById = new Map(map.zones.map(z => [z.id.trim(), z]));
-    const zoneIds = new Set(nodesById.keys());
+    const zoneIds = validZoneIds(map);
+    const nodesById = new Map(map.zones.filter(z => zoneIds.has(String(z.id ?? '').trim())).map(z => [z.id.trim(), z]));
     const visibleIndexes = map.connections
         .map((connection, index) => ({ connection, index }))
         .filter(({ connection }) => isRenderableConnection(connection, zoneIds))
@@ -494,7 +577,7 @@ function canvasMarkup(map) {
     <path class="conn-line" d="${path.d}"/>${visual.roadRequired ? `<path class="conn-road-overlay" d="${path.d}"/>` : ''}<path class="conn-hit" d="${path.d}"/>
     ${renderConnectionLabel(path, c, visual)}</g>`;
     }).join('');
-    const zones = map.zones.map((z, i) => {
+    const zones = map.zones.map((z, i) => ({ z, i })).filter(({ z }) => zoneIds.has(String(z.id ?? '').trim())).map(({ z, i }) => {
         const p = map.layout[z.id] ?? { x: 110 + i * 240, y: 120 }, appearance = zoneAppearance(z), selected = store.selected.kind === 'zone' && store.selected.index === i;
         const owner = appearance.owner || '0', towns = townEntries(z), mines = mineEntries(z), strength = String(z.monster_strength ?? '').trim().toLowerCase();
         const swords = swordCount(z);
@@ -534,16 +617,15 @@ function renderLegend() {
     const panel = $('canvas-legend');
     const content = $('legend-content');
     const map = current();
-    panel.hidden = !map?.zones.length;
+    panel.hidden = !renderableZoneCount(map);
     if (panel.hidden) {
         content.replaceChildren();
         return;
     }
     $('legend-heading').textContent = translateText('Legend');
-    const zones = map.zones;
-    const zoneIds = new Set(zones.map(zone => String(zone.id).trim()));
-    const links = map.connections.filter(connection => zoneIds.has(String(connection.zone1 ?? '').trim()) &&
-        zoneIds.has(String(connection.zone2 ?? '').trim()));
+    const zoneIds = validZoneIds(map);
+    const zones = map.zones.filter(zone => zoneIds.has(String(zone.id ?? '').trim()));
+    const links = map.connections.filter(connection => isRenderableConnection(connection, zoneIds));
     const looks = zones.map(zoneAppearance);
     const owners = [...new Set(looks.map(appearance => appearance.owner).filter(Boolean))]
         .sort((a, b) => Number(a) - Number(b));
@@ -679,7 +761,7 @@ function renderLegend() {
 function renderCanvas() {
     const map = current();
     $('canvas-content').innerHTML = map ? canvasMarkup(map) : '';
-    $('empty-hint').classList.toggle('hidden', !!map?.zones.length);
+    $('empty-hint').classList.toggle('hidden', renderableZoneCount(map) > 0);
     transformCanvas();
 }
 function select(kind, index) {
@@ -943,7 +1025,7 @@ function selectedModel() {
     const pack = store.pack, map = current(), s = inspectorSelection();
     return s.kind === 'zone' ? map?.zones[s.index] : s.kind === 'connection' ? map?.connections[s.index] : s.kind === 'pack' ? pack : map;
 }
-function tabsFor(kind) { return kind === 'zone' ? ['General', 'Towns', 'Content', 'Terrain', 'Monsters', ...(store.pack.format !== 'sod' ? ['HotA'] : [])] : kind === 'connection' ? ['General', ...(store.pack.format !== 'sod' ? ['HotA'] : [])] : kind === 'pack' ? ['Pack'] : ['Template', ...(store.pack.format !== 'sod' ? ['HotA'] : [])]; }
+function tabsFor(kind) { return kind === 'zone' ? ['General', 'Towns', 'Content', 'Terrain', 'Monsters', ...(store.pack.format !== 'sod' ? ['HotA'] : [])] : kind === 'connection' ? ['General', ...(store.pack.format !== 'sod' ? ['HotA'] : [])] : kind === 'pack' ? ['Template pack'] : ['Template', ...(store.pack.format !== 'sod' ? ['HotA'] : [])]; }
 function zoneProps(z, t) {
     const sch = SCHEMA.formats[store.pack.format];
     if (t === 'General')
@@ -985,11 +1067,11 @@ function mapProps(m, t) {
 }
 function packProps(p) {
     if (p.format === 'sod')
-        return group('SoD pack', `<div class="alert-info">${esc(translateText('SoD has no pack metadata. Edit each template individually or convert the pack to HotA.'))}</div>`);
-    return group('Pack metadata', [
+        return group('SoD template pack', `<div class="alert-info">${esc(translateText('SoD has no template pack metadata. Edit each template individually or convert the template pack to HotA.'))}</div>`);
+    return group('Template pack metadata', [
         ['name', 'Name'], ['description', 'Description'], ['town_selection', 'Town selection'], ['heroes', 'Heroes'], ['mirror', 'Mirror'], ['tags', 'Tags'], ['max_battle_rounds', 'Max battle rounds'], ['forbid_hiring_heroes', 'Forbid hiring heroes']
     ].map(([name, label]) => f(`metadata.${name}`, label, p.metadata[name], { multiline: name === 'description' })).join('')) +
-        group('Field counts', pair([['town', 'Towns'], ['terrain', 'Terrains'], ['zone_type', 'Zone types'], ['pack_new', 'Pack fields'], ['map_new', 'Template fields'], ['zone_new', 'Zone fields'], ['connection_new', 'Connection fields']].map(([name, label]) => f(`field_counts.${name}`, label, p.field_counts[name]))));
+        group('Field counts', pair([['town', 'Towns'], ['terrain', 'Terrains'], ['zone_type', 'Zone types'], ['pack_new', 'Template pack fields'], ['map_new', 'Template fields'], ['zone_new', 'Zone fields'], ['connection_new', 'Connection fields']].map(([name, label]) => f(`field_counts.${name}`, label, p.field_counts[name]))));
 }
 function renderInspector() {
     const p = store.pack, m = current(), s = inspectorSelection();
@@ -1009,9 +1091,9 @@ function renderInspector() {
     if (picked === 'zone' || picked === 'connection')
         viewTabs.push(['selection', picked === 'zone' ? message('zone_number', current().zones[store.selected.index]?.id) : message('connection_pair', current().connections[store.selected.index]?.zone1 ?? '', current().connections[store.selected.index]?.zone2 ?? '')]);
     if (picked === 'pack')
-        viewTabs.push(['selection', 'Pack properties']);
+        viewTabs.push(['selection', 'Template pack properties']);
     $('inspector-context-tabs').innerHTML = viewTabs.map(([view, text]) => `<button type="button" data-inspector-view="${view}" role="tab" aria-selected="${(store.inspectorView === 'map' ? 'map' : 'selection') === view}" title="${esc(text)}">${esc(text)}</button>`).join('');
-    const label = kind === 'zone' ? message('zone_number', obj.id) : kind === 'connection' ? message('connection_pair', obj.zone1, obj.zone2) : kind === 'pack' ? translateText('Pack properties') : translateText('Template properties');
+    const label = kind === 'zone' ? message('zone_number', obj.id) : kind === 'connection' ? message('connection_pair', obj.zone1, obj.zone2) : kind === 'pack' ? translateText('Template pack properties') : translateText('Template properties');
     $('inspector-title').textContent = label;
     $('inspector-subtitle').textContent = kind === 'zone' ? 'Selected zone properties' : kind === 'connection' ? 'Connection properties' : kind === 'pack' ? p.filename : m.name;
     const tabs = tabsFor(kind);
@@ -1215,6 +1297,7 @@ function freshMap(format, name) {
         options: SCHEMA.formats[format].isHota ? Object.fromEntries(MAP_OPTION_KEYS.map(key => [key, ''])) : {},
         zones: [],
         connections: [],
+        row_extras: [],
         layout: {}
     };
 }
@@ -1232,7 +1315,7 @@ function addMap() {
 function duplicateMap() { commit('Template duplicated', () => { const map = structuredClone(current()); map.name += ' (copy)'; store.pack.maps.splice(store.mapIndex + 1, 0, map); store.mapIndex++; store.selected = { kind: 'map', index: store.mapIndex }; }); fitView(); }
 function removeMap() {
     if (store.pack.maps.length <= 1) {
-        toast('The pack must contain at least one template.');
+        toast('The template pack must contain at least one template.');
         return;
     }
     commit('Template deleted', () => { store.pack.maps.splice(store.mapIndex, 1); store.mapIndex = Math.max(0, store.mapIndex - 1); store.selected = { kind: 'map', index: store.mapIndex }; });
@@ -1286,8 +1369,8 @@ function createFreshPack(format) {
     setPack(pack);
 }
 function newPackDialog() {
-    const warning = store.pack?.dirty ? `<p class="field-note">${esc(translateText('Unsaved changes to the current pack will be lost.'))}</p>` : '';
-    modal(translateText('New pack'), `<div class="field"><label>${esc(translateText('New pack format'))}</label><select id="new-pack-format"><option value="hota18">HotA 1.8.x</option><option value="hota17">HotA 1.7.x</option><option value="sod">Shadow of Death</option></select></div>${warning}`, [{ label: translateText('Cancel') }, { label: translateText('Create'), primary: true, handler: () => createFreshPack($('new-pack-format').value) }]);
+    const warning = store.pack?.dirty ? `<p class="field-note">${esc(translateText('Unsaved changes to the current template pack will be lost.'))}</p>` : '';
+    modal(translateText('New template pack'), `<div class="field"><label>${esc(translateText('New template pack format'))}</label><select id="new-pack-format"><option value="sod">Shadow of Death</option><option value="hota17">HotA 1.7.x</option><option value="hota18">HotA 1.8.x</option></select></div>${warning}`, [{ label: translateText('Cancel') }, { label: translateText('Create'), primary: true, handler: () => createFreshPack($('new-pack-format').value) }]);
 }
 function addZoneFromEmptyState() {
     if (store.pack)
@@ -1376,7 +1459,7 @@ function askSave(format) {
     const losses = converted.warnings.filter(w => w.toLowerCase().includes('conversion loss'));
     const issues = validatePack(store.pack).filter(x => x.level === 'error');
     if (issues.length) {
-        modal('Validation error', `<p>${esc(translateText('Review the following problems:'))}</p><div class="issues">${issues.slice(0, 20).map(x => `<div class="issue error">${esc(x.text)}</div>`).join('')}</div>`, [{ label: 'Cancel' }, { label: 'Save anyway', primary: true, handler: () => performSave(format) }]);
+        modal('Validation error', `<p>${esc(translateText('Review the following problems:'))}</p><div class="issues">${issues.slice(0, 20).map(x => issueMarkup(x, true)).join('')}</div>`, [{ label: 'Cancel' }, { label: 'Save anyway', primary: true, handler: () => performSave(format) }]);
         return;
     }
     if (losses.length) {
@@ -1464,7 +1547,7 @@ function validateDialog() {
     if (!store.pack)
         return;
     const issues = validatePack(store.pack), warnings = store.pack.warnings;
-    modal('Template validation', `<p><strong>${message('validation_summary', store.pack.maps.length, issues.length, warnings.length)}</strong></p>${!issues.length ? `<p>${esc(translateText('No semantic problems found.'))}</p>` : `<div class="issues">${issues.slice(0, 70).map(x => `<div class="issue ${x.level === 'error' ? 'error' : 'badge-warning'}">${esc(x.text)}</div>`).join('')}${issues.length > 70 ? `<p>${esc(message('more_issues', issues.length - 70))}</p>` : ''}</div>`}${warnings.length ? `<details><summary>${esc(message('source_warnings', warnings.length))}</summary><div class="issues">${warnings.slice(0, 35).map(x => `<div class="issue">${esc(x)}</div>`).join('')}</div></details>` : ''}<p class="field-note">${esc(translateText('Validation never modifies the template.'))}</p>`, [{ label: 'Close' }]);
+    modal('Template validation', `<p><strong>${message('validation_summary', store.pack.maps.length, issues.length, warnings.length)}</strong></p>${!issues.length ? `<p>${esc(translateText('No semantic problems found.'))}</p>` : `<div class="issues">${issues.slice(0, 70).map(x => issueMarkup(x, true)).join('')}${issues.length > 70 ? `<p>${esc(message('more_issues', issues.length - 70))}</p>` : ''}</div>`}${warnings.length ? `<details><summary>${esc(message('source_warnings', warnings.length))}</summary><div class="issues">${warnings.slice(0, 35).map(x => `<div class="issue">${esc(x)}</div>`).join('')}</div></details>` : ''}<p class="field-note">${esc(translateText('Validation never modifies the template.'))}</p>`, [{ label: 'Close' }]);
 }
 function helpDialog() {
     const tr = text => esc(translateText(text));
@@ -1472,7 +1555,7 @@ function helpDialog() {
         <p><strong>${tr('All processing is local:')}</strong> ${tr('your templates stay on your device.')}</p>
         <h3>${tr('Files')}</h3>
         <ul>
-            <li>${tr('Open HotA 1.7/1.8 .h3t or SoD .txt using Open or drag a file onto the canvas.')}</li>
+            <li>${tr('Open SoD .txt or HotA 1.7/1.8 .h3t using Open or drag a file onto the canvas.')}</li>
             <li>${tr('Save writes the current format. To convert, select the target version and click Convert.')}</li>
             <li>${tr('Export a .h3tc-layout.json sidecar for SoD; moved HotA zones update image_settings when saved.')}</li>
         </ul>
@@ -1590,7 +1673,7 @@ $('redo-btn').onclick = redo;
 $('pack-props-btn').onclick = () => {
     store.selected = { kind: 'pack', index: 0 };
     store.inspectorView = 'selection';
-    store.tab = 'Pack';
+    store.tab = 'Template pack';
     renderInspector();
     $('inspector').classList.add('open');
     setSidebarOpen(false);
@@ -1724,7 +1807,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         try {
             // External locale modules can finish after the window load event. Register
             // immediately when that happened instead of waiting for an event that has passed.
-            const registration = await navigator.serviceWorker.register('./sw.js?v=1.5.6', { scope: './', updateViaCache: 'none' });
+            const registration = await navigator.serviceWorker.register('./sw.js?v=1.6.0', { scope: './', updateViaCache: 'none' });
             await registration.update();
             if (registration.waiting) {
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' });

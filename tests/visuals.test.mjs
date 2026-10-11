@@ -14,4 +14,7 @@ test('connections with missing or unknown endpoints are not rendered', () => {
     assert.equal(isRenderableConnection({ zone1: '', zone2: '' }, zoneIds), false);
     assert.equal(isRenderableConnection({ zone1: '1', zone2: '' }, zoneIds), false);
     assert.equal(isRenderableConnection({ zone1: '1', zone2: '999' }, zoneIds), false);
+    assert.equal(isRenderableConnection({ zone1: '5.9', zone2: '2' }, zoneIds), false);
+    assert.equal(isRenderableConnection({ zone1: '1', zone2: '9, 8' }, zoneIds), false);
+    assert.equal(isRenderableConnection({ zone1: '1', zone2: '-1' }, zoneIds), false);
 });

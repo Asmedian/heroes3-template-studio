@@ -396,7 +396,8 @@ select {
 .map-search:hover:not(:disabled),
 #built-in-select:hover:not(:disabled),
 .lang-select:hover:not(:disabled) {
-    border-color: var(--card-edge);
+    background-color: var(--button-hover);
+    border-color: var(--line);
 }
 
 .field input:focus,.field select:focus,.field textarea:focus,.map-search:focus,#built-in-select:focus,.lang-select:focus {

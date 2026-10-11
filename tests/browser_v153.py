@@ -68,9 +68,9 @@ async def main():
             await page.locator('#built-in-menu .template-picker-option').first.click()
             await page.wait_for_function("()=>document.querySelectorAll('.node').length>0")
 
-            # Desktop and mobile use the same SVG three-dot control treatment.
+            # Desktop and mobile use the same square SVG Tools-button treatment.
             desktop_more = await page.locator('#more-btn').evaluate(
-                "e=>({w:getComputedStyle(e).width,h:getComputedStyle(e).height,usesSvg:!!e.querySelector('svg use[href=\"#i-more\"]')})"
+                "e=>({w:getComputedStyle(e).width,h:getComputedStyle(e).height,usesSvg:!!e.querySelector('svg use[href=\"#i-menu\"]')})"
             )
             assert desktop_more['usesSvg'] and desktop_more['w'] == desktop_more['h']
 
@@ -108,6 +108,23 @@ async def main():
             visible = await page.locator('.connection').count()
             status = await page.locator('#status-conns').inner_text()
             assert status.startswith(str(visible)), (visible, status)
+            assert await page.locator('#status-errors').inner_text() == 'Ошибки: 0'
+
+            # Invalid source connections are counted in the status bar, omitted from the diagram,
+            # and listed readably without being repaired automatically.
+            await page.locator('#built-in-select').select_option('42')
+            await page.wait_for_function("()=>document.querySelectorAll('.node').length===9")
+            await page.wait_for_timeout(120)
+            assert await page.locator('.connection').count() == 0
+            error_button = page.locator('#status-errors')
+            assert await error_button.inner_text() == 'Ошибки: 9'
+            assert 'has-errors' in (await error_button.get_attribute('class') or '')
+            await error_button.click()
+            assert await page.locator('#modal').evaluate('(e)=>e.open')
+            modal_text = await page.locator('#modal-content').inner_text()
+            assert '9, 8' in modal_text and 'не положительное целое число' in modal_text, modal_text
+            assert modal_text.count('Связь #') == 9, modal_text
+            await page.locator('#modal-close').click()
 
             assert not errors, errors
             await browser.close()

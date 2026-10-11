@@ -824,6 +824,50 @@ body {
     background: var(--line);
 }
 
+.status-error-btn {
+    border: 0;
+    background: transparent;
+    color: var(--soft);
+    font: inherit;
+    padding: 3px 6px;
+    margin: -3px -6px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.status-error-btn:hover:not(:disabled),.status-error-btn:focus-visible {
+    color: var(--text);
+    background: var(--panel-2);
+    outline: none;
+}
+
+.status-error-btn.has-errors {
+    color: var(--error);
+    font-weight: 750;
+}
+
+.status-error-btn.has-errors:hover,.status-error-btn.has-errors:focus-visible {
+    background: color-mix(in srgb, var(--error) 12%, transparent);
+}
+
+.status-error-btn:disabled {
+    cursor: default;
+    opacity: .7;
+}
+
+.template-error-list .issue {
+    line-height: 1.5;
+}
+
+.issue-fields {
+    margin: 7px 0 0 18px;
+    padding: 0;
+}
+
+.issue-fields li {
+    margin: 3px 0;
+}
+
 .node {
     cursor: grab;
 }

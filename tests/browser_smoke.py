@@ -32,10 +32,30 @@ async def run():
             assert await page.locator('#empty-add-btn').is_visible(), 'Empty-state Add zone must be available.'
             assert not await page.locator('#add-map-btn').is_visible(), 'Sidebar add-template button must stay hidden without a pack.'
             assert await page.locator('#more-btn').is_disabled(), 'Tools must stay disabled without a template.'
+            assert await page.locator('#package-name').inner_text() == 'Набор шаблонов не открыт'
+            assert await page.locator('#more-btn use').get_attribute('href') == '#i-menu'
 
-            # Fresh-start workflow: Add zone creates a package only after the user chooses its format.
+            # Header neighbors use the same hover background/border treatment.
+            await page.locator('#theme-btn').hover()
+            await page.wait_for_timeout(220)
+            theme_hover = await page.locator('#theme-btn').evaluate('(e)=>{const s=getComputedStyle(e);return [s.backgroundColor,s.borderColor]}')
+            await page.locator('#language-select').hover()
+            await page.wait_for_timeout(220)
+            language_hover = await page.locator('#language-select').evaluate('(e)=>{const s=getComputedStyle(e);return [s.backgroundColor,s.borderColor]}')
+            assert language_hover == theme_hover, f'Language/theme hover mismatch: {language_hover} != {theme_hover}'
+
+            # Help lists file formats in canonical product priority.
+            await page.locator('#help-btn').click()
+            help_text = await page.locator('#modal').inner_text()
+            assert 'Откройте SoD .txt или HotA 1.7/1.8 .h3t' in help_text
+            await page.locator('#modal-buttons button').last.click()
+
+            # Fresh-start workflow: Add zone creates a template pack only after the user chooses its format.
             await page.locator('#empty-add-btn').click()
-            assert await page.locator('#modal').evaluate('(e)=>e.open'), 'New-pack format dialog did not open.'
+            assert await page.locator('#modal').evaluate('(e)=>e.open'), 'New template-pack format dialog did not open.'
+            format_values = await page.locator('#new-pack-format option').evaluate_all('(nodes)=>nodes.map(n=>n.value)')
+            assert format_values == ['sod','hota17','hota18'], format_values
+            assert await page.locator('#new-pack-format').input_value() == 'sod'
             await page.locator('#new-pack-format').select_option('sod')
             await page.locator('#modal-buttons .btn-primary').click()
             await page.wait_for_function('()=>document.querySelectorAll(".node").length===1')
@@ -125,7 +145,9 @@ async def run():
             assert await page.locator('.node').count()==9
             await page.locator('#validate-btn').click()
             assert await page.locator('#modal').evaluate('(e)=>e.open')
-            assert '420' in await page.locator('#modal-content').inner_text()
+            duel_validation = await page.locator('#modal-content').inner_text()
+            assert '0 замечаний' in duel_validation, duel_validation
+            assert '420' not in duel_validation, duel_validation
             await page.locator('#modal-close').click()
             await page.locator('#file-input').set_input_files(str(ROOT/'tests/fixtures/Jebus Outcast.h3t'))
             await page.get_by_text('126 шаблонов').first.wait_for(timeout=10000)

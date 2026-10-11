@@ -755,5 +755,7 @@
     "Отдельная браузерная реализация на основе MIT-лицензированного sokie/heroes3-template-util.": "A separate browser implementation based on MIT-licensed sokie/heroes3-template-util.",
     "EDITOR": "EDITOR",
     "CONVERTER": "CONVERTER",
-    "Language": "Language"
+    "Language": "Language",
+    "No pack loaded": "No pack loaded",
+    "Create or open a pack to begin.": "Create or open a pack to begin."
 }

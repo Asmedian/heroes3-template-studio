@@ -101,10 +101,14 @@ export function encodeText(text, encoding, warnings = []) {
         return encodeCp1251(text, warnings);
     if (encoding === 'latin-1') {
         let replaced = false;
-        const bytes = Array.from(text, c => { const n = c.codePointAt(0); if (n > 255) {
-            replaced = true;
-            return 63;
-        } return n; });
+        const bytes = Array.from(text, c => {
+            const n = c.codePointAt(0);
+            if (n > 255) {
+                replaced = true;
+                return 63;
+            }
+            return n;
+        });
         if (replaced)
             warnings.push('Some characters cannot be represented in Latin-1 and were replaced with ?.');
         return Uint8Array.from(bytes);
@@ -146,11 +150,13 @@ function parseZone(row, sch) {
 }
 function parseConnection(row, sch, zoneId) {
     const c = sch.columns;
-    const connection = { zone1: row[c.CONN_ZONE1] ?? '', zone2: row[c.CONN_ZONE2] ?? '', value: row[c.CONN_VALUE] ?? '',
+    const connection = {
+        zone1: row[c.CONN_ZONE1] ?? '', zone2: row[c.CONN_ZONE2] ?? '', value: row[c.CONN_VALUE] ?? '',
         wide: row[c.CONN_WIDE] ?? '', border_guard: row[c.CONN_BORDER_GUARD] ?? '', positions: pos(row, c, 'CONN_'),
         road: sch.isHota ? row[c.CONN_ROAD] ?? '' : null, conn_type: sch.isHota ? row[c.CONN_TYPE] ?? '' : null,
         fictive: sch.isHota ? row[c.CONN_FICTIVE] ?? '' : null, portal_repulsion: sch.isHota ? row[c.CONN_PORTAL_REPULSION] ?? '' : null,
-        extra_zone_cols: {} };
+        extra_zone_cols: {}
+    };
     if (!zoneId)
         for (let j = c.ZONE_ID; j < c.CONN_ZONE1; j++)
             if (str(row[j]).trim())
@@ -182,9 +188,11 @@ export function parseText(text, { filename = 'template.h3t', encoding = 'utf-8',
         const mapName = (row[sch.isHota ? c.MAP_NAME : c.NAME] ?? '').trim(), zoneId = (row[c.ZONE_ID] ?? '').trim();
         const hasConn = row.slice(c.CONN_ZONE1, c.CONN_MAX_TOTAL_POS + 1).some(v => str(v).trim());
         if (mapName) {
-            cur = { name: mapName, min_size: row[sch.isHota ? c.MAP_MIN_SIZE : c.MIN_SIZE] ?? '', max_size: row[sch.isHota ? c.MAP_MAX_SIZE : c.MAX_SIZE] ?? '',
+            cur = {
+                name: mapName, min_size: row[sch.isHota ? c.MAP_MIN_SIZE : c.MIN_SIZE] ?? '', max_size: row[sch.isHota ? c.MAP_MAX_SIZE : c.MAX_SIZE] ?? '',
                 options: sch.isHota ? fromList(row, c.MAP_ARTIFACTS, MAPOPT) : Object.fromEntries(MAPOPT.map(f => [f, null])),
-                zones: [], connections: [], layout: {} };
+                zones: [], connections: [], layout: {}
+            };
             pack.maps.push(cur);
         }
         if (!cur)
@@ -206,10 +214,12 @@ export function freshPack(format = 'hota18') {
     if (!SCHEMA.formats[format])
         throw new Error('Unknown format.');
     const sch = SCHEMA.formats[format];
-    return { format, filename: format === 'sod' ? 'template.txt' : 'template.h3t', encoding: 'utf-8', originalBytes: null, dirty: true,
+    return {
+        format, filename: format === 'sod' ? 'template.txt' : 'template.h3t', encoding: 'utf-8', originalBytes: null, dirty: true,
         metadata: sch.isHota ? { ...caps(META), name: 'New template pack' } : null,
         field_counts: sch.isHota ? { ...caps(COUNTS), town: String(sch.towns.length), terrain: String(sch.terrains.length), zone_type: '4', pack_new: '8', map_new: '10', zone_new: '18', connection_new: '4' } : null,
-        header_rows: clone(sch.headers), maps: [], warnings: [] };
+        header_rows: clone(sch.headers), maps: [], warnings: []
+    };
 }
 export function freshZone(format = 'hota18', id = '1') {
     const sch = SCHEMA.formats[format];
@@ -424,8 +434,10 @@ export function convertPack(pack, to, { packName = '' } = {}) {
     p.originalBytes = null;
     p.dirty = true;
     p.filename = to === 'sod' ? p.filename.replace(/\.[^.]*$/, '.txt') : p.filename.replace(/\.[^.]*$/, '.h3t');
-    p.maps.forEach(m => { if (to === 'sod')
-        m.layout = { ...m.layout }; });
+    p.maps.forEach(m => {
+        if (to === 'sod')
+            m.layout = { ...m.layout };
+    });
     return p;
 }
 export function renumberMap(map, { sort = 'row', warnings = [] } = {}) {

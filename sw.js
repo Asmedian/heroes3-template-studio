@@ -1,5 +1,5 @@
 /* Offline service worker. Keep VERSION in sync with package.json and manifest. */
-const VERSION = '1.5.5';
+const VERSION = '1.5.6';
 const CACHE = `h3tc-studio-v${VERSION}`;
 const ASSETS = [
     './',
@@ -119,35 +119,24 @@ const ASSETS = [
     './templates/58-roadrunner.txt',
     './templates/59-schaafworld.txt'
 ];
-
 self.addEventListener('install', event => {
-    event.waitUntil(
-        caches.open(CACHE)
-            .then(cache => cache.addAll(ASSETS))
-            .then(() => self.skipWaiting())
-    );
+    event.waitUntil(caches.open(CACHE)
+        .then(cache => cache.addAll(ASSETS))
+        .then(() => self.skipWaiting()));
 });
-
 self.addEventListener('activate', event => {
-    event.waitUntil(
-        caches.keys()
-            .then(keys => Promise.all(
-                keys
-                    .filter(key => key.startsWith('h3tc-studio-') && key !== CACHE)
-                    .map(key => caches.delete(key))
-            ))
-            .then(() => self.clients.claim())
-    );
+    event.waitUntil(caches.keys()
+        .then(keys => Promise.all(keys
+            .filter(key => key.startsWith('h3tc-studio-') && key !== CACHE)
+            .map(key => caches.delete(key))))
+        .then(() => self.clients.claim()));
 });
-
 self.addEventListener('message', event => {
     if (event.data?.type === 'SKIP_WAITING') {
         self.skipWaiting();
     }
 });
-
 const freshRequest = request => new Request(request, { cache: 'no-store' });
-
 async function networkFirst(request, fallback) {
     try {
         const response = await fetch(freshRequest(request));
@@ -158,28 +147,22 @@ async function networkFirst(request, fallback) {
         return response;
     }
     catch {
-        return (
-            (await caches.match(request, { ignoreSearch: true }))
+        return ((await caches.match(request, { ignoreSearch: true }))
             || (fallback ? await caches.match(fallback, { ignoreSearch: true }) : null)
-            || new Response('Resource unavailable offline', { status: 503 })
-        );
+            || new Response('Resource unavailable offline', { status: 503 }));
     }
 }
-
 self.addEventListener('fetch', event => {
     const request = event.request;
     const url = new URL(request.url);
     const scopePath = new URL(self.registration.scope).pathname;
-
     if (request.method !== 'GET' || url.origin !== self.location.origin || !url.pathname.startsWith(scopePath)) {
         return;
     }
-
     if (request.mode === 'navigate') {
         event.respondWith(networkFirst(request, './index.html'));
         return;
     }
-
     // Application code and catalogs are network-first so reopening an installed/PWA
     // copy cannot silently combine a new HTML document with stale JS/CSS from an old cache.
     const relative = url.pathname.slice(scopePath.length);
@@ -188,15 +171,12 @@ self.addEventListener('fetch', event => {
         event.respondWith(networkFirst(request));
         return;
     }
-
     // Large immutable template/icon assets remain fast and available offline.
-    event.respondWith(
-        caches.match(request).then(cached => cached || fetch(request).then(response => {
-            if (response.ok && response.type === 'basic') {
-                const copy = response.clone();
-                caches.open(CACHE).then(cache => cache.put(request, copy));
-            }
-            return response;
-        }))
-    );
+    event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
+        if (response.ok && response.type === 'basic') {
+            const copy = response.clone();
+            caches.open(CACHE).then(cache => cache.put(request, copy));
+        }
+        return response;
+    })));
 });

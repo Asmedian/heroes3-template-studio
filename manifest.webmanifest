@@ -1,56 +1,56 @@
 {
-  "id": "./",
-  "name": "Heroes III Template Studio",
-  "short_name": "H3 Templates",
-  "description": "RMG template editor and converter for Heroes of Might and Magic III: Shadow of Death and Horn of the Abyss.",
-  "lang": "en",
-  "dir": "ltr",
-  "version": "1.5.5",
-  "start_url": "./",
-  "scope": "./",
-  "display": "standalone",
-  "display_override": [
-    "standalone",
-    "minimal-ui"
-  ],
-  "orientation": "any",
-  "background_color": "#111827",
-  "theme_color": "#111827",
-  "categories": [
-    "productivity",
-    "utilities",
-    "games"
-  ],
-  "icons": [
-    {
-      "src": "./public/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./public/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./public/icons/icon-192-maskable.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "./public/icons/icon-512-maskable.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "./public/icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    }
-  ]
+    "id": "./",
+    "name": "Heroes III Template Studio",
+    "short_name": "H3 Templates",
+    "description": "RMG template editor and converter for Heroes of Might and Magic III: Shadow of Death and Horn of the Abyss.",
+    "lang": "en",
+    "dir": "ltr",
+    "version": "1.5.6",
+    "start_url": "./",
+    "scope": "./",
+    "display": "standalone",
+    "display_override": [
+        "standalone",
+        "minimal-ui"
+    ],
+    "orientation": "any",
+    "background_color": "#111827",
+    "theme_color": "#111827",
+    "categories": [
+        "productivity",
+        "utilities",
+        "games"
+    ],
+    "icons": [
+        {
+            "src": "./public/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "./public/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "./public/icons/icon-192-maskable.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "./public/icons/icon-512-maskable.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "./public/icons/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ]
 }

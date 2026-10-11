@@ -82,7 +82,6 @@ export function createTemplatePicker({ onSelect }) {
             setOpen(menu.hidden);
         }
     });
-
     // Keep the native select synchronized for automated tests and assistive tooling.
     // The visible control is the custom list, so wheel scrolling never closes it.
     nativeSelect.addEventListener('change', () => {

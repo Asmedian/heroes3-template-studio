@@ -42,8 +42,10 @@ export function parallelGeometry(a, b, { lane = 0, total = 1, width = DEFAULT_CA
         const radius = width / 2 + 32 + lane * 28;
         const sx = source.x + width / 2 - 14, sy = source.y + 6;
         const ex = source.x + width / 2 - 14, ey = source.y + 30;
-        return { d: `M${near(sx)} ${near(sy)} C${near(sx + radius)} ${near(sy - radius)} ${near(ex + radius)} ${near(ey - radius)} ${near(ex)} ${near(ey)}`,
-            x: near(sx + radius * .75), y: near(sy - radius * .72), offset: radius, kind: 'loop' };
+        return {
+            d: `M${near(sx)} ${near(sy)} C${near(sx + radius)} ${near(sy - radius)} ${near(ex + radius)} ${near(ey - radius)} ${near(ex)} ${near(ey)}`,
+            x: near(sx + radius * .75), y: near(sy - radius * .72), offset: radius, kind: 'loop'
+        };
     }
     const unit = { x: dx / distance, y: dy / distance }, normal = { x: -unit.y, y: unit.x };
     const offsetLimit = Math.min(Math.abs(normal.x) > 1e-6 ? (width / 2 - 21) / Math.abs(normal.x) : Infinity, Math.abs(normal.y) > 1e-6 ? (height / 2 - 21) / Math.abs(normal.y) : Infinity, 112);
@@ -57,8 +59,10 @@ export function parallelGeometry(a, b, { lane = 0, total = 1, width = DEFAULT_CA
     // The bundle-level placement pass later resolves label bounding-box collisions.
     const fraction = .5;
     const x = start.x + (end.x - start.x) * fraction, y = start.y + (end.y - start.y) * fraction;
-    return { d: `M${near(start.x)} ${near(start.y)} L${near(end.x)} ${near(end.y)}`,
-        x: near(x), y: near(y), offset: near(offset), kind: 'parallel', start, end, gap };
+    return {
+        d: `M${near(start.x)} ${near(start.y)} L${near(end.x)} ${near(end.y)}`,
+        x: near(x), y: near(y), offset: near(offset), kind: 'parallel', start, end, gap
+    };
 }
 /** Indexed by source row, preserving individual guard values, road types and clicks. */
 export function connectionGeometry(connections, layout, options = {}) {
@@ -69,8 +73,10 @@ export function connectionGeometry(connections, layout, options = {}) {
         if (!layout[left] || !layout[right])
             continue;
         indexes.forEach((index, lane) => {
-            result[index] = { ...parallelGeometry(layout[left], layout[right], { ...options, lane, total: indexes.length }),
-                lane, total: indexes.length, sourceIndex: index };
+            result[index] = {
+                ...parallelGeometry(layout[left], layout[right], { ...options, lane, total: indexes.length }),
+                lane, total: indexes.length, sourceIndex: index
+            };
         });
         // Place each guard value on its own lane. Alternating along long bundles
         // is useful when labels have a wide bounding box or the line is diagonal.

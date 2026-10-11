@@ -5,15 +5,15 @@
 ## Features
 
 - Import, inspect, edit, save and convert **SoD `.txt`**, **HotA 1.7.x `.h3t`** and **HotA 1.8.x `.h3t`** templates. Original files are processed locally; untouched save preserves original bytes. On compatible browsers, Save opens the native Save as picker; unsupported browsers show a confirmation before downloading.
-- Multi-map packs with a searchable map list, zone/connection creation, duplication and deletion, a full field inspector, undo/redo, validation and loss diagnostics for conversions.
+- Multi-template packs with a searchable template list, zone/connection creation, duplication and deletion, a full field inspector, undo/redo, validation and loss diagnostics for conversions.
 - Pan, wheel/toolbar zoom, touch/pinch zoom, dragging individual zones, Alt+drag or two clicks to create a link, collision-avoiding initial layout, spread/compact actions, and fit-to-screen. Save/load multi-map layouts compatible with upstream sidecars; HotA also supports `image_settings` positions.
 - **Exact eight requested player-zone colors**, neutral zones in white, silver gradient or golden gradient for high-richness treasure zones. The diagram uses the eight supplied optimized pixel-art PNGs (treasure chest and seven resources) embedded for offline SVG/PNG export, plus supplied Fort and Village SVGs recolored by owner on roofs, flags and gates; neutral buildings remain uncolored. Original values for mine/town counts and densities are preserved. HotA 1.8-exclusive settings remain format-specific in the editor.
 - Display numbers compactly (e.g. `8500 → 8.5k`) without modifying stored values; exact originals remain available in field editors, titles and downloaded templates.
-- No template selected on first load. Choose among **all 59 templates** from `Templates` in the sidebar or open/crate your own files.
+- No template is selected on first load. Choose among **all 59 built-in template files** from `Templates`, open your own file, or use **Add zone** to create a new pack after choosing its SoD/HotA version. The sidebar `+` appears only after a pack exists.
 
 ## Built-in templates and file format distinctions
 
-`Templates` contains **59 standart template files**, totaling **238 maps, 2,996 zones and 4,285 connection rows**. Four maps contain zero zones in the original files; the editor does not synthesize missing data. Import your own SoD, HotA 1.7/1.8 `.h3t` files using **Open** or file drag/drop.
+`Templates` contains **59 standard template files**, totaling **238 contained templates, 2,996 zones and 4,285 connection rows**. Four contained templates have zero zones in the original files; the editor does not synthesize missing data. Import your own SoD, HotA 1.7/1.8 `.h3t` files using **Open** or file drag/drop.
 
 | Format | Field structure | Example distinctive content |
 |---|---|---|

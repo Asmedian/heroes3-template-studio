@@ -48,47 +48,38 @@ function patternTranslation(body) {
     if (match) {
         return message('saved_state', match[1], translateText(match[2]));
     }
-
     match = body.match(/^(\d+)\s+templates?$/i);
     if (match) {
         return message('template_count', match[1]);
     }
-
     match = body.match(/^(\d+)\s+zones?$/i);
     if (match) {
         return message('count_zones', match[1]);
     }
-
     match = body.match(/^(\d+)\s+connections?$/i);
     if (match) {
         return message('count_connections', match[1]);
     }
-
     match = body.match(/^(\d+)\s+zones?\s+·\s+(\d+)\s+connections?$/i);
     if (match) {
         return message('zones_connections', match[1], match[2]);
     }
-
     match = body.match(/^Zone\s+#(.+)$/i);
     if (match) {
         return message('zone_number', match[1]);
     }
-
     match = body.match(/^Connection\s+(.+)\s+↔\s+(.+)$/i);
     if (match) {
         return message('connection_pair', match[1], match[2]);
     }
-
     match = body.match(/^TIER\s+(\d+)$/i);
     if (match) {
         return message('tier', match[1]);
     }
-
     match = body.match(/^Opened\s+(.+)\s+·\s+(\d+)\s+templates?\s+·\s+(\d+)\s+zones?$/i);
     if (match) {
         return message('opened_pack', match[1], match[2], match[3]);
     }
-
     const prefixes = [
         ['Loaded:', 'loaded'],
         ['Saved:', 'saved'],
@@ -100,45 +91,36 @@ function patternTranslation(body) {
             return message(key, body.slice(prefix.length).trim());
         }
     }
-
     match = body.match(/^Undone:\s*(.+)$/i);
     if (match) {
         return message('undone', translateText(match[1]));
     }
-
     match = body.match(/^Redone:\s*(.+)$/i);
     if (match) {
         return message('redone', translateText(match[1]));
     }
-
     match = body.match(/^Positions restored:\s*(\d+)\s+templates?$/i);
     if (match) {
         return message('positions_restored', match[1]);
     }
-
     match = body.match(/^Positions saved:\s*(\d+)\s+templates?$/i);
     if (match) {
         return message('positions_saved', match[1]);
     }
-
     match = body.match(/^Delete template\s+(.+)\?$/i);
     if (match) {
         return message('delete_template', match[1]);
     }
-
     match = body.match(/^More\s+(\d+)\s+issues\.\.\.$/i);
     if (match) {
         return message('more_issues', match[1]);
     }
-
     match = body.match(/^Source file warnings\s+\((\d+)\)$/i);
     if (match) {
         return message('source_warnings', match[1]);
     }
-
     return undefined;
 }
-
 export function translateText(text) {
     const source = String(text ?? '');
     const matched = source.match(/^(\s*)([\s\S]*?)(\s*)$/);

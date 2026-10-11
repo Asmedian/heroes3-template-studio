@@ -10,9 +10,11 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const upper = s => s === 'sod' ? 'SoD' : s === 'hota17' ? 'HotA 1.7' : 'HotA 1.8';
 const flag = s => String(s ?? '').trim().toLowerCase() === 'x';
 const icon = (name, size = 16) => `<svg width="${size}" height="${size}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
-const store = { pack: null, mapIndex: 0, selected: { kind: 'map', index: 0 }, tab: 'general', inspectorView: 'selection', scale: 1, tx: 0, ty: 0,
+const store = {
+    pack: null, mapIndex: 0, selected: { kind: 'map', index: 0 }, tab: 'general', inspectorView: 'selection', scale: 1, tx: 0, ty: 0,
     viewport: { w: 700, h: 600 }, drag: null, connectMode: false, connectFrom: null, undo: [], redo: [], installPrompt: null, toastTimer: 0,
-    fileKey: '', loaded: false, loadToken: 0, builtinId: null, presetLayouts: null };
+    fileKey: '', loaded: false, loadToken: 0, builtinId: null, presetLayouts: null
+};
 const current = () => store.pack?.maps[store.mapIndex];
 const renderableConnectionCount = map => {
     if (!map) {
@@ -33,18 +35,25 @@ function modal(title, body, actions = [{ label: 'Close' }]) {
         const b = document.createElement('button');
         b.className = `btn ${entry.primary ? 'btn-primary' : 'btn-subtle'} ${entry.danger ? 'danger' : ''}`;
         b.textContent = entry.label;
-        b.addEventListener('click', () => { if (entry.handler?.() === false)
-            return; $('modal').close(); });
+        b.addEventListener('click', () => {
+            if (entry.handler?.() === false)
+                return;
+            $('modal').close();
+        });
         foot.append(b);
     }
     $('modal').showModal();
 }
 $('modal-close').onclick = () => $('modal').close();
 function confirmAction(title, detail, callback) { modal(title, `<p>${detail}</p>`, [{ label: 'Cancel' }, { label: 'Confirm', primary: true, handler: callback }]); }
-function fileSignature(bytes, filename) { let h = 2166136261 >>> 0; for (let i = 0; i < Math.min(bytes.length, 32000); i++) {
-    h ^= bytes[i];
-    h = Math.imul(h, 16777619) >>> 0;
-} return `${filename}-${bytes.length}-${h}`; }
+function fileSignature(bytes, filename) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < Math.min(bytes.length, 32000); i++) {
+        h ^= bytes[i];
+        h = Math.imul(h, 16777619) >>> 0;
+    }
+    return `${filename}-${bytes.length}-${h}`;
+}
 function capture() { return JSON.stringify({ maps: store.pack.maps, metadata: store.pack.metadata, field_counts: store.pack.field_counts }); }
 function commit(label, fn) {
     if (!store.pack)
@@ -81,10 +90,22 @@ function restore(data) {
     persistLayout();
     renderAll();
 }
-function undo() { if (!store.undo.length)
-    return; const change = store.undo.pop(); store.redo.push({ snapshot: capture(), selection: { ...store.selected }, tab: store.tab, label: change.label }); restore(change); status(message('undone', translateText(change.label))); }
-function redo() { if (!store.redo.length)
-    return; const change = store.redo.pop(); store.undo.push({ snapshot: capture(), selection: { ...store.selected }, tab: store.tab, label: change.label }); restore(change); status(message('redone', translateText(change.label))); }
+function undo() {
+    if (!store.undo.length)
+        return;
+    const change = store.undo.pop();
+    store.redo.push({ snapshot: capture(), selection: { ...store.selected }, tab: store.tab, label: change.label });
+    restore(change);
+    status(message('undone', translateText(change.label)));
+}
+function redo() {
+    if (!store.redo.length)
+        return;
+    const change = store.redo.pop();
+    store.undo.push({ snapshot: capture(), selection: { ...store.selected }, tab: store.tab, label: change.label });
+    restore(change);
+    status(message('redone', translateText(change.label)));
+}
 const layoutStorageKey = index => `h3tc-layout-v3-${store.fileKey}-${index}`;
 function presetMatches(map, preset) { return Boolean(preset && preset.name === map.name && preset.connections === map.connections.length && preset.ids.join('\0') === map.zones.map(z => String(z.id)).join('\0')); }
 function recommendedLayout(map, index) { const preset = store.presetLayouts?.[index]; return presetMatches(map, preset) ? compactLayout(structuredClone(preset.positions), { gap: 68 }) : (topologyLayout(map) || autoLayout(map, { preferStored: false })); }
@@ -123,8 +144,11 @@ function restoreLayout(index) {
 let upstreamLayoutsPromise = null;
 async function loadUpstreamLayouts() {
     if (!upstreamLayoutsPromise)
-        upstreamLayoutsPromise = fetch('./templates/upstream-layouts.json', { cache: 'no-store' }).then(r => { if (!r.ok)
-            throw new Error('Layout catalog unavailable'); return r.json(); }).catch(error => { upstreamLayoutsPromise = null; throw error; });
+        upstreamLayoutsPromise = fetch('./templates/upstream-layouts.json', { cache: 'no-store' }).then(r => {
+            if (!r.ok)
+                throw new Error('Layout catalog unavailable');
+            return r.json();
+        }).catch(error => { upstreamLayoutsPromise = null; throw error; });
     return upstreamLayoutsPromise;
 }
 function matchPackPresets(pack, layouts) {
@@ -262,21 +286,29 @@ function selectMap(index) {
     store.inspectorView = 'selection';
     store.connectMode = false;
     store.connectFrom = null;
-    $('sidebar').classList.remove('open');
+    setSidebarOpen(false);
     renderAll();
     requestAnimationFrame(() => fitView(true));
 }
 function renderAll() { renderSidebar(); renderToolbar(); renderCanvas(); renderLegend(); renderInspector(); renderStatus(); }
 function renderSidebar() {
     const pack = store.pack;
-    $('package-name').textContent = pack?.metadata?.name || pack?.filename || 'New pack';
+    const hasPack = Boolean(pack);
+    $('package-name').textContent = pack?.metadata?.name || pack?.filename || translateText('No pack loaded');
     $('current-format').textContent = pack ? upper(pack.format) : '—';
     $('map-count').textContent = message('template_count', pack?.maps.length || 0);
+    $('add-map-btn').hidden = !hasPack;
+    $('pack-props-btn').disabled = !hasPack;
+    $('validate-btn').disabled = !hasPack;
+    $('map-search').disabled = !hasPack;
     const filter = $('map-search').value.toLocaleLowerCase();
-    $('map-list').innerHTML = pack?.maps.map((m, i) => m.name.toLocaleLowerCase().includes(filter) ? `<button type="button" class="map-item ${i === store.mapIndex ? 'active' : ''}" data-map-index="${i}" title="${esc(m.name)}"><span class="map-number">${i + 1}</span><span class="map-text"><strong>${esc(m.name || 'Untitled')}</strong><small>${message('template_stats', m.zones.length, renderableConnectionCount(m))}</small></span></button>` : '').join('') || '<div class="field-note empty-list-note">' + esc(translateText('No templates found.')) + '</div>';
+    $('map-list').innerHTML = pack?.maps.map((m, i) => m.name.toLocaleLowerCase().includes(filter) ? `<button type="button" class="map-item ${i === store.mapIndex ? 'active' : ''}" data-map-index="${i}" title="${esc(m.name)}"><span class="map-number">${i + 1}</span><span class="map-text"><strong>${esc(m.name || 'Untitled')}</strong><small>${message('template_stats', m.zones.length, renderableConnectionCount(m))}</small></span></button>` : '').join('') || '<div class="field-note empty-list-note">' + esc(translateText(hasPack ? 'No templates found.' : 'Create or open a pack to begin.')) + '</div>';
 }
-$('map-list').addEventListener('click', e => { const btn = e.target.closest('[data-map-index]'); if (btn)
-    selectMap(+btn.dataset.mapIndex); });
+$('map-list').addEventListener('click', e => {
+    const btn = e.target.closest('[data-map-index]');
+    if (btn)
+        selectMap(+btn.dataset.mapIndex);
+});
 $('map-search').addEventListener('input', renderSidebar);
 function renderToolbar() {
     const map = current();
@@ -285,8 +317,9 @@ function renderToolbar() {
     $('map-title').setAttribute('aria-label', $('map-title').textContent);
     hideMapTitle();
     $('map-stats').textContent = map ? message('template_stats', map.zones.length, renderableConnectionCount(map)) : '';
-    for (const id of ['add-zone-btn', 'add-conn-btn', 'undo-btn', 'redo-btn', 'save-btn', 'convert-btn'])
-        $(id).disabled = !store.pack || (id === 'undo-btn' && !store.undo.length) || (id === 'redo-btn' && !store.redo.length) || (id === 'add-zone-btn' && !map) || (id === 'add-conn-btn' && !map);
+    $('export-format').disabled = !store.pack;
+    for (const id of ['add-zone-btn', 'add-conn-btn', 'undo-btn', 'redo-btn', 'save-btn', 'convert-btn', 'more-btn'])
+        $(id).disabled = !store.pack || (id === 'undo-btn' && !store.undo.length) || (id === 'redo-btn' && !store.redo.length) || (['add-zone-btn', 'add-conn-btn', 'more-btn'].includes(id) && !map);
     $('add-conn-btn').style.background = store.connectMode ? 'var(--accent-bg)' : '';
 }
 const fullTitleTooltip = $('map-title-tooltip');
@@ -364,12 +397,19 @@ function updateZoomIndicator() {
         renderedZoom = zoom;
     }
 }
-function transformCanvas() { updateZoomIndicator(); if (!canvasFrame)
-    canvasFrame = requestAnimationFrame(flushCanvasTransform); }
-function finishCanvasTransform() { if (canvasFrame) {
-    cancelAnimationFrame(canvasFrame);
-    canvasFrame = 0;
-} flushCanvasTransform(); updateZoomIndicator(); }
+function transformCanvas() {
+    updateZoomIndicator();
+    if (!canvasFrame)
+        canvasFrame = requestAnimationFrame(flushCanvasTransform);
+}
+function finishCanvasTransform() {
+    if (canvasFrame) {
+        cancelAnimationFrame(canvasFrame);
+        canvasFrame = 0;
+    }
+    flushCanvasTransform();
+    updateZoomIndicator();
+}
 function zoomAt(factor, x = store.viewport.w / 2, y = store.viewport.h / 2) {
     const old = store.scale, ne = Math.max(.14, Math.min(3.5, old * factor));
     store.tx = x - (x - store.tx) * ne / old;
@@ -438,8 +478,10 @@ function canvasMarkup(map) {
         .map((connection, index) => ({ connection, index }))
         .filter(({ connection }) => isRenderableConnection(connection, zoneIds))
         .map(({ index }) => index);
-    const geometry = connectionGeometry(map.connections, map.layout, { width: CARD_W, height: CARD_H,
-        labelWidths: map.connections.map(c => connectionLabelMetrics(c).width) });
+    const geometry = connectionGeometry(map.connections, map.layout, {
+        width: CARD_W, height: CARD_H,
+        labelWidths: map.connections.map(c => connectionLabelMetrics(c).width)
+    });
     const edges = visibleIndexes.map(i => {
         const c = map.connections[i], visual = connectionAppearance(c), path = geometry[i];
         if (!path)
@@ -629,16 +671,15 @@ function renderLegend() {
     }
     content.innerHTML =
         legendSection(translateText('Zones'), zoneRows) +
-            legendSection(translateText('Object guards'), guardRows) +
-            legendSection(translateText('Towns'), townRows) +
-            legendSection(translateText('Resources'), mineRows) +
-            legendSection(translateText('Connections'), connectionRows);
+        legendSection(translateText('Object guards'), guardRows) +
+        legendSection(translateText('Towns'), townRows) +
+        legendSection(translateText('Resources'), mineRows) +
+        legendSection(translateText('Connections'), connectionRows);
 }
 function renderCanvas() {
     const map = current();
     $('canvas-content').innerHTML = map ? canvasMarkup(map) : '';
     $('empty-hint').classList.toggle('hidden', !!map?.zones.length);
-    $('empty-add-btn').hidden = !store.pack;
     transformCanvas();
 }
 function select(kind, index) {
@@ -660,10 +701,12 @@ function captureCanvasPointer(pointerId) {
             throw error;
     }
 }
-function releaseCanvasPointer(pointerId) { try {
-    $('canvas').releasePointerCapture(pointerId);
+function releaseCanvasPointer(pointerId) {
+    try {
+        $('canvas').releasePointerCapture(pointerId);
+    }
+    catch { }
 }
-catch { } }
 function resetTouchGesture() {
     touchPoints.clear();
     pinch = null;
@@ -839,19 +882,26 @@ $('canvas').addEventListener('pointerdown', handleCanvasDown);
 $('canvas').addEventListener('pointermove', handleCanvasMove);
 $('canvas').addEventListener('pointerup', handleCanvasUp);
 $('canvas').addEventListener('pointercancel', e => { releaseCanvasPointer(e.pointerId); resetTouchGesture(); });
-$('canvas').addEventListener('lostpointercapture', e => { if (e.pointerType === 'touch' && touchPoints.has(e.pointerId))
-    resetTouchGesture(); });
+$('canvas').addEventListener('lostpointercapture', e => {
+    if (e.pointerType === 'touch' && touchPoints.has(e.pointerId))
+        resetTouchGesture();
+});
 window.addEventListener('blur', resetTouchGesture);
-document.addEventListener('visibilitychange', () => { if (document.hidden)
-    resetTouchGesture(); });
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden)
+        resetTouchGesture();
+});
 $('canvas').addEventListener('wheel', e => { e.preventDefault(); let p = mousePos(e); zoomAt(Math.exp(-e.deltaY * .00125), p.x, p.y); }, { passive: false });
 $('zoom-in').onclick = () => zoomAt(1.25);
 $('zoom-out').onclick = () => zoomAt(.8);
 $('zoom-fit').onclick = () => fitView();
-$('canvas').addEventListener('keydown', e => { const n = e.target.closest?.('[data-zone-index]'); if (n && (e.key === 'Enter' || e.key === ' ')) {
-    e.preventDefault();
-    select('zone', +n.dataset.zoneIndex);
-} });
+$('canvas').addEventListener('keydown', e => {
+    const n = e.target.closest?.('[data-zone-index]');
+    if (n && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        select('zone', +n.dataset.zoneIndex);
+    }
+});
 try {
     new ResizeObserver(() => { let b = $('canvas').getBoundingClientRect(); store.viewport = { w: b.width || 700, h: b.height || 500 }; }).observe($('canvas'));
 }
@@ -923,15 +973,15 @@ function connectionProps(c, t) {
         ['road', 'Road'], ['conn_type', 'Type'], ['fictive', 'Fictive'], ['portal_repulsion', 'Portal repulsion']
     ].map(([key, label]) => f(key, label, c[key])).join('')) :
         group('Between zones', pair([f('zone1', 'Zone 1', c.zone1), f('zone2', 'Zone 2', c.zone2), f('value', 'Guard value', c.value)])) +
-            group('Parameters', check('wide', 'Wide', c.wide) + check('border_guard', 'Border guard', connectionAppearance(c).border ? 'x' : '')) +
-            group('Restrictions', pair(kv('positions', c.positions, posLabels)));
+        group('Parameters', check('wide', 'Wide', c.wide) + check('border_guard', 'Border guard', connectionAppearance(c).border ? 'x' : '')) +
+        group('Restrictions', pair(kv('positions', c.positions, posLabels)));
 }
 function mapProps(m, t) {
     const isHota = store.pack.format !== 'sod';
     return t === 'HotA' ? group('Additional template options', [
         ['artifacts', 'Artifacts'], ['combo_arts', 'Combination artifacts'], ['spells', 'Spells'], ['secondary_skills', 'Secondary skills'], ['objects', 'Objects'], ['rock_blocks', 'Rock blocks'], ['zone_sparseness', 'Zone sparseness'], ['special_weeks_disabled', 'Disable special weeks'], ['spell_research', 'Spell research'], ['anarchy', 'Anarchy']
     ].map(([k, l]) => f(`options.${k}`, l, m.options[k])).join('')) : group('Template', f('name', 'Name', m.name) + pair([f('min_size', 'Minimum size', m.min_size), f('max_size', 'Maximum size', m.max_size)])) +
-        group('Statistics', `<div class="alert-info">${message('template_stats', m.zones.length, m.connections.length)}<br>${translateText(isHota ? 'Coordinates can be saved to image_settings.' : 'Diagram positions are saved in the browser and can be exported as JSON.')}</div>`);
+    group('Statistics', `<div class="alert-info">${message('template_stats', m.zones.length, m.connections.length)}<br>${translateText(isHota ? 'Coordinates can be saved to image_settings.' : 'Diagram positions are saved in the browser and can be exported as JSON.')}</div>`);
 }
 function packProps(p) {
     if (p.format === 'sod')
@@ -973,12 +1023,21 @@ function renderInspector() {
         kind === 'connection' ? `<button class="btn btn-subtle danger" data-inspector-action="delete">${icon('trash', 15)} ${translateText('Delete connection')}</button>` :
             kind === 'map' ? `<button class="btn btn-subtle" data-inspector-action="duplicate">${icon('copy', 15)} ${translateText('Duplicate template')}</button><button class="btn btn-subtle danger" data-inspector-action="delete">${icon('trash', 15)} ${translateText('Delete template')}</button>` : '';
 }
-$('inspector-context-tabs').addEventListener('click', e => { const button = e.target.closest('[data-inspector-view]'); if (!button || button.disabled)
-    return; store.inspectorView = button.dataset.inspectorView; store.tab = store.inspectorView === 'map' ? 'Template' : 'General'; renderInspector(); });
-$('inspector-tabs').addEventListener('click', e => { const el = e.target.closest('[data-tab]'); if (el) {
-    store.tab = el.dataset.tab;
+$('inspector-context-tabs').addEventListener('click', e => {
+    const button = e.target.closest('[data-inspector-view]');
+    if (!button || button.disabled)
+        return;
+    store.inspectorView = button.dataset.inspectorView;
+    store.tab = store.inspectorView === 'map' ? 'Template' : 'General';
     renderInspector();
-} });
+});
+$('inspector-tabs').addEventListener('click', e => {
+    const el = e.target.closest('[data-tab]');
+    if (el) {
+        store.tab = el.dataset.tab;
+        renderInspector();
+    }
+});
 // Live preview updates the model on each keystroke, but expensive diagram updates
 // are coalesced to one animation frame and one undo entry per editing session.
 const liveEdits = new WeakMap();
@@ -1147,12 +1206,24 @@ $('inspector-footer').addEventListener('click', e => {
         });
     }
 });
+const MAP_OPTION_KEYS = ['artifacts', 'combo_arts', 'spells', 'secondary_skills', 'objects', 'rock_blocks', 'zone_sparseness', 'special_weeks_disabled', 'spell_research', 'anarchy'];
+function freshMap(format, name) {
+    return {
+        name,
+        min_size: '36',
+        max_size: '144',
+        options: SCHEMA.formats[format].isHota ? Object.fromEntries(MAP_OPTION_KEYS.map(key => [key, ''])) : {},
+        zones: [],
+        connections: [],
+        layout: {}
+    };
+}
 function addMap() {
     if (!store.pack)
         return;
     commit('Template created', () => {
-        const m = { name: `New Template ${store.pack.maps.length + 1}`, min_size: '36', max_size: '144', options: SCHEMA.formats[store.pack.format].isHota ? Object.fromEntries(['artifacts', 'combo_arts', 'spells', 'secondary_skills', 'objects', 'rock_blocks', 'zone_sparseness', 'special_weeks_disabled', 'spell_research', 'anarchy'].map(k => [k, ''])) : {}, zones: [], connections: [], layout: {} };
-        store.pack.maps.push(m);
+        const map = freshMap(store.pack.format, `New Template ${store.pack.maps.length + 1}`);
+        store.pack.maps.push(map);
         store.mapIndex = store.pack.maps.length - 1;
         store.selected = { kind: 'map', index: store.mapIndex };
     });
@@ -1206,12 +1277,24 @@ function doReid(sort) {
 }
 function createFreshPack(format) {
     const pack = freshPack(format);
-    pack.maps.push({ name: 'New Template', min_size: '36', max_size: '144', options: Object.fromEntries(['artifacts', 'combo_arts', 'spells', 'secondary_skills', 'objects', 'rock_blocks', 'zone_sparseness', 'special_weeks_disabled', 'spell_research', 'anarchy'].map(k => [k, ''])), zones: [freshZone(format, '1')], connections: [], layout: {} });
-    pack.maps[0].zones[0].terrains.Dirt = 'x';
-    pack.maps[0].zones[0].monster_factions.Neutral = 'x';
+    const map = freshMap(format, 'New Template');
+    const zone = freshZone(format, '1');
+    zone.terrains.Dirt = 'x';
+    zone.monster_factions.Neutral = 'x';
+    map.zones.push(zone);
+    pack.maps.push(map);
     setPack(pack);
 }
-function newPackDialog() { modal('New template', `<div class="field"><label>${esc(translateText('New pack format'))}</label><select id="new-pack-format"><option value="hota18">HotA 1.8.x</option><option value="hota17">HotA 1.7.x</option><option value="sod">Shadow of Death</option></select></div><p class="field-note">${esc(translateText('Unsaved changes to the current pack will be lost.'))}</p>`, [{ label: 'Cancel' }, { label: 'Create', primary: true, handler: () => createFreshPack($('new-pack-format').value) }]); }
+function newPackDialog() {
+    const warning = store.pack?.dirty ? `<p class="field-note">${esc(translateText('Unsaved changes to the current pack will be lost.'))}</p>` : '';
+    modal(translateText('New pack'), `<div class="field"><label>${esc(translateText('New pack format'))}</label><select id="new-pack-format"><option value="hota18">HotA 1.8.x</option><option value="hota17">HotA 1.7.x</option><option value="sod">Shadow of Death</option></select></div>${warning}`, [{ label: translateText('Cancel') }, { label: translateText('Create'), primary: true, handler: () => createFreshPack($('new-pack-format').value) }]);
+}
+function addZoneFromEmptyState() {
+    if (store.pack)
+        addZone();
+    else
+        newPackDialog();
+}
 function download(bytes, filename, mime = 'application/octet-stream') {
     const blob = new Blob([bytes], { type: mime }), url = URL.createObjectURL(blob), a = document.createElement('a');
     a.href = url;
@@ -1446,8 +1529,13 @@ async function installApp() {
 // button while the saved event remains promptable; never claim that an icon is installed.
 window.addEventListener('beforeinstallprompt', event => { store.installPrompt = event; $('install-btn').title = 'Install app'; });
 window.addEventListener('appinstalled', () => { store.installPrompt = null; toast(translateText('App installed. On Android, find the app in the app drawer and add its icon to your home screen if needed.')); });
+function setMoreMenuOpen(open) {
+    const isOpen = Boolean(open) && !$('more-btn').disabled;
+    $('more-menu').classList.toggle('hidden', !isOpen);
+    $('more-btn').setAttribute('aria-expanded', String(isOpen));
+}
 function runAction(action) {
-    $('more-menu').classList.add('hidden');
+    setMoreMenuOpen(false);
     if (!current())
         return;
     if (action === 'layout')
@@ -1469,12 +1557,15 @@ function runAction(action) {
     else if (action === 'import-layout')
         $('layout-input').click();
 }
-$('more-menu').addEventListener('click', e => { const b = e.target.closest('[data-action]'); if (b)
-    runAction(b.dataset.action); });
-$('more-btn').onclick = () => $('more-menu').classList.toggle('hidden');
+$('more-menu').addEventListener('click', e => {
+    const button = e.target.closest('[data-action]');
+    if (button)
+        runAction(button.dataset.action);
+});
+$('more-btn').onclick = () => setMoreMenuOpen($('more-menu').classList.contains('hidden'));
 document.addEventListener('pointerdown', e => {
     if (!e.target.closest('#more-menu,#more-btn'))
-        $('more-menu').classList.add('hidden');
+        setMoreMenuOpen(false);
     if (!e.target.closest('#canvas-legend'))
         $('canvas-legend').open = false;
     if (window.matchMedia('(max-width:970px)').matches && $('inspector').classList.contains('open') &&
@@ -1483,17 +1574,27 @@ document.addEventListener('pointerdown', e => {
 }, true);
 $('open-btn').onclick = () => $('file-input').click();
 $('file-input').onchange = e => { openFile(e.target.files[0]); e.target.value = ''; };
-$('layout-input').onchange = e => { if (e.target.files[0])
-    importLayout(e.target.files[0]); e.target.value = ''; };
+$('layout-input').onchange = e => {
+    if (e.target.files[0])
+        importLayout(e.target.files[0]);
+    e.target.value = '';
+};
 $('save-btn').onclick = () => askSave(store.pack?.format);
 $('convert-btn').onclick = () => askSave($('export-format').value);
 $('add-map-btn').onclick = addMap;
 $('add-zone-btn').onclick = addZone;
-$('empty-add-btn').onclick = addZone;
+$('empty-add-btn').onclick = addZoneFromEmptyState;
 $('add-conn-btn').onclick = addConnection;
 $('undo-btn').onclick = undo;
 $('redo-btn').onclick = redo;
-$('pack-props-btn').onclick = () => { store.selected = { kind: 'pack', index: 0 }; store.inspectorView = 'selection'; store.tab = 'Pack'; renderInspector(); $('inspector').classList.add('open'); $('sidebar').classList.remove('open'); };
+$('pack-props-btn').onclick = () => {
+    store.selected = { kind: 'pack', index: 0 };
+    store.inspectorView = 'selection';
+    store.tab = 'Pack';
+    renderInspector();
+    $('inspector').classList.add('open');
+    setSidebarOpen(false);
+};
 $('validate-btn').onclick = validateDialog;
 $('new-pack-btn').onclick = newPackDialog;
 $('language-select').onchange = event => { setLanguage(event.target.value); templatePicker.refreshLanguage(); renderAll(); };
@@ -1511,27 +1612,45 @@ function setTheme(t) {
 }
 $('install-btn').onclick = installApp;
 $('help-btn').onclick = helpDialog;
-$('sidebar-toggle').onclick = () => $('sidebar').classList.toggle('open');
-document.addEventListener('pointerdown', event => { if ($('sidebar').classList.contains('open') && !event.target.closest('#sidebar,#sidebar-toggle'))
-    $('sidebar').classList.remove('open'); });
+function setSidebarOpen(open) {
+    const isOpen = Boolean(open);
+    $('sidebar').classList.toggle('open', isOpen);
+    $('sidebar-toggle').setAttribute('aria-expanded', String(isOpen));
+}
+$('sidebar-toggle').onclick = () => setSidebarOpen(!$('sidebar').classList.contains('open'));
+document.addEventListener('pointerdown', event => {
+    if ($('sidebar').classList.contains('open') && !event.target.closest('#sidebar,#sidebar-toggle'))
+        setSidebarOpen(false);
+});
 $('inspector-close').onclick = () => $('inspector').classList.remove('open');
 let dragDepth = 0;
-window.addEventListener('dragenter', e => { if (e.dataTransfer?.types?.includes('Files')) {
+window.addEventListener('dragenter', e => {
+    if (e.dataTransfer?.types?.includes('Files')) {
+        e.preventDefault();
+        dragDepth++;
+        $('drop-hint').classList.remove('hidden');
+    }
+});
+window.addEventListener('dragover', e => {
+    if (e.dataTransfer?.types?.includes('Files')) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+    }
+});
+window.addEventListener('dragleave', e => {
+    if (e.dataTransfer?.types?.includes('Files')) {
+        dragDepth = Math.max(0, dragDepth - 1);
+        if (!dragDepth)
+            $('drop-hint').classList.add('hidden');
+    }
+});
+window.addEventListener('drop', e => {
     e.preventDefault();
-    dragDepth++;
-    $('drop-hint').classList.remove('hidden');
-} });
-window.addEventListener('dragover', e => { if (e.dataTransfer?.types?.includes('Files')) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-} });
-window.addEventListener('dragleave', e => { if (e.dataTransfer?.types?.includes('Files')) {
-    dragDepth = Math.max(0, dragDepth - 1);
-    if (!dragDepth)
-        $('drop-hint').classList.add('hidden');
-} });
-window.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; $('drop-hint').classList.add('hidden'); if (e.dataTransfer?.files?.[0])
-    openFile(e.dataTransfer.files[0]); });
+    dragDepth = 0;
+    $('drop-hint').classList.add('hidden');
+    if (e.dataTransfer?.files?.[0])
+        openFile(e.dataTransfer.files[0]);
+});
 document.addEventListener('keydown', e => {
     if ($('modal').open)
         return;
@@ -1580,10 +1699,12 @@ document.addEventListener('keydown', e => {
         $('inspector-footer').querySelector('[data-inspector-action="delete"]')?.click();
     }
 });
-window.addEventListener('beforeunload', e => { if (store.pack?.dirty && store.pack.originalBytes) {
-    e.preventDefault();
-    e.returnValue = '';
-} });
+window.addEventListener('beforeunload', e => {
+    if (store.pack?.dirty && store.pack.originalBytes) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
 try {
     setTheme(localStorage.getItem('h3tc-theme') === 'light' ? 'light' : 'dark');
 }
@@ -1603,7 +1724,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         try {
             // External locale modules can finish after the window load event. Register
             // immediately when that happened instead of waiting for an event that has passed.
-            const registration = await navigator.serviceWorker.register('./sw.js?v=1.5.5', { scope: './', updateViaCache: 'none' });
+            const registration = await navigator.serviceWorker.register('./sw.js?v=1.5.6', { scope: './', updateViaCache: 'none' });
             await registration.update();
             if (registration.waiting) {
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' });

@@ -29,6 +29,20 @@ async def run():
             await page.goto(URL,wait_until='networkidle')
             assert await page.locator('.node').count()==0, 'Startup must not auto-open a template.'
             await page.wait_for_function('()=>document.querySelectorAll("#built-in-select option").length===60')
+            assert await page.locator('#empty-add-btn').is_visible(), 'Empty-state Add zone must be available.'
+            assert not await page.locator('#add-map-btn').is_visible(), 'Sidebar add-template button must stay hidden without a pack.'
+            assert await page.locator('#more-btn').is_disabled(), 'Tools must stay disabled without a template.'
+
+            # Fresh-start workflow: Add zone creates a package only after the user chooses its format.
+            await page.locator('#empty-add-btn').click()
+            assert await page.locator('#modal').evaluate('(e)=>e.open'), 'New-pack format dialog did not open.'
+            await page.locator('#new-pack-format').select_option('sod')
+            await page.locator('#modal-buttons .btn-primary').click()
+            await page.wait_for_function('()=>document.querySelectorAll(".node").length===1')
+            assert await page.locator('#current-format').inner_text() == 'SoD'
+            assert await page.locator('#add-map-btn').is_visible(), 'Sidebar add-template button must appear after pack creation.'
+            assert not await page.locator('#more-btn').is_disabled(), 'Tools must enable after a template is created.'
+
             await page.locator('#file-input').set_input_files(str(ROOT/'tests/fixtures/tesseract.txt'))
             await page.get_by_text('XXL Tesseract').first.wait_for(timeout=15000)
             assert await page.locator('.node').count()==16, 'Tesseract zone count'

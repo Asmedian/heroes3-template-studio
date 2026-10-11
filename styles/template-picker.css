@@ -1,5 +1,6 @@
-/* v1.5.3: custom built-in template picker. Native select popups close on wheel
-   in several browsers, so the visible picker uses a scrollable in-page list. */
+/* Custom built-in template picker. Native select popups close on wheel
+ * in several browsers, so the visible picker uses a scrollable in-page list.
+ */
 
 .template-picker {
     position: relative;
@@ -94,25 +95,6 @@
     background: var(--accent-bg);
     color: var(--accent);
     font-weight: 700;
-}
-
-/* Use the same three-dot icon treatment on desktop and mobile. */
-
-.editor-actions .more-btn {
-    width: 32px;
-    min-width: 32px;
-    height: 32px;
-    min-height: 32px;
-    padding: 6px;
-    border-color: transparent;
-    background: transparent;
-}
-
-.editor-actions .more-btn svg {
-    width: 18px;
-    height: 18px;
-    fill: currentColor;
-    stroke: none;
 }
 
 .template-picker-native {

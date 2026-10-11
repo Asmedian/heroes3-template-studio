@@ -55,14 +55,6 @@ html[data-theme="dark"] .node[data-owner="0"][data-richness="low"] .h3-icon-swor
     font-size: 11px;
 }
 
-.node .h3-icon-swords {
-    color: #263344;
-}
-
-html[data-theme="dark"] .node[data-owner="0"][data-richness="low"] .h3-icon-swords {
-    color: #e5edf7;
-}
-
 /* The legend is a real, interactive disclosure above the canvas, not a passive banner. */
 
 .canvas-top-info {
@@ -82,10 +74,6 @@ html[data-theme="dark"] .node[data-owner="0"][data-richness="low"] .h3-icon-swor
     box-shadow: 0 8px 28px var(--shadow);
     pointer-events: auto;
     font-size: 12px;
-}
-
-.canvas-top-info[hidden] {
-    display: none!important;
 }
 
 .canvas-top-info summary {
@@ -402,7 +390,12 @@ select {
     transition: border-color var(--transition),background-color var(--transition),box-shadow var(--transition);
 }
 
-.field input:hover,.field select:hover,.field textarea:hover,.map-search:hover,#built-in-select:hover,.lang-select:hover {
+.field input:hover:not(:disabled),
+.field select:hover:not(:disabled),
+.field textarea:hover:not(:disabled),
+.map-search:hover:not(:disabled),
+#built-in-select:hover:not(:disabled),
+.lang-select:hover:not(:disabled) {
     border-color: var(--card-edge);
 }
 

@@ -2,7 +2,6 @@
     font-family: Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
     font-size: 14px;
     font-synthesis: none;
-    --radius: 10px;
     --transition: .18s ease;
 }
 
@@ -28,6 +27,20 @@ button {
 button:disabled {
     opacity: .38;
     cursor: not-allowed;
+}
+
+select:not(:disabled) {
+    cursor: pointer;
+}
+
+select:disabled {
+    cursor: not-allowed;
+}
+
+button:focus-visible,
+a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 svg {
@@ -69,15 +82,11 @@ html[data-theme="dark"] {
     --accent: #91acfa;
     --accent-strong: #617fde;
     --accent-bg: #263d69;
-    --accent-text: #e6edff;
     --button: #263247;
     --button-hover: #32425a;
     --start: #4ca5a9;
-    --start-bg: #173e4a;
     --treasure: #b69c61;
-    --treasure-bg: #443827;
     --neutral: #8a95a9;
-    --neutral-bg: #303a4c;
     --error: #e87a7d;
     --shadow: rgba(0,0,0,.3);
     --grid: #2a3548;
@@ -102,15 +111,11 @@ html[data-theme="light"] {
     --accent: #435fae;
     --accent-strong: #526dc7;
     --accent-bg: #e8edff;
-    --accent-text: #354c91;
     --button: #f2f5fa;
     --button-hover: #e6ecf7;
     --start: #4d939a;
-    --start-bg: #e3f2f1;
     --treasure: #9b6f2d;
-    --treasure-bg: #fcf5e7;
     --neutral: #6f809b;
-    --neutral-bg: #eff2f7;
     --error: #b92f43;
     --shadow: rgba(40,61,97,.10);
     --grid: #d5deeb;
@@ -231,7 +236,9 @@ body {
     flex-shrink: 0;
 }
 
-.btn:hover:not(:disabled),.icon-btn:hover,.canvas-tool:hover {
+.btn:hover:not(:disabled),
+.icon-btn:hover:not(:disabled),
+.canvas-tool:hover:not(:disabled) {
     background: var(--button-hover);
 }
 
@@ -492,7 +499,7 @@ body {
     font-size: 12px;
 }
 
-.sidebar-action:hover {
+.sidebar-action:hover:not(:disabled) {
     color: var(--text);
     background: var(--panel-2);
 }
@@ -581,13 +588,7 @@ body {
     width: 32px;
     height: 32px;
     min-width: 32px;
-    border-color: transparent;
-}
-
-.editor-actions .more-btn span {
-    font-size: 20px;
-    line-height: 7px;
-    letter-spacing: 1px;
+    min-height: 32px;
 }
 
 .more-menu {
@@ -621,8 +622,9 @@ body {
     background: var(--button-hover);
 }
 
+[hidden],
 .hidden {
-    display: none!important;
+    display: none !important;
 }
 
 .canvas-wrapper {
@@ -1002,10 +1004,19 @@ body {
     background: transparent;
 }
 
+.inspector-tabs button:hover:not(:disabled) {
+    color: var(--text);
+    background: var(--button-hover);
+}
+
 .inspector-tabs button.active {
     color: var(--accent);
     border-bottom-color: var(--accent);
     font-weight: 700;
+}
+
+.inspector-tabs button.active:hover:not(:disabled) {
+    color: var(--accent);
 }
 
 .inspector-body {
@@ -1373,8 +1384,10 @@ dialog::backdrop {
         max-width: 90px;
     }
     .app-header .icon-btn {
+        width: 32px;
         height: 32px;
         min-width: 32px;
+        min-height: 32px;
     }
     .editor-toolbar {
         padding: 11px;

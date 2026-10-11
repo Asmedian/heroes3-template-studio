@@ -32,9 +32,11 @@ export function zoneAppearance(zone) {
     const start = String(zone.human_start ?? '').toLowerCase().trim() === 'x' || String(zone.computer_start ?? '').toLowerCase().trim() === 'x';
     const owner = String(zone.ownership ?? '').trim();
     const score = treasureScore(zone);
-    return { owner: start && PLAYER_PALETTE[owner] ? owner : null, richness: score >= 200 ? 'high' : score >= 100 ? 'mid' : 'low', score,
+    return {
+        owner: start && PLAYER_PALETTE[owner] ? owner : null, richness: score >= 200 ? 'high' : score >= 100 ? 'mid' : 'low', score,
         computer: String(zone.computer_start ?? '').toLowerCase().trim() === 'x',
-        junction: String(zone.junction ?? '').toLowerCase().trim() === 'x' };
+        junction: String(zone.junction ?? '').toLowerCase().trim() === 'x'
+    };
 }
 function detailCount(min, density) {
     const n = String(min ?? '').trim(), d = String(density ?? '').trim();

@@ -548,9 +548,20 @@ html[data-theme="light"],html[data-theme="dark"] {
     text-overflow: ellipsis;
 }
 
+.inspector-context-tabs button:hover:not(:disabled) {
+    background: var(--button-hover);
+    border-color: var(--card-edge);
+    color: var(--text);
+}
+
 .inspector-context-tabs button[aria-selected="true"] {
     background: var(--accent-bg);
     border-color: var(--accent);
+    color: var(--accent);
+}
+
+.inspector-context-tabs button[aria-selected="true"]:hover:not(:disabled) {
+    background: var(--accent-bg);
     color: var(--accent);
 }
 

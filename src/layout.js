@@ -122,8 +122,8 @@ function symmetricFourStarts(map, graph) {
         return null;
     const anchorRoot = anchors[0], others = anchors.slice(1);
     const orders = [[others[0], others[1], others[2]], [others[0], others[2], others[1]],
-        [others[1], others[0], others[2]], [others[1], others[2], others[0]],
-        [others[2], others[0], others[1]], [others[2], others[1], others[0]]];
+    [others[1], others[0], others[2]], [others[1], others[2], others[0]],
+    [others[2], others[0], others[1]], [others[2], others[1], others[0]]];
     const base = [[-3, 3], [-3, -3], [3, -3], [3, 3]];
     const starts = new Set(anchors);
     let winner = null, best = Infinity;

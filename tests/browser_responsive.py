@@ -77,6 +77,8 @@ async def main():
                     await page.goto(URL,wait_until='domcontentloaded')
                     await page.wait_for_function('()=>document.querySelectorAll("#built-in-select option").length===60')
                     assert await page.locator('.node').count()==0, 'Nonblank initial canvas'
+                    check(await page.locator('#empty-add-btn').is_visible(), f'{name}: empty-state Add zone is hidden')
+                    check(not await page.locator('#add-map-btn').is_visible(), f'{name}: add-template button visible without a pack')
                     await page.locator('#file-input').set_input_files(str(ROOT/'tests/fixtures/tesseract.txt'))
                     await page.locator('.node').first.wait_for(timeout=18000)
                     compact_case=width<=650 or (mobile and height<500)
@@ -96,11 +98,26 @@ async def main():
                     await page.screenshot(path=str(ARTIFACTS/f'{name}-dark.png'))
                     await page.locator('#theme-btn').click()
                     check(await page.locator('html').get_attribute('data-theme')=='light',f'{name}: light theme did not activate')
+                    await page.wait_for_timeout(250)
                     await page.screenshot(path=str(ARTIFACTS/f'{name}-light.png'))
                     await page.locator('#zoom-in').click()
                     check(int((await page.locator('#zoom-value').inner_text()).rstrip('%'))>0,f'{name}: zoom not updated')
                     await page.locator('#zoom-fit').click()
                     if width<=650:
+                        button_styles = await page.evaluate('''() => {
+                          const read = id => {
+                            const style = getComputedStyle(document.querySelector(id));
+                            const rect = document.querySelector(id).getBoundingClientRect();
+                            return {
+                              width: Math.round(rect.width), height: Math.round(rect.height),
+                              padding: style.padding, borderWidth: style.borderWidth,
+                              borderColor: style.borderColor, borderRadius: style.borderRadius
+                            };
+                          };
+                          return {more: read('#more-btn'), sidebar: read('#sidebar-toggle')};
+                        }''')
+                        check(button_styles['more'] == button_styles['sidebar'],
+                              f'{name}: Tools and mobile menu buttons differ: {button_styles}')
                         await page.locator('#sidebar-toggle').click()
                         check('open' in (await page.locator('#sidebar').get_attribute('class')).split(), f'{name}: mobile sidebar not opened')
                         await page.locator('#map-search').fill('Jebus')

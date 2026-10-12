@@ -13,7 +13,7 @@ const icon = (name, size = 16) => `<svg width="${size}" height="${size}" aria-hi
 const store = {
     pack: null, mapIndex: 0, selected: { kind: 'map', index: 0 }, tab: 'general', inspectorView: 'selection', scale: 1, tx: 0, ty: 0,
     viewport: { w: 700, h: 600 }, drag: null, connectMode: false, connectFrom: null, undo: [], redo: [], installPrompt: null, toastTimer: 0,
-    fileKey: '', loaded: false, loadToken: 0, builtinId: null, presetLayouts: null
+    fileKey: '', loaded: false, loadToken: 0, builtinId: null, presetLayouts: null, editedSinceLoad: false
 };
 const current = () => store.pack?.maps[store.mapIndex];
 let renderStatsCache = new WeakMap();
@@ -193,6 +193,7 @@ function commit(label, fn) {
         store.undo.shift();
     store.redo = [];
     store.pack.dirty = true;
+    store.editedSinceLoad = true;
     resetDerivedCaches();
     persistLayout();
     renderAll();
@@ -207,6 +208,7 @@ function restore(data) {
     store.tab = data.tab;
     store.mapIndex = Math.min(store.mapIndex, store.pack.maps.length - 1);
     store.pack.dirty = true;
+    store.editedSinceLoad = true;
     resetDerivedCaches();
     persistLayout();
     renderAll();
@@ -357,6 +359,7 @@ function setPack(pack, bytes = null, builtinId = null, presetLayouts = null) {
     store.pack = pack;
     store.builtinId = builtinId;
     store.presetLayouts = presetLayouts;
+    store.editedSinceLoad = false;
     templatePicker.setValue(builtinId || '');
     store.mapIndex = 0;
     store.selected = { kind: 'map', index: 0 };
@@ -519,7 +522,8 @@ function renderStatus() {
     errorButton.disabled = !map;
     errorButton.setAttribute('aria-label', message('error_button_aria', errors.length));
     errorButton.title = errors.length ? translateText('Open template errors') : translateText('No template errors');
-    $('dirty-indicator').textContent = translateText(store.pack?.dirty ? '● Modified' : '✓ Saved');
+    const editState = !store.pack || !store.editedSinceLoad ? '' : (store.pack.dirty ? '● Modified' : '✓ Saved');
+    $('dirty-indicator').textContent = editState ? translateText(editState) : '';
     $('dirty-indicator').style.color = store.pack?.dirty ? 'var(--treasure)' : 'var(--soft)';
     $('zoom-value').textContent = Math.round(store.scale * 100) + '%';
 }
@@ -1043,6 +1047,7 @@ function handleCanvasUp(e) {
         store.redo = [];
         m.layoutDirty = true;
         store.pack.dirty = true;
+        store.editedSinceLoad = true;
         persistLayout();
         renderAll();
         status('Zone position changed');
@@ -1271,6 +1276,7 @@ $('inspector-body').addEventListener('input', e => {
         liveEdits.set(field, { snapshot: capture(), selection: { ...store.selected }, tab: store.tab, label: 'Updated: ' + path.join(' / ') });
     obj[key] = value;
     store.pack.dirty = true;
+    store.editedSinceLoad = true;
     resetDerivedCaches();
     scheduleInspectorPreview();
 });
@@ -1285,6 +1291,7 @@ function finishLiveEdit(field) {
             store.undo.shift();
         store.redo = [];
         store.pack.dirty = true;
+        store.editedSinceLoad = true;
         persistLayout();
         if (liveRefreshId) {
             cancelAnimationFrame(liveRefreshId);
@@ -1791,6 +1798,19 @@ $('pack-props-btn').onclick = () => {
 $('validate-btn').onclick = validateDialog;
 $('new-pack-btn').onclick = newPackDialog;
 $('language-select').onchange = event => { setLanguage(event.target.value); templatePicker.refreshLanguage(); renderAll(); };
+function configureRepositoryLink() {
+    const link = $('github-repo-link');
+    if (!link)
+        return;
+    const suffix = '.github.io';
+    const host = location.hostname.toLowerCase();
+    if (!host.endsWith(suffix))
+        return;
+    const owner = host.slice(0, -suffix.length);
+    const repo = location.pathname.split('/').filter(Boolean)[0] || `${owner}.github.io`;
+    link.href = `https://github.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+}
+configureRepositoryLink();
 initializeLanguage();
 $('theme-btn').onclick = () => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; setTheme(t); };
 function setTheme(t) {
@@ -1917,7 +1937,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         try {
             // External locale modules can finish after the window load event. Register
             // immediately when that happened instead of waiting for an event that has passed.
-            const registration = await navigator.serviceWorker.register('./sw.js?v=1.6.6', { scope: './', updateViaCache: 'none' });
+            const registration = await navigator.serviceWorker.register('./sw.js?v=1.6.7', { scope: './', updateViaCache: 'none' });
             await registration.update();
             if (registration.waiting) {
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' });

@@ -34,6 +34,8 @@ async def run():
             assert await page.locator('#more-btn').is_disabled(), 'Tools must stay disabled without a template.'
             assert await page.locator('#package-name').inner_text() == 'Набор шаблонов не открыт'
             assert await page.locator('#more-btn use').get_attribute('href') == '#i-menu'
+            assert (await page.locator('#github-repo-link').inner_text()).strip() == 'GitHub репозиторий ↗'
+            assert await page.locator('#github-repo-link').get_attribute('href') == 'https://github.com/sokie/heroes3-template-util'
 
             # Header neighbors use the same hover background/border treatment.
             await page.locator('#theme-btn').hover()
@@ -67,6 +69,7 @@ async def run():
             await page.get_by_text('XXL Tesseract').first.wait_for(timeout=15000)
             assert await page.locator('.node').count()==16, 'Tesseract zone count'
             assert await page.locator('.connection').count()==32, 'Tesseract connection count'
+            assert (await page.locator('#dirty-indicator').inner_text()).strip()=='', 'Freshly opened template must not be labeled Saved.'
             assert await page.locator('html').get_attribute('data-theme')=='dark'
             await page.locator('#theme-btn').click()
             assert await page.locator('html').get_attribute('data-theme')=='light'
@@ -115,7 +118,7 @@ async def run():
             await page.wait_for_function('()=>window.__savedFiles.length===1')
             size=await page.evaluate('window.__savedFiles[0].length')
             assert size>1000, 'Native Save as wrote an empty file.'
-            assert (await page.locator('#dirty-indicator').inner_text()).startswith('✓')
+            assert (await page.locator('#dirty-indicator').inner_text()).strip()=='✓ Сохранено'
             await page.locator('#export-format').select_option('hota18')
             await page.locator('#convert-btn').click()
             if await page.locator('#modal').evaluate('(e)=>e.open'):

@@ -31,10 +31,20 @@ test('panning coalesces bursts and uses composited CSS transforms', () => {
 test('template opening paints a blocking loader before expensive layout work', () => {
     assert.match(html, /id="template-loading-overlay"/);
     assert.match(source, /await showTemplateLoader\(token\)/);
-    assert.match(source, /requestAnimationFrame\(\(\) => requestAnimationFrame\(resolve\)\)/);
+    assert.match(source, /requestAnimationFrame\(\(\) => requestAnimationFrame\(finish\)\)/);
+    assert.match(source, /setTimeout\(finish, 120\)/);
     assert.match(source, /setAttribute\('aria-busy', 'true'\)/);
     assert.match(flat(css), /\.template-loading-overlay\{[^}]*position:absolute;[^}]*inset:0;[^}]*z-index:30/);
     assert.match(flat(css), /\.template-loading-spinner\{[^}]*animation:template-loading-spin/);
+});
+
+test('file input remains valid while the loader yields for paint', () => {
+    const openStart = source.indexOf('async function openFile(file)');
+    const openEnd = source.indexOf('function setPack(', openStart);
+    const openSource = source.slice(openStart, openEnd);
+    assert.ok(openSource.indexOf('file.arrayBuffer()') < openSource.indexOf('await showTemplateLoader(token)'), 'File reading must start before the first loader await.');
+    assert.match(source, /\$\('file-input'\)\.onchange = async e =>/);
+    assert.match(source, /await openFile\(file\)/);
 });
 
 test('restored complete layouts bypass automatic recomputation', () => {

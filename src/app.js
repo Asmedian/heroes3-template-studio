@@ -73,7 +73,20 @@ const templateErrors = map => {
 const templatePicker = createTemplatePicker({ onSelect: loadBuiltin });
 function toast(message) { $('toast').textContent = message; $('toast').classList.add('visible'); clearTimeout(store.toastTimer); store.toastTimer = setTimeout(() => $('toast').classList.remove('visible'), 3500); }
 function status(s) { $('status-text').textContent = s; }
-const nextPaint = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+const nextPaint = () => new Promise(resolve => {
+    let settled = false;
+    const finish = () => {
+        if (settled)
+            return;
+        settled = true;
+        clearTimeout(fallback);
+        resolve();
+    };
+    // requestAnimationFrame can be heavily throttled in hidden/background tabs and
+    // some headless browsers. Never let a visual loading indicator block file IO.
+    const fallback = setTimeout(finish, 120);
+    requestAnimationFrame(() => requestAnimationFrame(finish));
+});
 async function showTemplateLoader(token) {
     if (token !== store.loadToken)
         return;
@@ -305,9 +318,12 @@ async function openFile(file) {
     if (!file)
         return;
     const token = ++store.loadToken;
-    await showTemplateLoader(token);
     try {
-        const bytes = new Uint8Array(await file.arrayBuffer());
+        // Start reading before yielding to the loader paint. Some browsers can release
+        // a temporary file-input backing file after the input value is cleared.
+        const bytesPromise = file.arrayBuffer();
+        await showTemplateLoader(token);
+        const bytes = new Uint8Array(await bytesPromise);
         if (!/\.(h3t|txt)$/i.test(file.name))
             throw new Error(translateText('Unsupported file type. Choose a .txt (SoD) or .h3t (HotA) template.'));
         if (bytes.some(b => b === 0) || bytes.slice(0, 4096).some(b => b < 9 || (b > 13 && b < 32)))
@@ -1741,7 +1757,16 @@ document.addEventListener('pointerdown', e => {
         $('inspector').classList.remove('open');
 }, true);
 $('open-btn').onclick = () => $('file-input').click();
-$('file-input').onchange = e => { openFile(e.target.files[0]); e.target.value = ''; };
+$('file-input').onchange = async e => {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+    try {
+        await openFile(file);
+    }
+    finally {
+        input.value = '';
+    }
+};
 $('layout-input').onchange = e => {
     if (e.target.files[0])
         importLayout(e.target.files[0]);
@@ -1892,7 +1917,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         try {
             // External locale modules can finish after the window load event. Register
             // immediately when that happened instead of waiting for an event that has passed.
-            const registration = await navigator.serviceWorker.register('./sw.js?v=1.6.5', { scope: './', updateViaCache: 'none' });
+            const registration = await navigator.serviceWorker.register('./sw.js?v=1.6.6', { scope: './', updateViaCache: 'none' });
             await registration.update();
             if (registration.waiting) {
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' });

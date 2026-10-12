@@ -1,5 +1,5 @@
 /* Offline service worker. Keep VERSION in sync with package.json and manifest. */
-const VERSION = '1.6.5';
+const VERSION = '1.6.6';
 const CACHE = `h3tc-studio-v${VERSION}`;
 const ASSETS = [
     './',

@@ -16,21 +16,38 @@ const store = {
     fileKey: '', loaded: false, loadToken: 0, builtinId: null, presetLayouts: null
 };
 const current = () => store.pack?.maps[store.mapIndex];
-const validZoneIds = map => {
+let renderStatsCache = new WeakMap();
+let templateErrorCache = new WeakMap();
+function resetDerivedCaches() {
+    renderStatsCache = new WeakMap();
+    templateErrorCache = new WeakMap();
+}
+function renderableStats(map) {
+    if (!map)
+        return { zoneIds: new Set(), zoneCount: 0, connectionCount: 0 };
+    const cached = renderStatsCache.get(map);
+    if (cached)
+        return cached;
     const counts = new Map();
-    for (const zone of map?.zones ?? []) {
+    for (const zone of map.zones ?? []) {
         const id = String(zone.id ?? '').trim();
         counts.set(id, (counts.get(id) ?? 0) + 1);
     }
-    return new Set([...counts].filter(([id, count]) => /^[1-9]\d*$/.test(id) && count === 1).map(([id]) => id));
-};
-const renderableZoneCount = map => validZoneIds(map).size;
-const renderableConnectionCount = map => {
-    if (!map)
-        return 0;
-    const zoneIds = validZoneIds(map);
-    return map.connections.filter(connection => isRenderableConnection(connection, zoneIds)).length;
-};
+    const zoneIds = new Set();
+    for (const [id, count] of counts)
+        if (/^[1-9]\d*$/.test(id) && count === 1)
+            zoneIds.add(id);
+    let connectionCount = 0;
+    for (const connection of map.connections ?? [])
+        if (isRenderableConnection(connection, zoneIds))
+            connectionCount++;
+    const result = { zoneIds, zoneCount: zoneIds.size, connectionCount };
+    renderStatsCache.set(map, result);
+    return result;
+}
+const validZoneIds = map => renderableStats(map).zoneIds;
+const renderableZoneCount = map => renderableStats(map).zoneCount;
+const renderableConnectionCount = map => renderableStats(map).connectionCount;
 const displayMap = map => {
     const zoneIds = validZoneIds(map);
     return {
@@ -42,15 +59,38 @@ const displayMap = map => {
 const templateErrors = map => {
     if (!store.pack || !map)
         return [];
+    const cached = templateErrorCache.get(map);
+    if (cached)
+        return cached;
     const source_issues = (store.pack.source_issues ?? [])
         .filter(issue => issue.map === store.mapIndex)
         .map(issue => ({ ...issue, map: 0 }));
     const probe = { ...store.pack, maps: [map], source_issues };
-    return validatePack(probe).filter(issue => issue.level === 'error');
+    const errors = validatePack(probe).filter(issue => issue.level === 'error');
+    templateErrorCache.set(map, errors);
+    return errors;
 };
 const templatePicker = createTemplatePicker({ onSelect: loadBuiltin });
 function toast(message) { $('toast').textContent = message; $('toast').classList.add('visible'); clearTimeout(store.toastTimer); store.toastTimer = setTimeout(() => $('toast').classList.remove('visible'), 3500); }
 function status(s) { $('status-text').textContent = s; }
+const nextPaint = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+async function showTemplateLoader(token) {
+    if (token !== store.loadToken)
+        return;
+    $('template-loading-title').textContent = translateText('Opening template…');
+    $('template-loading-detail').textContent = translateText('Preparing zones and connections');
+    $('template-loading-overlay').classList.remove('hidden');
+    $('template-loading-overlay').setAttribute('aria-hidden', 'false');
+    document.querySelector('.workspace')?.setAttribute('aria-busy', 'true');
+    await nextPaint();
+}
+function hideTemplateLoader(token) {
+    if (token !== store.loadToken)
+        return;
+    $('template-loading-overlay').classList.add('hidden');
+    $('template-loading-overlay').setAttribute('aria-hidden', 'true');
+    document.querySelector('.workspace')?.removeAttribute('aria-busy');
+}
 function issueReasonText(reason) {
     const field = translateText(reason.field === 'zone1' ? 'Zone 1' : 'Zone 2');
     if (reason.code === 'missing_endpoint')
@@ -140,6 +180,7 @@ function commit(label, fn) {
         store.undo.shift();
     store.redo = [];
     store.pack.dirty = true;
+    resetDerivedCaches();
     persistLayout();
     renderAll();
     status(label);
@@ -153,6 +194,7 @@ function restore(data) {
     store.tab = data.tab;
     store.mapIndex = Math.min(store.mapIndex, store.pack.maps.length - 1);
     store.pack.dirty = true;
+    resetDerivedCaches();
     persistLayout();
     renderAll();
 }
@@ -193,29 +235,49 @@ function persistLayout() {
     }
     catch { /* Storage can be disabled or full. */ }
 }
+function normalizedLayout(source, ids) {
+    if (!source || typeof source !== 'object' || Array.isArray(source))
+        return {};
+    return Object.fromEntries(Object.entries(source).filter(([id, point]) => ids.has(String(id)) && Number.isFinite(point?.x) && Number.isFinite(point?.y)));
+}
+function layoutIsCrowded(layout, pad = 46) {
+    const points = Object.values(layout);
+    for (let i = 0; i < points.length; i++)
+        for (let j = i + 1; j < points.length; j++)
+            if (Math.abs(points[i].x - points[j].x) < CARD_W + pad && Math.abs(points[i].y - points[j].y) < CARD_H + pad)
+                return true;
+    return false;
+}
+function applyRestoredLayout(map, layout) {
+    map.layout = layoutIsCrowded(layout) ? separate(layout, 68) : layout;
+}
 function restoreLayout(index) {
     const map = store.pack.maps[index];
     if (!map)
         return;
-    const ids = validZoneIds(map), generated = recommendedLayout(map, index);
+    const ids = validZoneIds(map);
+    const memoryLayout = normalizedLayout(map.layout, ids);
+    if (Object.keys(memoryLayout).length === ids.size) {
+        applyRestoredLayout(map, memoryLayout);
+        return;
+    }
     let restored = {};
     // v3 deliberately does not import the old automatic cache namespace. It prevents
     // obsolete 1.4/1.5 layouts from overriding the newer topology engine after update.
     try {
         const json = localStorage.getItem(layoutStorageKey(index));
-        if (json) {
-            const parsed = JSON.parse(json);
-            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed))
-                restored = parsed;
-        }
+        if (json)
+            restored = normalizedLayout(JSON.parse(json), ids);
     }
     catch { }
-    restored = Object.fromEntries(Object.entries(restored).filter(([id, p]) => ids.has(String(id)) && Number.isFinite(p?.x) && Number.isFinite(p?.y)));
-    const candidate = Object.keys(restored).length === ids.size ? restored : { ...generated, ...restored };
-    const points = Object.values(candidate), pad = 46;
-    const crowded = points.some((a, i) => points.slice(i + 1).some(b => Math.abs(a.x - b.x) < CARD_W + pad && Math.abs(a.y - b.y) < CARD_H + pad));
-    map.layout = crowded ? separate(candidate, 68) : candidate;
+    if (Object.keys(restored).length === ids.size) {
+        applyRestoredLayout(map, restored);
+        return;
+    }
+    const generated = recommendedLayout(map, index);
+    applyRestoredLayout(map, { ...generated, ...restored });
 }
+
 let upstreamLayoutsPromise = null;
 async function loadUpstreamLayouts() {
     if (!upstreamLayoutsPromise)
@@ -227,20 +289,23 @@ async function loadUpstreamLayouts() {
     return upstreamLayoutsPromise;
 }
 function matchPackPresets(pack, layouts) {
-    const pool = Object.values(layouts?.templates ?? {}).flat(), used = new Set();
+    const buckets = new Map();
+    for (const preset of Object.values(layouts?.templates ?? {}).flat()) {
+        const key = preset.name + '\0' + preset.connections + '\0' + preset.ids.join('\0');
+        if (!buckets.has(key))
+            buckets.set(key, []);
+        buckets.get(key).push(preset);
+    }
     return pack.maps.map(map => {
         const key = map.name + '\0' + map.connections.length + '\0' + map.zones.map(z => String(z.id)).join('\0');
-        const index = pool.findIndex((preset, i) => !used.has(i) && (preset.name + '\0' + preset.connections + '\0' + preset.ids.join('\0')) === key);
-        if (index < 0)
-            return null;
-        used.add(index);
-        return pool[index];
+        return buckets.get(key)?.shift() ?? null;
     });
 }
 async function openFile(file) {
     if (!file)
         return;
     const token = ++store.loadToken;
+    await showTemplateLoader(token);
     try {
         const bytes = new Uint8Array(await file.arrayBuffer());
         if (!/\.(h3t|txt)$/i.test(file.name))
@@ -264,7 +329,11 @@ async function openFile(file) {
         toast(message('opened_pack', file.name, pack.maps.length, total));
     }
     catch (e) {
-        modal(translateText('Open failed'), `<p>${esc(e?.message || e)}</p><p>${esc(translateText('Text templates SoD, HotA 1.7.x and HotA 1.8.x are supported.'))}</p>`);
+        if (token === store.loadToken)
+            modal(translateText('Open failed'), `<p>${esc(e?.message || e)}</p><p>${esc(translateText('Text templates SoD, HotA 1.7.x and HotA 1.8.x are supported.'))}</p>`);
+    }
+    finally {
+        hideTemplateLoader(token);
     }
 }
 function setPack(pack, bytes = null, builtinId = null, presetLayouts = null) {
@@ -281,8 +350,10 @@ function setPack(pack, bytes = null, builtinId = null, presetLayouts = null) {
     store.redo = [];
     store.connectMode = false;
     store.connectFrom = null;
+    resetDerivedCaches();
     store.fileKey = fileSignature(bytes ?? new TextEncoder().encode(pack.filename), pack.filename);
     restoreLayout(0);
+    persistLayout();
     store.loaded = true;
     $('export-format').value = pack.format;
     renderAll();
@@ -321,6 +392,7 @@ async function loadBuiltin(id) {
     }
     const token = ++store.loadToken;
     templatePicker.setDisabled(true);
+    await showTemplateLoader(token);
     try {
         const response = await fetch('./templates/' + encodeURIComponent(entry.file), { cache: 'no-store' });
         if (!response.ok)
@@ -346,7 +418,9 @@ async function loadBuiltin(id) {
         toast('Cannot open built-in template: ' + e.message);
     }
     finally {
-        templatePicker.setDisabled(false);
+        if (token === store.loadToken)
+            templatePicker.setDisabled(false);
+        hideTemplateLoader(token);
     }
 }
 function selectMap(index) {
@@ -366,6 +440,7 @@ function selectMap(index) {
     requestAnimationFrame(() => fitView(true));
 }
 function renderAll() { renderSidebar(); renderToolbar(); renderCanvas(); renderLegend(); renderInspector(); renderStatus(); }
+function renderSelection() { renderToolbar(); renderCanvas(); renderLegend(); renderInspector(); renderStatus(); }
 function renderSidebar() {
     const pack = store.pack;
     const hasPack = Boolean(pack);
@@ -779,7 +854,7 @@ function select(kind, index) {
     store.inspectorView = 'selection';
     store.connectMode = false;
     $('inspector').classList.add('open');
-    renderAll();
+    renderSelection();
 }
 function captureCanvasPointer(pointerId) {
     // Some synthetic pointer events have no active pointer in the browser; do not
@@ -1180,6 +1255,7 @@ $('inspector-body').addEventListener('input', e => {
         liveEdits.set(field, { snapshot: capture(), selection: { ...store.selected }, tab: store.tab, label: 'Updated: ' + path.join(' / ') });
     obj[key] = value;
     store.pack.dirty = true;
+    resetDerivedCaches();
     scheduleInspectorPreview();
 });
 function finishLiveEdit(field) {
@@ -1816,7 +1892,7 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
         try {
             // External locale modules can finish after the window load event. Register
             // immediately when that happened instead of waiting for an event that has passed.
-            const registration = await navigator.serviceWorker.register('./sw.js?v=1.6.4', { scope: './', updateViaCache: 'none' });
+            const registration = await navigator.serviceWorker.register('./sw.js?v=1.6.5', { scope: './', updateViaCache: 'none' });
             await registration.update();
             if (registration.waiting) {
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' });

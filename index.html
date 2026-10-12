@@ -15,7 +15,7 @@
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="icon" href="./public/icons/icon.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="./public/icons/apple-touch-icon.png">
-    <link rel="stylesheet" href="./styles.css?v=1.6.4">
+    <link rel="stylesheet" href="./styles.css?v=1.6.5">
     <title>H3 Template Studio · Visual editor & converter</title>
 </head>
 <body>
@@ -1800,6 +1800,15 @@
         </header>
 
         <div class="workspace">
+            <div class="template-loading-overlay hidden" id="template-loading-overlay" role="status" aria-live="polite" aria-hidden="true">
+                <div class="template-loading-card">
+                    <span class="template-loading-spinner" aria-hidden="true"></span>
+                    <span class="template-loading-copy">
+                        <strong id="template-loading-title">Opening template…</strong>
+                        <small id="template-loading-detail">Preparing zones and connections</small>
+                    </span>
+                </div>
+            </div>
             <aside class="sidebar" id="sidebar">
                 <section class="sidebar-intro">
                     <div class="eyebrow">CURRENT TEMPLATE PACK</div>
@@ -2014,7 +2023,7 @@
                         <span class="status-divider"></span>
                         <button type="button" id="status-errors" class="status-error-btn" aria-label="Errors: 0">Errors: 0</button>
                         <span class="status-divider"></span>
-                        <span>v1.6.4</span>
+                        <span>v1.6.5</span>
                     </div>
                 </div>
             </main>
@@ -2061,6 +2070,6 @@
         <div id="modal-content"></div>
         <div class="modal-buttons" id="modal-buttons"></div>
     </dialog>
-    <script type="module" src="./src/app.js?v=1.6.4"></script>
+    <script type="module" src="./src/app.js?v=1.6.5"></script>
 </body>
 </html>

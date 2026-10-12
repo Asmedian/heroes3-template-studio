@@ -33,7 +33,7 @@ export function edgeCrossings(edges, points) {
     for (let i = 0; i < edges.length; i++)
         for (let j = i + 1; j < edges.length; j++) {
             const [a, b] = edges[i], [c, d] = edges[j];
-            if (new Set([a, b, c, d]).size !== 4)
+            if (a === b || a === c || a === d || b === c || b === d || c === d)
                 continue;
             const p = points[a], q = points[b], r = points[c], s = points[d];
             if (!p || !q || !r || !s)
@@ -54,12 +54,69 @@ function median(values) {
 function segmentIntersectsRect(a, b, center, halfW, halfH) {
     const dx = b.x - a.x, dy = b.y - a.y;
     let low = 0, high = 1;
-    for (const [p, q] of [[-dx, a.x - (center.x - halfW)], [dx, center.x + halfW - a.x], [-dy, a.y - (center.y - halfH)], [dy, center.y + halfH - a.y]]) {
-        if (Math.abs(p) < 1e-9) {
-            if (q < 0)
+    let p = -dx, q = a.x - (center.x - halfW);
+    if (Math.abs(p) < 1e-9) {
+        if (q < 0)
+            return false;
+    }
+    else {
+        const r = q / p;
+        if (p < 0) {
+            if (r > high)
                 return false;
-            continue;
+            low = Math.max(low, r);
         }
+        else {
+            if (r < low)
+                return false;
+            high = Math.min(high, r);
+        }
+    }
+    p = dx;
+    q = center.x + halfW - a.x;
+    if (Math.abs(p) < 1e-9) {
+        if (q < 0)
+            return false;
+    }
+    else {
+        const r = q / p;
+        if (p < 0) {
+            if (r > high)
+                return false;
+            low = Math.max(low, r);
+        }
+        else {
+            if (r < low)
+                return false;
+            high = Math.min(high, r);
+        }
+    }
+    p = -dy;
+    q = a.y - (center.y - halfH);
+    if (Math.abs(p) < 1e-9) {
+        if (q < 0)
+            return false;
+    }
+    else {
+        const r = q / p;
+        if (p < 0) {
+            if (r > high)
+                return false;
+            low = Math.max(low, r);
+        }
+        else {
+            if (r < low)
+                return false;
+            high = Math.min(high, r);
+        }
+    }
+    p = dy;
+    q = center.y + halfH - a.y;
+    if (Math.abs(p) < 1e-9) {
+        if (q < 0)
+            return false;
+    }
+    else {
         const r = q / p;
         if (p < 0) {
             if (r > high)
@@ -76,29 +133,56 @@ function segmentIntersectsRect(a, b, center, halfW, halfH) {
 }
 export function layoutMetrics(map, positions) {
     const graph = topologyGraph(map);
-    if (!graph || graph.ids.some(id => !positions?.[id]))
+    if (!graph)
         return { crossings: Infinity, intrusions: Infinity, soft: Infinity };
-    const crossings = edgeCrossings(graph.edges, positions);
-    const centers = Object.fromEntries(graph.ids.map(id => [id, { x: positions[id].x + CARD_W / 2, y: positions[id].y + CARD_H / 2 }]));
-    let intrusions = 0;
-    for (const [a, b] of graph.edges) {
-        for (const id of graph.ids) {
-            if (id === a || id === b)
+    const count = graph.ids.length, points = new Array(count), centers = new Array(count), indexById = new Map();
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (let i = 0; i < count; i++) {
+        const id = graph.ids[i], point = positions?.[id];
+        if (!point)
+            return { crossings: Infinity, intrusions: Infinity, soft: Infinity };
+        points[i] = point;
+        centers[i] = { x: point.x + CARD_W / 2, y: point.y + CARD_H / 2 };
+        indexById.set(id, i);
+        if (point.x < minX) minX = point.x;
+        if (point.x > maxX) maxX = point.x;
+        if (point.y < minY) minY = point.y;
+        if (point.y > maxY) maxY = point.y;
+    }
+    const edges = graph.edges.map(([a, b]) => [indexById.get(a), indexById.get(b)]);
+    let crossings = 0;
+    for (let i = 0; i < edges.length; i++) {
+        const [a, b] = edges[i], p = points[a], q = points[b];
+        for (let j = i + 1; j < edges.length; j++) {
+            const [c, d] = edges[j];
+            if (a === c || a === d || b === c || b === d)
                 continue;
-            if (segmentIntersectsRect(centers[a], centers[b], centers[id], CARD_W / 2 + 9, CARD_H / 2 + 9))
-                intrusions++;
+            const r = points[c], t = points[d];
+            const u = (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+            const v = (q.x - p.x) * (t.y - p.y) - (q.y - p.y) * (t.x - p.x);
+            const w = (t.x - r.x) * (p.y - r.y) - (t.y - r.y) * (p.x - r.x);
+            const x = (t.x - r.x) * (q.y - r.y) - (t.y - r.y) * (q.x - r.x);
+            if (u * v < -1e-7 && w * x < -1e-7)
+                crossings++;
         }
     }
-    const xs = graph.ids.map(id => positions[id].x), ys = graph.ids.map(id => positions[id].y);
-    const width = Math.max(...xs) - Math.min(...xs) + CARD_W, height = Math.max(...ys) - Math.min(...ys) + CARD_H;
+    let intrusions = 0;
+    for (const [a, b] of edges)
+        for (let i = 0; i < count; i++) {
+            if (i === a || i === b)
+                continue;
+            if (segmentIntersectsRect(centers[a], centers[b], centers[i], CARD_W / 2 + 9, CARD_H / 2 + 9))
+                intrusions++;
+        }
+    const width = maxX - minX + CARD_W, height = maxY - minY + CARD_H;
     const aspect = Math.max(width / Math.max(1, height), height / Math.max(1, width));
-    const lengths = graph.edges.map(([a, b]) => Math.hypot(positions[a].x - positions[b].x, positions[a].y - positions[b].y));
+    const lengths = edges.map(([a, b]) => Math.hypot(points[a].x - points[b].x, points[a].y - points[b].y));
     const average = lengths.length ? lengths.reduce((sum, value) => sum + value, 0) / lengths.length : 0;
     const variance = lengths.length ? lengths.reduce((sum, value) => sum + (value - average) ** 2, 0) / lengths.length : 0;
     const coefficient = average > 1e-7 ? Math.sqrt(variance) / average : 0;
     const middle = median(lengths), longest = lengths.length ? Math.max(...lengths) : 0;
     const longRatio = middle > 1e-7 ? longest / middle : 1;
-    const areaPerZone = width * height / Math.max(1, graph.ids.length);
+    const areaPerZone = width * height / Math.max(1, count);
     const soft = areaPerZone * (1 + .42 * (aspect - 1) ** 2 + .88 * coefficient + .18 * Math.max(0, longRatio - 1) ** 2);
     return { crossings, intrusions, soft, width, height, average, coefficient };
 }
@@ -577,7 +661,7 @@ function crossedEdgeGroups(graph, positions) {
     for (let i = 0; i < graph.edges.length; i++)
         for (let j = i + 1; j < graph.edges.length; j++) {
             const [a, b] = graph.edges[i], [c, d] = graph.edges[j];
-            if (new Set([a, b, c, d]).size !== 4)
+            if (a === b || a === c || a === d || b === c || b === d || c === d)
                 continue;
             const p = positions[a], q = positions[b], r = positions[c], t = positions[d];
             if (!p || !q || !r || !t)
